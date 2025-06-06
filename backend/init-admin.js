@@ -6,8 +6,15 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
-// 連接到 MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://admin:password@localhost:27017/queue_system?authSource=admin')
+// 連接到 MongoDB  
+const mongoUri = process.env.MONGODB_URI || 
+                 process.env.DATABASE_URL || 
+                 process.env.MONGO_CONNECTION_STRING ||
+                 'mongodb://admin:password@localhost:27017/queue_system?authSource=admin';
+
+console.log('初始化腳本連接到MongoDB:', mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'));
+
+mongoose.connect(mongoUri)
   .then(() => console.log('成功連接到MongoDB'))
   .catch(err => {
     console.error('無法連接到MongoDB:', err);

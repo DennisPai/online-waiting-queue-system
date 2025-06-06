@@ -59,7 +59,14 @@ app.use((err, req, res, next) => {
 require('./services/socket.service')(io);
 
 // 連接到MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/queue_system')
+const mongoUri = process.env.MONGODB_URI || 
+                 process.env.DATABASE_URL || 
+                 process.env.MONGO_CONNECTION_STRING ||
+                 'mongodb://localhost:27017/queue_system';
+
+console.log('嘗試連接到MongoDB:', mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'));
+
+mongoose.connect(mongoUri)
   .then(async () => {
     console.log('成功連接到MongoDB');
     
