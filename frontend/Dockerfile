@@ -1,39 +1,40 @@
-# 使用 Node.js 建構階段
-FROM node:18-alpine as build
+# 建構階段
+FROM node:18-alpine AS builder
 
-# 設定工作目錄
 WORKDIR /app
 
-# 複製 package 檔案
+# 複製依賴檔案
 COPY package*.json ./
-
-# 安裝依賴（包含 devDependencies 用於建構）
-RUN npm ci
+RUN npm ci --silent
 
 # 複製原代碼
 COPY . .
 
-# 設定建構時環境變數
+# 設定環境變數
 ARG REACT_APP_API_URL
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 # 建構應用
 RUN npm run build
 
-# 使用 Nginx 運行階段
-FROM nginx:stable-alpine
+# 生產階段
+FROM nginx:alpine
 
-# 複製建構結果
-COPY --from=build /app/build /usr/share/nginx/html
+# 移除預設nginx配置
+RUN rm /etc/nginx/conf.d/default.conf
 
-# 複製 Nginx 配置
+# 複製自定義配置
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# 設定權限
+# 複製建構產物
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# 設定適當權限
 RUN chmod -R 755 /usr/share/nginx/html
 
-# 暴露端口
+# 確保 nginx用戶擁有檔案
+RUN chown -R nginx:nginx /usr/share/nginx/html
+
 EXPOSE 80
 
-# 啟動 Nginx
 CMD ["nginx", "-g", "daemon off;"]
