@@ -1,0 +1,71 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+/* 響應式設計 */
+* {
+  box-sizing: border-box;
+}
+
+/* 觸控裝置優化 */
+@media (hover: none) and (pointer: coarse) {
+  /* 增加按鈕的觸控區域 */
+  button, 
+  .MuiButton-root,
+  .MuiIconButton-root {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  /* 增加表單元素的觸控區域 */
+  .MuiTextField-root .MuiOutlinedInput-root {
+    min-height: 48px !important;
+  }
+}
+
+/* 手機橫屏優化 */
+@media screen and (max-height: 600px) and (orientation: landscape) {
+  .MuiContainer-root {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+}
+
+/* 小螢幕優化 */
+@media (max-width: 600px) {
+  /* 確保內容不會太窄 */
+  .MuiContainer-root {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  
+  /* 表格在小螢幕上的處理 */
+  .MuiTableContainer-root {
+    font-size: 0.75rem;
+  }
+  
+  /* 導航欄在小螢幕上的調整 */
+  .MuiAppBar-root .MuiToolbar-root {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
+
+/* CSS變數初始化 */
+:root {
+  --font-size-multiplier: 1;
+} 

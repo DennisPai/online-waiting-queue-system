@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # MongoDB 數據庫服務
+  mongodb:
+    image: mongo:5.0
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    networks:
+      - queue-network
+
+  # 後端 API 服務
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: queue-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/queue_system?authSource=admin
+      - JWT_SECRET=your_production_jwt_secret
+      - JWT_EXPIRES_IN=1d
+      - CORS_ORIGIN=http://localhost:3100
+      - SOCKET_CORS_ORIGIN=http://localhost:3100
+    depends_on:
+      - mongodb
+    networks:
+      - queue-network
+
+  # 前端 Web 應用
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: queue-frontend
+    restart: always
+    ports:
+      - "3100:80"
+    depends_on:
+      - backend
+    networks:
+      - queue-network
+
+networks:
+  queue-network:
+    driver: bridge
+
+volumes:
+  mongodb_data: 

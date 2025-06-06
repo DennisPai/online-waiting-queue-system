@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^16.5.0",
+    "mongoose": "^8.15.1",
+    "react-beautiful-dnd": "^13.1.1"
+  }
+}
