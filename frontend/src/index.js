@@ -1,10 +1,28 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import SimpleApp from './SimpleApp';
+import { BrowserRouter } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import CssBaseline from '@mui/material/CssBaseline';
+import { ThemeProvider } from '@mui/material/styles';
 
-console.log('=== React應用開始載入 ===');
+import App from './App';
+import { store } from './redux/store';
+import theme from './theme';
+import './index.css';
+import { FontSizeProvider } from './contexts/FontSizeContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<SimpleApp />);
-
-console.log('=== React應用載入完成 ===');
+root.render(
+  <React.StrictMode>
+    <Provider store={store}>
+      <BrowserRouter>
+        <ThemeProvider theme={theme}>
+          <FontSizeProvider>
+            <CssBaseline />
+            <App />
+          </FontSizeProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </Provider>
+  </React.StrictMode>
+);
