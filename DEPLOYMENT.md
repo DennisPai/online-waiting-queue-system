@@ -37,7 +37,12 @@
 1. 點擊「Add Service」→「Git Repository」
 2. 選擇相同的 GitHub repository
 3. 選擇「frontend」資料夾作為根目錄
-4. Zeabur 會自動檢測到 React 應用並正確建構
+4. **重要**：在部署前設定環境變數：
+   ```
+   REACT_APP_API_URL=https://your-backend-service.zeabur.app
+   ```
+   ⚠️ 注意：請將 `your-backend-service.zeabur.app` 替換為您實際的後端服務網域
+5. Zeabur 會自動檢測到 React 應用並正確建構
 
 ### 5. 配置網域和CORS
 1. 前端部署完成後，Zeabur 會提供一個網域（例如：`your-app.zeabur.app`）
@@ -68,6 +73,16 @@ CORS_ORIGIN=https://your-frontend-domain.zeabur.app
 SOCKET_CORS_ORIGIN=https://your-frontend-domain.zeabur.app
 ```
 
+### 前端必要環境變數
+```
+REACT_APP_API_URL=https://your-backend-service.zeabur.app
+```
+
+⚠️ **重要提醒**：
+- 前端環境變數必須在**建構前**設定，建構後無法修改
+- 環境變數設定錯誤是導致502錯誤的常見原因
+- 請確保後端服務URL正確且可訪問
+
 ### MongoDB 連接
 - Zeabur 會自動提供 `MONGODB_URI` 環境變數
 - 通常格式為：`mongodb://username:password@host:port/database`
@@ -92,15 +107,22 @@ SOCKET_CORS_ORIGIN=https://your-frontend-domain.zeabur.app
 
 ### 常見問題
 
-**1. 前端無法連接後端**
+**1. 前端顯示502錯誤**
+- **最常見原因**：前端環境變數 `REACT_APP_API_URL` 未設定或設定錯誤
+- 檢查前端服務的環境變數是否包含正確的後端URL
+- 確認後端服務是否正常運行
+- 在瀏覽器控制台查看API請求是否成功
+
+**2. 前端無法連接後端**
 - 檢查 CORS 環境變數是否正確設定
 - 確認前端和後端的網域配置
+- 驗證 `REACT_APP_API_URL` 指向正確的後端服務
 
-**2. MongoDB 連接失敗**
+**3. MongoDB 連接失敗**
 - 檢查 MongoDB 服務是否正常運行
 - 確認 MONGODB_URI 環境變數正確
 
-**3. 管理員無法登入**
+**4. 管理員無法登入**
 - 確認 `init-admin.js` 腳本已執行
 - 檢查後端日誌是否有錯誤
 
@@ -121,4 +143,4 @@ SOCKET_CORS_ORIGIN=https://your-frontend-domain.zeabur.app
 當程式碼有更新時：
 1. 推送新代碼到 GitHub
 2. Zeabur 會自動重新部署相關服務
-3. 如有環境變數變更，需要手動更新 
+3. 如有環境變數變更，需要手動更新
