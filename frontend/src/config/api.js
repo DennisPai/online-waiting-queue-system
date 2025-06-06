@@ -1,24 +1,29 @@
 // API 配置
 const getApiBaseUrl = () => {
-  // 優先使用環境變數中的API URL
-  if (process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL;
-  }
-  
-  // 在生產環境中，如果沒有設定環境變數，嘗試使用相對路徑
+  // 在生產環境中，優先使用環境變數
   if (process.env.NODE_ENV === 'production') {
-    // 在Zeabur等雲平台，通常前後端會在不同的服務中
-    // 如果沒有明確設定API URL，使用當前域名
-    return window.location.origin;
+    const apiUrl = process.env.REACT_APP_API_URL;
+    if (apiUrl) {
+      console.log('使用環境變數API URL:', apiUrl);
+      return apiUrl;
+    }
+    console.log('未設定REACT_APP_API_URL環境變數，使用相對路徑');
+    return '';
   }
   
-  // 開發環境使用本地後端
+  // 開發環境
+  console.log('開發環境，使用localhost');
   return 'http://localhost:8080';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
 
-console.log('API Base URL:', API_BASE_URL); // 用於調試
+// 添加詳細的調試資訊
+console.log('=== API 配置資訊 ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+console.log('最終API Base URL:', API_BASE_URL);
+console.log('==================');
 
 // API 端點
 export const API_ENDPOINTS = {
