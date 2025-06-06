@@ -1,11 +1,11 @@
-# 依賴
+# 依賴和node_modules
 node_modules/
 */node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# 環境變數檔案
+# 環境變數文件
 .env
 .env.local
 .env.development.local
@@ -15,91 +15,86 @@ yarn-error.log*
 # 建構輸出
 build/
 dist/
-.next/
+*/build/
+*/dist/
 
-# 日誌檔案
+# 日誌文件
 logs
 *.log
 
-# 臨時檔案
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE/編輯器
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# 測試覆蓋率
-coverage/
-
-# MongoDB 資料
-data/
-
-# Docker
-.dockerignore
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Runtime data
+# 運行時文件
 pids
 *.pid
 *.seed
 *.pid.lock
 
-# Coverage directory used by tools like istanbul
-coverage
+# 覆蓋率目錄
+coverage/
 
-# nyc test coverage
+# nyc 測試覆蓋率
 .nyc_output
 
-# Bower dependency directory (https://bower.io/)
+# Grunt 中間存儲
+.grunt
+
+# Bower 依賴目錄
 bower_components
 
-# ESLint cache
+# node-waf 配置
+.lock-wscript
+
+# 編譯的二進制插件
+build/Release
+
+# ESLint 緩存
 .eslintcache
 
-# Optional npm cache directory
-.npm
+# VS Code 設定
+.vscode/
 
-# Optional REPL history
-.node_repl_history
+# JetBrains IDE
+.idea/
 
-# Output of 'npm pack'
-*.tgz
+# 系統文件
+.DS_Store
+Thumbs.db
 
-# Yarn Integrity file
-.yarn-integrity
+# Docker 相關（保留docker-compose.yml）
+.dockerignore
 
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
+# 測試文件（開發用）
+*test*.js
+debug-*.js
+api-test*.js
+real-leap-test.js
+leap-test.js
+comprehensive-test.js
+simple-test.js
+test-converter.js
 
-# next.js build output
-.next
+# 臨時文件
+*.tmp
+*.temp
 
-# nuxt.js build output
-.nuxt
+# MongoDB 數據（如果有本地數據）
+data/
+mongodb_data/
 
-# vuepress build output
-.vuepress/dist
+# 備份文件
+*.backup
+*.bak
 
-# Serverless directories
-.serverless
+# 壓縮文件
+*.zip
+*.tar.gz
+*.rar
 
-# 系統生成的檔案
-*.orig 
+# 編輯器備份
+*~
+*.swp
+*.swo
+
+# 其他
+.cache/
+.parcel-cache/ 
+node_modules

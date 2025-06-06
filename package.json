@@ -1,25 +1,4 @@
 {
-  "name": "online-waiting-queue-system",
-  "version": "1.0.0",
-  "description": "線上候位系統 - 完整的前後端應用",
-  "main": "backend/src/index.js",
-  "scripts": {
-    "start": "node backend/src/index.js",
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm start",
-    "build": "cd frontend && npm run build",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
-  },
-  "keywords": ["queue", "waiting-system", "react", "nodejs", "mongodb"],
-  "author": "Your Name",
-  "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "devDependencies": {
-    "concurrently": "^7.6.0"
-  },
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "dotenv": "^16.5.0",

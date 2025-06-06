@@ -706,5 +706,18 @@ node update-existing-customers.js
 2. **API效能**：使用雙API架構，公開API無需認證，提升首頁載入速度
 3. **狀態管理**：完善的狀態重置機制，避免數據污染
 
+## 🌐 線上部署
+
+### Zeabur 部署
+本專案已配置為可直接部署到 Zeabur 平台。詳細部署步驟請參考 [`DEPLOYMENT.md`](./DEPLOYMENT.md)。
+
+#### 快速部署連結
+[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates)
+
+### 部署要求
+- Node.js 16+
+- MongoDB 5.0+
+- Docker 支援
+
 ## 授權協議
 MIT 
