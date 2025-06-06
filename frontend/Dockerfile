@@ -1,43 +1,14 @@
-# 超極簡調試版本 - 不建構 React，只測試 nginx
+# 最基本的nginx測試 - 使用預設配置
 FROM nginx:alpine
 
-# 移除預設配置
-RUN rm -rf /etc/nginx/conf.d/*
+# 只創建一個簡單的index.html，使用nginx預設配置
+RUN echo '<!DOCTYPE html><html><head><title>Basic Test</title></head><body><h1 style="color:green;">✅ BASIC NGINX WORKING!</h1><p>Time: <script>document.write(new Date().toLocaleString());</script></p><p>If you see this, the most basic nginx setup is working.</p></body></html>' > /usr/share/nginx/html/index.html
 
-# 創建超簡單的 nginx 配置
-RUN echo 'server { \
-    listen 80; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { \
-        try_files $uri $uri/ =404; \
-    } \
-    location /health { \
-        return 200 "nginx-working"; \
-        add_header Content-Type text/plain; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
-
-# 創建超簡單的測試檔案
-RUN echo '<!DOCTYPE html> \
-<html> \
-<head><title>DEBUG TEST</title></head> \
-<body> \
-<h1>🟢 NGINX IS WORKING!</h1> \
-<p>Time: <script>document.write(new Date())</script></p> \
-<p>If you see this, nginx container is running correctly.</p> \
-</body> \
-</html>' > /usr/share/nginx/html/index.html
-
-# 創建簡單測試頁面
-RUN echo '<!DOCTYPE html><html><body><h1>Static Test OK</h1></body></html>' > /usr/share/nginx/html/test.html
-
-# 設定權限
-RUN chmod -R 755 /usr/share/nginx/html
-RUN chown -R nginx:nginx /usr/share/nginx/html
-
-# 顯示配置內容（調試用）
+# 顯示預設nginx配置
+RUN cat /etc/nginx/nginx.conf
 RUN cat /etc/nginx/conf.d/default.conf
+
+# 顯示檔案狀態
 RUN ls -la /usr/share/nginx/html/
 
 EXPOSE 80
