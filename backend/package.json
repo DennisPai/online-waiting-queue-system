@@ -2,9 +2,9 @@
   "name": "queue-system-backend",
   "version": "1.0.0",
   "description": "線上候位系統後端",
-  "main": "src/app.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/app.js",
+    "start": "node index.js",
     "dev": "nodemon src/app.js",
     "test": "jest"
   },

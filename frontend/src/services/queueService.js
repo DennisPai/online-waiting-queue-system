@@ -1,31 +1,28 @@
-import axios from 'axios';
-
-const API_URL = '/api/queue';
-const ADMIN_API_URL = '/api/admin';
+import api from './api';
 
 // 公共 API
 
 // 獲取候位狀態
 const getQueueStatus = async () => {
-  const response = await axios.get(`${API_URL}/status`);
+  const response = await api.get('/queue/status');
   return response.data;
 };
 
 // 登記候位
 const registerQueue = async (queueData) => {
-  const response = await axios.post(`${API_URL}/register`, queueData);
+  const response = await api.post('/queue/register', queueData);
   return response.data;
 };
 
 // 獲取特定候位號碼的狀態
 const getQueueNumberStatus = async (queueNumber) => {
-  const response = await axios.get(`${API_URL}/status/${queueNumber}`);
+  const response = await api.get(`/queue/status/${queueNumber}`);
   return response.data;
 };
 
 // 通過姓名和電話查詢候位號碼
 const searchQueueByNameAndPhone = async (name, phone) => {
-  const response = await axios.get(`${API_URL}/search`, {
+  const response = await api.get('/queue/search', {
     params: { name, phone }
   });
   return response.data;
@@ -34,7 +31,7 @@ const searchQueueByNameAndPhone = async (name, phone) => {
 // 獲取排序的候位號碼（公共API）
 const getPublicOrderedNumbers = async () => {
   try {
-    const response = await axios.get(`${API_URL}/ordered-numbers`);
+    const response = await api.get('/queue/ordered-numbers');
     return response.data;
   } catch (error) {
     console.error('獲取公共排序候位號碼錯誤:', error);
@@ -50,7 +47,7 @@ const getOrderedQueueNumbers = async (token) => {
     }
   };
   try {
-    const response = await axios.get(`${ADMIN_API_URL}/queue/ordered-numbers`, config);
+    const response = await api.get('/admin/queue/ordered-numbers', config);
     return response.data;
   } catch (error) {
     console.error('獲取順序客戶號碼錯誤:', error);
@@ -68,7 +65,7 @@ const getQueueList = async (params = {}, token) => {
     },
     params
   };
-  const response = await axios.get(`${ADMIN_API_URL}/queue/list`, config);
+  const response = await api.get('/admin/queue/list', config);
   return response.data;
 };
 
@@ -79,7 +76,7 @@ const callNextQueue = async (token) => {
       Authorization: `Bearer ${token}`
     }
   };
-  const response = await axios.put(`${ADMIN_API_URL}/queue/next`, {}, config);
+  const response = await api.put('/admin/queue/next', {}, config);
   return response.data;
 };
 
@@ -90,8 +87,8 @@ const updateQueueStatus = async (queueId, status, token) => {
       Authorization: `Bearer ${token}`
     }
   };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/queue/${queueId}/status`,
+  const response = await api.put(
+    `/admin/queue/${queueId}/status`,
     { status },
     config
   );
@@ -106,8 +103,8 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
         Authorization: `Bearer ${token}`
       }
     };
-    const response = await axios.put(
-      `${ADMIN_API_URL}/queue/updateOrder`,
+    const response = await api.put(
+      '/admin/queue/updateOrder',
       { queueId, newOrder },
       config
     );
@@ -132,8 +129,8 @@ const setNextSessionDate = async (nextSessionDate, token) => {
       Authorization: `Bearer ${token}`
     }
   };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/settings/nextSession`,
+  const response = await api.put(
+    '/admin/settings/nextSession',
     { nextSessionDate },
     config
   );
@@ -147,8 +144,8 @@ const toggleQueueStatus = async (isOpen, token) => {
       Authorization: `Bearer ${token}`
     }
   };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/settings/queueStatus`,
+  const response = await api.put(
+    '/admin/settings/queueStatus',
     { isOpen },
     config
   );
@@ -162,8 +159,8 @@ const setMaxQueueNumber = async (maxQueueNumber, token) => {
       Authorization: `Bearer ${token}`
     }
   };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/settings/maxQueueNumber`,
+  const response = await api.put(
+    '/admin/settings/maxQueueNumber',
     { maxQueueNumber },
     config
   );
@@ -177,8 +174,8 @@ const updateQueueData = async (queueId, customerData, token) => {
       Authorization: `Bearer ${token}`
     }
   };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/queue/${queueId}/update`,
+  const response = await api.put(
+    `/admin/queue/${queueId}/update`,
     customerData,
     config
   );
@@ -192,8 +189,8 @@ const deleteCustomer = async (queueId, token) => {
       Authorization: `Bearer ${token}`
     }
   };
-  const response = await axios.delete(
-    `${ADMIN_API_URL}/queue/${queueId}/delete`,
+  const response = await api.delete(
+    `/admin/queue/${queueId}/delete`,
     config
   );
   return response.data;
@@ -206,8 +203,8 @@ const setMinutesPerCustomer = async (minutesPerCustomer, token) => {
       Authorization: `Bearer ${token}`
     }
   };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/settings/minutesPerCustomer`,
+  const response = await api.put(
+    '/admin/settings/minutesPerCustomer',
     { minutesPerCustomer },
     config
   );
@@ -221,10 +218,22 @@ const clearAllQueue = async (token) => {
       Authorization: `Bearer ${token}`
     }
   };
-  const response = await axios.delete(
-    `${ADMIN_API_URL}/queue/clear-all`,
+  const response = await api.delete(
+    '/admin/queue/clear-all',
     config
   );
+  return response.data;
+};
+
+// 客戶自助取消功能
+const cancelQueue = async (cancelData) => {
+  const response = await api.post('/queue/cancel', cancelData);
+  return response.data;
+};
+
+// 客戶自助更新資料功能
+const updateQueueDataSelf = async (updateData) => {
+  const response = await api.put('/queue/update', updateData);
   return response.data;
 };
 
@@ -234,6 +243,7 @@ const queueService = {
   getQueueNumberStatus,
   searchQueueByNameAndPhone,
   getPublicOrderedNumbers,
+  getOrderedQueueNumbers,
   getQueueList,
   callNextQueue,
   updateQueueStatus,
@@ -242,10 +252,11 @@ const queueService = {
   toggleQueueStatus,
   setMaxQueueNumber,
   updateQueueData,
-  getOrderedQueueNumbers,
   deleteCustomer,
+  setMinutesPerCustomer,
   clearAllQueue,
-  setMinutesPerCustomer
+  cancelQueue,
+  updateQueueDataSelf
 };
 
 export default queueService; 

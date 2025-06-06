@@ -8,25 +8,16 @@ WORKDIR /app
 COPY package*.json ./
 
 # 安裝依賴
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --production
 
 # 複製應用程式碼
 COPY . .
 
-# 建立非 root 使用者
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# 變更檔案擁有者
-RUN chown -R nodejs:nodejs /app
-USER nodejs
-
-# 健康檢查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node --version
-
 # 暴露端口
 EXPOSE 8080
 
-# 啟動應用（提供多個後備選項）
-CMD ["node", "src/app.js"] 
+# 設定環境變數
+ENV NODE_ENV=production
+
+# 啟動應用
+CMD ["npm", "start"] 

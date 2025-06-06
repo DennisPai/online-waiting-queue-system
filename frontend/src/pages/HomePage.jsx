@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link as RouterLink } from 'react-router-dom';
 import {
@@ -17,18 +17,6 @@ import {
 } from '@mui/material';
 import QueueStatusDisplay from '../components/QueueStatusDisplay';
 import { getQueueStatus, getOrderedQueueNumbers, getPublicOrderedNumbers } from '../redux/slices/queueSlice';
-
-// 獲取下一個等待的人
-const getNextWaitingNumber = async (currentNumber) => {
-  try {
-    const response = await fetch(`/api/queue/next-waiting?currentNumber=${currentNumber}`);
-    const data = await response.json();
-    return data.success ? data.data.nextWaitingNumber : null;
-  } catch (error) {
-    console.error('獲取下一個等待號碼錯誤:', error);
-    return null;
-  }
-};
 
 const HomePage = () => {
   const dispatch = useDispatch();
