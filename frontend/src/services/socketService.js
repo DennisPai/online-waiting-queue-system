@@ -8,8 +8,16 @@ let socket;
 const initSocket = (token) => {
   if (socket) socket.disconnect();
 
+  // 根據環境決定Socket.io服務器URL
+  const getSocketUrl = () => {
+    if (process.env.NODE_ENV === 'production') {
+      return process.env.REACT_APP_API_URL || window.location.origin;
+    }
+    return undefined; // 開發環境使用預設（相對路徑）
+  };
+
   // 建立Socket.io連接
-  socket = io({
+  socket = io(getSocketUrl(), {
     auth: {
       token
     }

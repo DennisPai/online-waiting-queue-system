@@ -1,6 +1,15 @@
 import axios from 'axios';
 
-const API_URL = '/api/auth';
+// 根據環境決定API基礎URL
+const getApiBaseUrl = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.REACT_APP_API_URL || window.location.origin;
+  }
+  return '';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+const API_URL = `${API_BASE_URL}/api/auth`;
 
 // 用戶登入
 const login = async (credentials) => {
