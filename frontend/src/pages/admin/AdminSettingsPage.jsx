@@ -17,7 +17,8 @@ import {
   Divider
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider, DateTimePicker } from '@mui/x-date-pickers';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { zhTW } from 'date-fns/locale';
 import {
   toggleQueueStatus,
@@ -27,7 +28,6 @@ import {
   setMinutesPerCustomer
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
-import ErrorBoundary from '../../components/ErrorBoundary';
 
 const AdminSettingsPage = () => {
   const dispatch = useDispatch();
@@ -100,47 +100,28 @@ const AdminSettingsPage = () => {
       return;
     }
 
-    try {
-      console.log('準備設置下次辦事時間:', nextSessionDate);
-      const isoString = nextSessionDate.toISOString();
-      console.log('轉換為ISO字串:', isoString);
-      
-      dispatch(setNextSessionDate(isoString))
-        .unwrap()
-        .then(() => {
-          console.log('設置下次辦事時間成功');
-          dispatch(
-            showAlert({
-              message: '下次辦事時間設置成功',
-              severity: 'success'
-            })
-          );
-          // 重新載入系統設置
-          dispatch(getQueueStatus());
-        })
-        .catch((error) => {
-          console.error('設置下次辦事時間錯誤:', error);
-          dispatch(
-            showAlert({
-              message: typeof error === 'string' ? error : '設置下次辦事時間失敗',
-              severity: 'error'
-            })
-          );
-        });
-    } catch (error) {
-      console.error('設置下次辦事時間錯誤:', error);
-      dispatch(
-        showAlert({
-          message: '設置下次辦事時間失敗',
-          severity: 'error'
-        })
-      );
-    }
+    dispatch(setNextSessionDate(nextSessionDate.toISOString()))
+      .unwrap()
+      .then(() => {
+        dispatch(
+          showAlert({
+            message: '下次辦事時間設定成功',
+            severity: 'success'
+          })
+        );
+      })
+      .catch((error) => {
+        dispatch(
+          showAlert({
+            message: error,
+            severity: 'error'
+          })
+        );
+      });
   };
 
   // 處理日期選擇變更
   const handleDateChange = (newDate) => {
-    console.log('日期選擇變更:', newDate);
     setNextSessionDate(newDate);
   };
 
@@ -225,11 +206,10 @@ const AdminSettingsPage = () => {
   };
 
   return (
-    <ErrorBoundary>
-      <Container maxWidth="lg">
-        <Typography variant="h4" component="h1" gutterBottom>
-          系統設置
-        </Typography>
+    <Container maxWidth="lg">
+      <Typography variant="h4" component="h1" gutterBottom>
+        系統設置
+      </Typography>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -273,40 +253,24 @@ const AdminSettingsPage = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                下次辦事時間設置
+                下次辦事時間設定
               </Typography>
               <Box sx={{ mt: 2 }}>
-                <ErrorBoundary>
-                  <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
-                    <DateTimePicker
-                      label="選擇日期和時間"
-                      value={nextSessionDate}
-                      onChange={handleDateChange}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          error: false
-                        }
-                      }}
-                      format="yyyy/MM/dd HH:mm"
-                    />
-                  </LocalizationProvider>
-                </ErrorBoundary>
-                
-                {/* 備用的日期時間輸入 */}
-                <TextField
-                  label="備用日期時間輸入 (格式: YYYY-MM-DDTHH:mm)"
-                  type="datetime-local"
-                  value={nextSessionDate ? nextSessionDate.toISOString().slice(0, 16) : ''}
-                  onChange={(e) => {
-                    const newDate = e.target.value ? new Date(e.target.value) : null;
-                    console.log('備用日期輸入變更:', newDate);
-                    setNextSessionDate(newDate);
-                  }}
-                  fullWidth
-                  sx={{ mt: 2 }}
-                  helperText="如果上方的日期選擇器無法使用，可以使用此備用輸入"
-                />
+                <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
+                  <DateTimePicker
+                    label="選擇日期和時間"
+                    value={nextSessionDate}
+                    onChange={handleDateChange}
+                    slots={{
+                      textField: TextField
+                    }}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true
+                      }
+                    }}
+                  />
+                </LocalizationProvider>
               </Box>
               <Box sx={{ mt: 2 }}>
                 <Button
@@ -315,13 +279,13 @@ const AdminSettingsPage = () => {
                   onClick={handleSetNextSessionDate}
                   disabled={!nextSessionDate}
                 >
-                  設置下次辦事時間
+                  設定下次辦事時間
                 </Button>
               </Box>
               {nextSessionDate && (
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="info">
-                    您設置的下次辦事時間是：
+                    您設定的下次辦事時間是：
                     {nextSessionDate.toLocaleString('zh-TW', {
                       year: 'numeric',
                       month: 'long',
@@ -339,7 +303,7 @@ const AdminSettingsPage = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                最大候位上限設置
+                最大候位上限設定
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <TextField
@@ -375,7 +339,7 @@ const AdminSettingsPage = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                每位客戶預估處理時間設置
+                每位客戶預估處理時間設定
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <TextField
@@ -482,8 +446,7 @@ const AdminSettingsPage = () => {
           )}
         </Grid>
       )}
-      </Container>
-    </ErrorBoundary>
+    </Container>
   );
 };
 
