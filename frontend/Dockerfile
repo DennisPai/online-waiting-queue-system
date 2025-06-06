@@ -12,6 +12,10 @@ RUN npm install
 # 複製剩餘的程式碼
 COPY . .
 
+# 設定建構時環境變數
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
 # 構建應用
 RUN npm run build
 
@@ -26,4 +30,4 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"] 
+CMD ["nginx", "-g", "daemon off;"]

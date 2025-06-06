@@ -1,16 +1,24 @@
 // API 配置
 const getApiBaseUrl = () => {
-  // 在生產環境中，前端和後端會有不同的網域
-  if (process.env.NODE_ENV === 'production') {
-    // 在Zeabur部署時，可以通過環境變數設定後端URL
-    return process.env.REACT_APP_API_URL || window.location.origin;
+  // 優先使用環境變數中的API URL
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
   }
   
-  // 開發環境使用相對路徑
-  return '';
+  // 在生產環境中，如果沒有設定環境變數，嘗試使用相對路徑
+  if (process.env.NODE_ENV === 'production') {
+    // 在Zeabur等雲平台，通常前後端會在不同的服務中
+    // 如果沒有明確設定API URL，使用當前域名
+    return window.location.origin;
+  }
+  
+  // 開發環境使用本地後端
+  return 'http://localhost:8080';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
+
+console.log('API Base URL:', API_BASE_URL); // 用於調試
 
 // API 端點
 export const API_ENDPOINTS = {
@@ -22,4 +30,4 @@ export const API_ENDPOINTS = {
 export default {
   API_BASE_URL,
   API_ENDPOINTS
-}; 
+};
