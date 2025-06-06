@@ -1,0 +1,42 @@
+# 多階段建構 - 先建構前端
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+# 主要階段 - 後端應用
+FROM node:18-alpine AS backend
+
+WORKDIR /app
+
+# 複製後端的 package.json
+COPY backend/package*.json ./
+RUN npm ci --only=production
+
+# 複製後端代碼
+COPY backend/ ./
+
+# 複製前端建構結果
+COPY --from=frontend-builder /app/frontend/build ./public
+
+# 設置環境變數
+ENV NODE_ENV=production
+ENV PORT=8080
+ENV JWT_SECRET=default-jwt-secret-for-zeabur-production
+ENV JWT_EXPIRES_IN=24h
+
+# 建立非 root 使用者
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
+# 暴露端口
+EXPOSE 8080
+
+# 啟動後端應用
+CMD ["node", "src/index.js"] 
