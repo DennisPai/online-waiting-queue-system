@@ -2,17 +2,29 @@ import axios from 'axios';
 
 // 根據環境決定API基礎URL
 const getApiBaseUrl = () => {
+  console.log('Environment:', process.env.NODE_ENV);
+  console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+  
   // 在生產環境中使用後端服務的完整URL
   if (process.env.NODE_ENV === 'production') {
-    return process.env.REACT_APP_API_URL || window.location.origin;
+    const apiUrl = process.env.REACT_APP_API_URL;
+    if (apiUrl) {
+      console.log('Using configured API URL:', apiUrl);
+      return apiUrl;
+    }
+    console.warn('REACT_APP_API_URL not set, using window.location.origin');
+    return window.location.origin;
   }
   // 開發環境使用代理
+  console.log('Development mode - using proxy');
   return '';
 };
 
 const API_BASE_URL = getApiBaseUrl();
 const API_URL = `${API_BASE_URL}/api/queue`;
 const ADMIN_API_URL = `${API_BASE_URL}/api/admin`;
+
+console.log('Final API URLs:', { API_URL, ADMIN_API_URL });
 
 // 公共 API
 
