@@ -3,8 +3,6 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 COPY package*.json ./
-
-# 安裝所有依賴（包含 devDependencies 用於建構）
 RUN npm ci
 
 COPY . .
@@ -13,7 +11,6 @@ COPY . .
 ARG REACT_APP_API_BASE_URL
 ENV REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
 
-# 建構應用
 RUN npm run build
 
 # 第二階段：使用 Nginx 提供靜態檔案
@@ -25,8 +22,6 @@ COPY --from=builder /app/build /usr/share/nginx/html
 # 複製 Nginx 配置
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# 暴露端口
 EXPOSE 80
 
-# 啟動 Nginx
 CMD ["nginx", "-g", "daemon off;"] 
