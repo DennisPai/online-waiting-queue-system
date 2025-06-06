@@ -1,40 +1,44 @@
-# 建構階段
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-
-# 複製依賴檔案
-COPY package*.json ./
-RUN npm ci --silent
-
-# 複製原代碼
-COPY . .
-
-# 設定環境變數
-ARG REACT_APP_API_URL
-ENV REACT_APP_API_URL=$REACT_APP_API_URL
-
-# 建構應用
-RUN npm run build
-
-# 生產階段
+# 超極簡調試版本 - 不建構 React，只測試 nginx
 FROM nginx:alpine
 
-# 移除預設nginx配置
-RUN rm /etc/nginx/conf.d/default.conf
+# 移除預設配置
+RUN rm -rf /etc/nginx/conf.d/*
 
-# 複製自定義配置
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# 創建超簡單的 nginx 配置
+RUN echo 'server { \
+    listen 80; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    location / { \
+        try_files $uri $uri/ =404; \
+    } \
+    location /health { \
+        return 200 "nginx-working"; \
+        add_header Content-Type text/plain; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
 
-# 複製建構產物
-COPY --from=builder /app/build /usr/share/nginx/html
+# 創建超簡單的測試檔案
+RUN echo '<!DOCTYPE html> \
+<html> \
+<head><title>DEBUG TEST</title></head> \
+<body> \
+<h1>🟢 NGINX IS WORKING!</h1> \
+<p>Time: <script>document.write(new Date())</script></p> \
+<p>If you see this, nginx container is running correctly.</p> \
+</body> \
+</html>' > /usr/share/nginx/html/index.html
 
-# 設定適當權限
+# 創建簡單測試頁面
+RUN echo '<!DOCTYPE html><html><body><h1>Static Test OK</h1></body></html>' > /usr/share/nginx/html/test.html
+
+# 設定權限
 RUN chmod -R 755 /usr/share/nginx/html
-
-# 確保 nginx用戶擁有檔案
 RUN chown -R nginx:nginx /usr/share/nginx/html
 
-EXPOSE 80
+# 顯示配置內容（調試用）
+RUN cat /etc/nginx/conf.d/default.conf
+RUN ls -la /usr/share/nginx/html/
 
+EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
