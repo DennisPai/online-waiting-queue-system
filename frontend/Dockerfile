@@ -1,15 +1,29 @@
-# 最基本的nginx測試 - 使用預設配置
-FROM nginx:alpine
+# 構建階段
+FROM node:16-alpine as build
 
-# 只創建一個簡單的index.html，使用nginx預設配置
-RUN echo '<!DOCTYPE html><html><head><title>Basic Test</title></head><body><h1 style="color:green;">✅ BASIC NGINX WORKING!</h1><p>Time: <script>document.write(new Date().toLocaleString());</script></p><p>If you see this, the most basic nginx setup is working.</p></body></html>' > /usr/share/nginx/html/index.html
+WORKDIR /app
 
-# 顯示預設nginx配置
-RUN cat /etc/nginx/nginx.conf
-RUN cat /etc/nginx/conf.d/default.conf
+# 複製 package.json 和 package-lock.json
+COPY package*.json ./
 
-# 顯示檔案狀態
-RUN ls -la /usr/share/nginx/html/
+# 安裝依賴
+RUN npm install
+
+# 複製剩餘的程式碼
+COPY . .
+
+# 構建應用
+RUN npm run build
+
+# 運行階段
+FROM nginx:stable-alpine
+
+# 複製構建結果到 Nginx
+COPY --from=build /app/build /usr/share/nginx/html
+
+# 複製 Nginx 配置
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
+
 CMD ["nginx", "-g", "daemon off;"]
