@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // MongoDB 連接 URI（從環境變數獲取）
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:SecurePassword123!@mongodb:27017/queue_system?authSource=admin';
