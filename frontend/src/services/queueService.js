@@ -260,7 +260,7 @@ const deleteCustomer = async (queueId, token) => {
         Authorization: `Bearer ${token}`
       }
     };
-    const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/${queueId}`, config);
+    const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/${queueId}/delete`, config);
     return response.data;
   } catch (error) {
     console.error('刪除客戶資料錯誤:', error);
@@ -296,7 +296,7 @@ const clearAllQueue = async (token) => {
         Authorization: `Bearer ${token}`
       }
     };
-    const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/clear`, config);
+    const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/clear-all`, config);
     return response.data;
   } catch (error) {
     console.error('清空候位錯誤:', error);
