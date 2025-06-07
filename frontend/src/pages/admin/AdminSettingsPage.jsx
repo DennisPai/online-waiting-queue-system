@@ -479,15 +479,15 @@ const AdminSettingsPage = () => {
                         目前叫號
                       </Typography>
                       <Typography variant="h6">
-                        {queueStatus.currentNumber || '無'}
+                        {queueStatus.currentQueueNumber || queueStatus.currentNumber || '無'}
                       </Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="body2" color="text.secondary">
-                        等待人數
+                        等待組數
                       </Typography>
                       <Typography variant="h6">
-                        {queueStatus.waitingCount || 0} 人
+                        {queueStatus.waitingCount || 0} 組
                       </Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>

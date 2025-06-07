@@ -81,6 +81,19 @@ exports.getQueueStatus = async (req, res) => {
       });
     }
     
+    // 獲取叫號順序1的客戶（目前叫號）
+    const currentProcessingRecord = await WaitingRecord.findOne({ 
+      orderIndex: 1, 
+      status: { $in: ['waiting', 'processing'] }
+    });
+    
+    // 更新系統設定中的當前叫號為順序1的客戶號碼
+    const currentQueueNumber = currentProcessingRecord ? currentProcessingRecord.queueNumber : 0;
+    if (currentProcessingRecord && settings.currentQueueNumber !== currentQueueNumber) {
+      settings.currentQueueNumber = currentQueueNumber;
+      await settings.save();
+    }
+    
     // 計算等待中的候位數量（後台管理中狀態為"等待中"的總數）
     const waitingCount = await WaitingRecord.countDocuments({ 
       status: 'waiting'
@@ -111,14 +124,14 @@ exports.getQueueStatus = async (req, res) => {
       success: true,
       data: {
         isOpen: true,
-        currentQueueNumber: settings.currentQueueNumber,
+        currentQueueNumber: currentQueueNumber,
         maxQueueNumber: settings.maxQueueNumber,
         minutesPerCustomer: settings.minutesPerCustomer,
         waitingCount,
         estimatedWaitTime,
         nextSessionDate: settings.nextSessionDate,
         estimatedEndTime: estimatedEndTime ? estimatedEndTime.toISOString() : null,
-        message: `目前叫號: ${settings.currentQueueNumber}, 等待人數: ${waitingCount}`
+        message: `目前叫號: ${currentQueueNumber}, 等待組數: ${waitingCount}`
       }
     });
   } catch (error) {

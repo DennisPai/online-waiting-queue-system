@@ -511,10 +511,10 @@ const RegisterPage = () => {
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
               <Typography variant="body2" color="text.secondary">
-                目前等待人數
+                目前等待組數
               </Typography>
               <Typography variant="h6">
-                {waitingCount} 人
+                {waitingCount} 組
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
