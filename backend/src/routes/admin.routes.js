@@ -68,7 +68,18 @@ router.put(
 router.put(
   '/settings/nextSession',
   [
-    body('nextSessionDate').notEmpty().withMessage('下次辦事時間不能為空')
+    body('nextSessionDate')
+      .notEmpty()
+      .withMessage('下次辦事時間不能為空')
+      .isISO8601()
+      .withMessage('日期格式必須是有效的ISO 8601格式')
+      .custom((value) => {
+        const date = new Date(value);
+        if (isNaN(date.getTime()) || date.getTime() <= 0) {
+          throw new Error('無效的日期值');
+        }
+        return true;
+      })
   ],
   validateRequest,
   adminController.setNextSessionDate

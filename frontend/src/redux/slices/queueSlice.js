@@ -138,12 +138,30 @@ export const setNextSessionDate = createAsyncThunk(
       console.log('Redux setNextSessionDate: API調用成功，回應:', response);
       return response;
     } catch (error) {
-      console.error('Redux setNextSessionDate: 錯誤:', error);
+      console.error('Redux setNextSessionDate: 錯誤詳情:', {
+        error,
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+        errors: error?.errors
+      });
       
-      // 更詳細的錯誤處理
+      // 詳細的錯誤處理
       let errorMessage = '設置下次辦事時間失敗';
       
-      if (error?.response?.status === 401) {
+      if (error?.errors && Array.isArray(error.errors)) {
+        // express-validator 錯誤格式
+        errorMessage = error.errors.map(err => err.msg).join('；');
+      } else if (error?.response?.status === 400) {
+        if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+          // express-validator 格式
+          errorMessage = error.response.data.errors.map(err => err.msg).join('；');
+        } else if (error?.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else {
+          errorMessage = '請求數據格式錯誤，請檢查日期時間是否正確';
+        }
+      } else if (error?.response?.status === 401) {
         errorMessage = '認證已過期，請重新登入';
       } else if (error?.response?.status === 403) {
         errorMessage = '權限不足，無法執行此操作';
