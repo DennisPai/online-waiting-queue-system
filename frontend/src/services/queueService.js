@@ -1,20 +1,6 @@
 import axios from 'axios';
 import { API_ENDPOINTS } from '../config/api';
 
-// 根據環境決定API基礎URL
-const getApiBaseUrl = () => {
-  // 在生產環境中使用後端服務的完整URL
-  if (process.env.NODE_ENV === 'production') {
-    return process.env.REACT_APP_API_URL || window.location.origin;
-  }
-  // 開發環境使用代理
-  return '';
-};
-
-const API_BASE_URL = getApiBaseUrl();
-const API_URL = `${API_BASE_URL}/api/queue`;
-const ADMIN_API_URL = `${API_BASE_URL}/api/admin`;
-
 // 公共 API
 
 // 獲取候位狀態
@@ -260,7 +246,7 @@ const deleteCustomer = async (queueId, token) => {
         Authorization: `Bearer ${token}`
       }
     };
-    const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/${queueId}`, config);
+    const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/${queueId}/delete`, config);
     return response.data;
   } catch (error) {
     console.error('刪除客戶資料錯誤:', error);
@@ -296,7 +282,7 @@ const clearAllQueue = async (token) => {
         Authorization: `Bearer ${token}`
       }
     };
-    const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/clear`, config);
+    const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/clear-all`, config);
     return response.data;
   } catch (error) {
     console.error('清空候位錯誤:', error);
