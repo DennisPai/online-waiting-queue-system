@@ -32,7 +32,7 @@ const AdminSettingsPage = () => {
   const dispatch = useDispatch();
   const { queueStatus, isLoading, error } = useSelector((state) => state.queue);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
-  const [nextSessionDate, setNextSessionDate] = useState(null);
+  const [nextSessionDate, setNextSessionDate] = useState(new Date());
   const [maxQueueNumber, setMaxQueueNumberLocal] = useState(100);
   const [minutesPerCustomer, setMinutesPerCustomerLocal] = useState(13);
 
@@ -43,7 +43,14 @@ const AdminSettingsPage = () => {
       .then((result) => {
         setIsQueueOpen(result.isOpen);
         if (result.nextSessionDate) {
-          setNextSessionDate(new Date(result.nextSessionDate));
+          const date = new Date(result.nextSessionDate);
+          // 檢查日期是否有效
+          if (!isNaN(date.getTime())) {
+            setNextSessionDate(date);
+          } else {
+            console.warn('無效的下次辦事時間:', result.nextSessionDate);
+            setNextSessionDate(new Date());
+          }
         }
         if (result.maxQueueNumber) {
           setMaxQueueNumberLocal(result.maxQueueNumber);
@@ -111,7 +118,21 @@ const AdminSettingsPage = () => {
         return;
       }
 
+      // 驗證日期不能是過去的時間
+      const now = new Date();
+      if (nextSessionDate < now) {
+        dispatch(
+          showAlert({
+            message: '下次辦事時間不能早於現在時間',
+            severity: 'warning'
+          })
+        );
+        return;
+      }
+
+      console.log('準備設置時間:', nextSessionDate.toISOString());
       const result = await dispatch(setNextSessionDate(nextSessionDate.toISOString())).unwrap();
+      console.log('設置時間成功:', result);
       
       dispatch(
         showAlert({
@@ -132,7 +153,14 @@ const AdminSettingsPage = () => {
 
   // 處理日期選擇變更
   const handleDateChange = (newDate) => {
-    setNextSessionDate(newDate);
+    // 確保設置的是有效的日期對象
+    if (newDate && !isNaN(newDate.getTime())) {
+      setNextSessionDate(newDate);
+    } else {
+      console.warn('收到無效日期:', newDate);
+      // 如果收到無效日期，設置為當前時間
+      setNextSessionDate(new Date());
+    }
   };
 
   // 處理設定最大候位上限
@@ -271,10 +299,25 @@ const AdminSettingsPage = () => {
                     label="選擇日期和時間"
                     value={nextSessionDate}
                     onChange={handleDateChange}
+                    format="yyyy/MM/dd HH:mm"
+                    ampm={true}
                     slotProps={{
                       textField: {
                         fullWidth: true,
-                        error: false
+                        error: false,
+                        helperText: "請選擇下次辦事的日期和時間"
+                      },
+                      actionBar: {
+                        actions: ['clear', 'today']
+                      }
+                    }}
+                    onError={(error) => {
+                      if (error) {
+                        console.error('DateTimePicker錯誤:', error);
+                        dispatch(showAlert({
+                          message: '日期選擇器發生錯誤，請重新選擇日期',
+                          severity: 'warning'
+                        }));
                       }
                     }}
                   />
@@ -285,12 +328,12 @@ const AdminSettingsPage = () => {
                   variant="contained"
                   color="primary"
                   onClick={handleSetNextSessionDate}
-                  disabled={!nextSessionDate}
+                  disabled={!nextSessionDate || isNaN(nextSessionDate.getTime())}
                 >
                   設置下次辦事時間
                 </Button>
               </Box>
-              {nextSessionDate && (
+              {nextSessionDate && !isNaN(nextSessionDate.getTime()) && (
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="info">
                     您設置的下次辦事時間是：
