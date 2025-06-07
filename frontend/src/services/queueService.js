@@ -139,7 +139,13 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
 // 設置下次辦事時間
 const setNextSessionDate = async (nextSessionDate, token) => {
   try {
-    console.log('queueService.setNextSessionDate 調用:', { nextSessionDate, token: token ? '已提供' : '未提供' });
+    console.log('=== queueService.setNextSessionDate 開始 ===');
+    console.log('函數參數:', { 
+      nextSessionDate, 
+      nextSessionDateType: typeof nextSessionDate,
+      token: token ? '已提供' : '未提供',
+      tokenLength: token ? token.length : 0
+    });
     
     if (!token) {
       throw new Error('認證token缺失');
@@ -152,27 +158,54 @@ const setNextSessionDate = async (nextSessionDate, token) => {
       }
     };
     
+    const requestBody = { nextSessionDate };
     const url = `${ADMIN_API_URL}/settings/nextSession`;
-    console.log('API請求URL:', url);
-    console.log('請求數據:', { nextSessionDate });
     
-    const response = await axios.put(url, { nextSessionDate }, config);
+    console.log('準備發送API請求:', {
+      method: 'PUT',
+      url: url,
+      requestBody: requestBody,
+      headers: config.headers
+    });
     
-    console.log('API回應:', response.data);
+    const response = await axios.put(url, requestBody, config);
+    
+    console.log('=== API請求成功 ===');
+    console.log('回應狀態:', response.status);
+    console.log('回應數據:', response.data);
+    console.log('回應headers:', response.headers);
+    
     return response.data;
   } catch (error) {
-    console.error('setNextSessionDate API錯誤:', {
-      error: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      config: error.config,
-      url: `${ADMIN_API_URL}/settings/nextSession`
+    console.error('=== queueService.setNextSessionDate 錯誤 ===');
+    console.error('錯誤類型:', error.constructor.name);
+    console.error('錯誤詳情:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response ? {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers
+      } : '無回應對象',
+      request: error.request ? {
+        method: error.request.method,
+        url: error.request.responseURL || error.request.url,
+        status: error.request.status
+      } : '無請求對象',
+      config: error.config ? {
+        method: error.config.method,
+        url: error.config.url,
+        data: error.config.data
+      } : '無配置對象'
     });
     
     // 確保錯誤信息被正確拋出
     if (error.response?.data) {
+      console.log('拋出回應數據錯誤:', error.response.data);
       throw error.response.data;
     } else {
+      console.log('拋出原始錯誤:', error);
       throw error;
     }
   }

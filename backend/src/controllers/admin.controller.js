@@ -1,6 +1,7 @@
 const WaitingRecord = require('../models/waiting-record.model');
 const SystemSetting = require('../models/system-setting.model');
 const { autoFillDates, autoFillFamilyMembersDates, addVirtualAge } = require('../utils/calendarConverter');
+const mongoose = require('mongoose');
 
 // 確保 orderIndex 的一致性和唯一性
 async function ensureOrderIndexConsistency() {
@@ -266,7 +267,12 @@ exports.updateQueueStatus = async (req, res) => {
 // 設置下次辦事時間
 exports.setNextSessionDate = async (req, res) => {
   try {
-    console.log('收到設置下次辦事時間請求:', req.body);
+    console.log('=== 開始設置下次辦事時間 ===');
+    console.log('收到設置下次辦事時間請求:', {
+      body: req.body,
+      user: req.user ? { id: req.user.id, username: req.user.username } : '無用戶信息'
+    });
+    
     const { nextSessionDate } = req.body;
     
     // 增強的日期驗證
@@ -278,59 +284,124 @@ exports.setNextSessionDate = async (req, res) => {
       });
     }
     
+    console.log('收到的nextSessionDate值:', { nextSessionDate, type: typeof nextSessionDate });
+    
     let dateObj;
     try {
       dateObj = new Date(nextSessionDate);
+      console.log('Date constructor 結果:', { dateObj, isValid: !isNaN(dateObj.getTime()), timestamp: dateObj.getTime() });
+      
       if (isNaN(dateObj.getTime()) || dateObj.getTime() <= 0) {
         throw new Error('Invalid date');
       }
     } catch (dateError) {
-      console.error('設置下次辦事時間失敗: 無效的日期格式', { nextSessionDate, error: dateError.message });
+      console.error('設置下次辦事時間失敗: 無效的日期格式', { 
+        nextSessionDate, 
+        error: dateError.message,
+        stack: dateError.stack 
+      });
       return res.status(400).json({
         success: false,
         message: '無效的日期格式'
       });
     }
     
-    console.log('日期驗證成功:', dateObj);
+    console.log('日期驗證成功:', { dateObj, isoString: dateObj.toISOString() });
+    
+    // 檢查 mongoose 連接狀態
+    console.log('MongoDB 連接狀態:', mongoose.connection.readyState);
+    if (mongoose.connection.readyState !== 1) {
+      console.error('MongoDB 連接狀態異常:', mongoose.connection.readyState);
+      return res.status(500).json({
+        success: false,
+        message: '資料庫連接異常'
+      });
+    }
     
     // 獲取系統設定
     console.log('獲取系統設定...');
-    const settings = await SystemSetting.getSettings();
-    console.log('獲取到系統設定:', settings._id);
+    let settings;
+    try {
+      settings = await SystemSetting.getSettings();
+      console.log('獲取到系統設定:', { 
+        id: settings._id, 
+        currentNextSessionDate: settings.nextSessionDate,
+        isQueueOpen: settings.isQueueOpen 
+      });
+    } catch (settingsError) {
+      console.error('獲取系統設定失敗:', {
+        error: settingsError.message,
+        stack: settingsError.stack
+      });
+      return res.status(500).json({
+        success: false,
+        message: '獲取系統設定失敗: ' + settingsError.message
+      });
+    }
     
     // 更新下次辦事時間
     const oldDate = settings.nextSessionDate;
     settings.nextSessionDate = dateObj;
     settings.updatedBy = req.user.id;
     
-    console.log('更新設定:', {
+    console.log('準備更新設定:', {
       oldDate: oldDate,
       newDate: dateObj,
-      updatedBy: req.user.id
+      updatedBy: req.user.id,
+      settingsId: settings._id
     });
     
-    const savedSettings = await settings.save();
-    console.log('設定已保存:', savedSettings.nextSessionDate);
+    let savedSettings;
+    try {
+      savedSettings = await settings.save();
+      console.log('設定已保存成功:', { 
+        id: savedSettings._id,
+        nextSessionDate: savedSettings.nextSessionDate,
+        updatedAt: savedSettings.updatedAt 
+      });
+    } catch (saveError) {
+      console.error('保存系統設定失敗:', {
+        error: saveError.message,
+        stack: saveError.stack,
+        validationErrors: saveError.errors
+      });
+      return res.status(500).json({
+        success: false,
+        message: '保存系統設定失敗: ' + saveError.message
+      });
+    }
     
-    res.status(200).json({
+    const responseData = {
       success: true,
       message: '下次辦事時間設置成功',
       data: {
         nextSessionDate: savedSettings.nextSessionDate
       }
-    });
+    };
+    
+    console.log('準備返回響應:', responseData);
+    
+    res.status(200).json(responseData);
+    
+    console.log('=== 設置下次辦事時間完成 ===');
+    
   } catch (error) {
-    console.error('設置下次辦事時間錯誤:', {
+    console.error('=== 設置下次辦事時間發生未預期錯誤 ===');
+    console.error('錯誤詳情:', {
       error: error.message,
       stack: error.stack,
       body: req.body,
-      user: req.user?.id
+      user: req.user?.id,
+      mongooseConnectionState: mongoose.connection.readyState
     });
+    
     res.status(500).json({
       success: false,
-      message: '伺服器內部錯誤',
-      error: process.env.NODE_ENV === 'development' ? error.message : {}
+      message: '伺服器內部錯誤: ' + error.message,
+      error: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        stack: error.stack
+      } : {}
     });
   }
 };
