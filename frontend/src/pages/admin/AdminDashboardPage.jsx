@@ -2062,7 +2062,7 @@ const AdminDashboardPage = () => {
       <ExportDialog
         open={exportDialogOpen}
         onClose={handleCloseExportDialog}
-        data={localQueueList}
+        customers={localQueueList}
       />
 
       {/* 欄位選擇器 */}

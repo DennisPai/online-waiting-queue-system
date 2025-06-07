@@ -124,6 +124,16 @@ cd backend
 node init-admin.js
 ```
 
+#### 後台管理「設定下次辦事時間」功能問題
+```bash
+# 症狀: 白屏、Redux Error #7、設置失敗錯誤
+# 已修復: 移除DateTimePicker依賴，使用原生datetime-local輸入框
+# 確保使用最新版本代碼，包含時間設定功能修復
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
+
 ### 📦 依賴管理
 
 #### 前端主要依賴
@@ -270,6 +280,8 @@ docker-compose up -d
 - [ ] 轉換工具是否使用正確的lunar-javascript API
 - [ ] 轉換函數調用方式是否正確（對象參數vs數組參數）
 - [ ] 表格欄位是否正確渲染（特別是虛歲欄位）
+- [ ] 時間設定功能是否使用原生datetime-local（非DateTimePicker）
+- [ ] Redux狀態管理是否僅存儲可序列化數據（字符串格式）
 - [ ] Docker容器是否需要重新建構
 - [ ] 執行轉換功能測試腳本驗證
 - [ ] 執行批量更新腳本處理既有客戶虛歲

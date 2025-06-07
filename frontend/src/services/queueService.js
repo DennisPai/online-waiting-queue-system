@@ -1,15 +1,56 @@
 import axios from 'axios';
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, HEALTH_CHECK_URL } from '../config/api';
+
+// 根據環境決定API基礎URL
+const getApiBaseUrl = () => {
+  // 在生產環境中使用後端服務的完整URL
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.REACT_APP_API_URL || window.location.origin;
+  }
+  // 開發環境使用代理
+  return '';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+const API_URL = `${API_BASE_URL}/api/queue`;
+const ADMIN_API_URL = `${API_BASE_URL}/api/admin`;
+
+// 健康檢查功能
+const healthCheck = async () => {
+  try {
+    console.log('🔍 執行健康檢查，目標:', HEALTH_CHECK_URL || 'relative /health');
+    const response = await axios.get(HEALTH_CHECK_URL || '/health', {
+      timeout: 10000 // 10秒超時
+    });
+    console.log('✅ 健康檢查成功:', response.data);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('❌ 健康檢查失敗:', error);
+    console.error('錯誤詳情:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url
+    });
+    return { 
+      success: false, 
+      error: error.message,
+      status: error.response?.status,
+      details: error.response?.data
+    };
+  }
+};
 
 // 公共 API
 
 // 獲取候位狀態
 const getQueueStatus = async () => {
   try {
+    console.log('📊 獲取候位狀態，API:', `${API_ENDPOINTS.QUEUE}/status`);
     const response = await axios.get(`${API_ENDPOINTS.QUEUE}/status`);
     return response.data;
   } catch (error) {
-    console.error('獲取候位狀態錯誤:', error);
+    console.error('❌ 獲取候位狀態錯誤:', error);
     throw error;
   }
 };
@@ -310,7 +351,10 @@ const queueService = {
   deleteCustomer,
   setMinutesPerCustomer,
   clearAllQueue,
-  getOrderedQueueNumbers
+  getOrderedQueueNumbers,
+
+  // 健康檢查功能
+  healthCheck
 };
 
 export default queueService; 

@@ -207,6 +207,7 @@ docker ps
 - **響應式設計**: 完整支援手機、平板使用，包含漢堡選單、44px最小觸控區域、響應式布局和間距優化
 - **資料匯出功能**: 後台可匯出Excel/CSV格式的客戶資料，包含完整客戶資訊與中文字符支援
 - **視覺優化**: 首頁數字顯示加粗並優化大小，提升閱讀體驗和視覺層次
+- **時間設定功能優化**: 修復後台管理「設定下次辦事時間」功能，移除DateTimePicker依賴，使用原生HTML datetime-local輸入框，解決Redux Error #7序列化問題，提升系統穩定性和兼容性
 
 #### 端口配置
 
@@ -610,6 +611,14 @@ docker-compose up -d
 **解決方案**：
 - 確保 `frontend/src/pages/RegisterPage.jsx` 中 `handleSubmit` 函數的 `submissionData` 包含所有必要欄位
 - 必須包含：`email`, `name`, `phone`, `gender`, `addresses`, `consultationTopics`
+
+#### 1.1. 後台管理「設定下次辦事時間」功能問題
+**問題**：點擊「設定下次辦事時間」按鈕後出現白屏或Redux Error #7錯誤  
+**原因**：DateTimePicker組件與Redux序列化機制衝突，Date對象無法序列化存儲  
+**解決方案**：
+- 系統已移除DateTimePicker依賴，使用原生HTML datetime-local輸入框
+- 所有日期處理改為字符串格式，避免Redux序列化問題
+- 增強錯誤處理機制，提升系統穩定性
 
 #### 2. 後台管理編輯客戶資料時顯示「更新客戶資料失敗」
 **問題**：後台編輯客戶資料保存時失敗  
