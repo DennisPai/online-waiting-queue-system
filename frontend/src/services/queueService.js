@@ -1,4 +1,5 @@
 import axios from 'axios';
+import logger from '../utils/logger';
 
 // 根據環境決定API基礎URL
 const getApiBaseUrl = () => {
@@ -138,24 +139,80 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
 
 // 設置下次辦事時間
 const setNextSessionDate = async (nextSessionDate, token) => {
+  const method = 'PUT';
+  const url = `${ADMIN_API_URL}/settings/nextSession`;
+  const data = { nextSessionDate };
+  
+  console.log('queueService setNextSessionDate 開始:', {
+    nextSessionDate,
+    url,
+    data,
+    hasToken: !!token,
+    timestamp: new Date().toISOString()
+  });
+  
+  logger.apiRequest(method, url, data, 'queueService');
+  
   try {
-    console.log('服務層 - 設置下次辦事時間:', nextSessionDate);
     const config = {
       headers: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
     };
-    const response = await axios.put(
-      `${ADMIN_API_URL}/settings/nextSession`,
-      { nextSessionDate },
-      config
-    );
-    console.log('服務層 - API回應:', response.data);
+    
+    console.log('queueService: 準備發送請求', {
+      config: {
+        ...config,
+        headers: {
+          ...config.headers,
+          Authorization: token ? 'Bearer [REDACTED]' : 'missing'
+        }
+      }
+    });
+    
+    const response = await axios.put(url, data, config);
+    
+    console.log('queueService setNextSessionDate 成功響應:', {
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data,
+      timestamp: new Date().toISOString()
+    });
+    
+    logger.apiResponse(method, url, response.status, response.data, 'queueService');
+    
+    // 確保響應數據格式正確
+    if (!response.data || !response.data.success) {
+      console.warn('queueService: API響應格式異常:', response.data);
+      throw new Error('API響應格式異常');
+    }
+    
     return response.data;
   } catch (error) {
-    console.error('服務層 - 設置下次辦事時間錯誤:', error);
-    console.error('錯誤詳細:', error.response?.data);
-    throw error.response?.data || error;
+    console.error('queueService setNextSessionDate 錯誤:', {
+      error: {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        stack: error.stack
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+    logger.apiError(method, url, error, 'queueService');
+    
+    // 重新包裝錯誤以提供更好的錯誤信息
+    const errorMessage = error.response?.data?.message || 
+                        error.message || 
+                        '設置下次辦事時間失敗';
+    
+    throw {
+      ...error,
+      message: errorMessage,
+      response: error.response
+    };
   }
 };
 

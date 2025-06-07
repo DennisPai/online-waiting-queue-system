@@ -122,27 +122,37 @@ export const setNextSessionDate = createAsyncThunk(
   'queue/setNextSessionDate',
   async (nextSessionDate, { rejectWithValue, getState }) => {
     try {
-      console.log('Redux thunk - 設置下次辦事時間:', nextSessionDate);
       const { token } = getState().auth;
-      if (!token) {
-        throw new Error('未找到認證令牌');
-      }
+      
+      console.log('Redux setNextSessionDate 開始:', {
+        nextSessionDate,
+        token: token ? '存在' : '不存在',
+        timestamp: new Date().toISOString()
+      });
+      
       const response = await queueService.setNextSessionDate(nextSessionDate, token);
-      console.log('Redux thunk - 設置成功:', response);
+      
+      console.log('Redux setNextSessionDate 成功:', {
+        response,
+        timestamp: new Date().toISOString()
+      });
+      
       return response;
     } catch (error) {
-      console.error('Redux thunk - 設置失敗:', error);
-      let errorMessage = '設置下次辦事時間失敗';
+      console.error('Redux setNextSessionDate 錯誤:', {
+        error: {
+          message: error.message,
+          stack: error.stack,
+          response: error.response?.data
+        },
+        timestamp: new Date().toISOString()
+      });
       
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-      
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(
+        error.response?.data?.message || 
+        error.message || 
+        '設置下次辦事時間失敗'
+      );
     }
   }
 );
@@ -154,10 +164,9 @@ export const toggleQueueStatus = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.toggleQueueStatus(isOpen, token);
-      return response;
+      return response.data;
     } catch (error) {
-      const errorMessage = error?.message || error?.response?.data?.message || '開關候位功能失敗';
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(error.response?.data?.message || '開關候位功能失敗');
     }
   }
 );
@@ -169,10 +178,9 @@ export const setMaxQueueNumber = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.setMaxQueueNumber(maxQueueNumber, token);
-      return response;
+      return response.data;
     } catch (error) {
-      const errorMessage = error?.message || error?.response?.data?.message || '設定最大候位上限失敗';
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(error.response?.data?.message || '設定最大候位上限失敗');
     }
   }
 );
@@ -184,10 +192,9 @@ export const setMinutesPerCustomer = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.setMinutesPerCustomer(minutesPerCustomer, token);
-      return response;
+      return response.data;
     } catch (error) {
-      const errorMessage = error?.message || error?.response?.data?.message || '設定每位客戶預估處理時間失敗';
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(error.response?.data?.message || '設定每位客戶預估處理時間失敗');
     }
   }
 );
@@ -426,23 +433,54 @@ const queueSlice = createSlice({
       // 設置下次辦事時間（管理員）
       .addCase(setNextSessionDate.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
+        console.log('Redux: setNextSessionDate pending');
       })
       .addCase(setNextSessionDate.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 正確訪問後端返回的數據結構
-        const nextSessionDate = action.payload?.data?.nextSessionDate || action.payload?.nextSessionDate;
+        state.error = null;
+        
+        console.log('Redux setNextSessionDate fulfilled:', {
+          payload: action.payload,
+          timestamp: new Date().toISOString()
+        });
+        
+        // 處理不同的響應數據結構
+        let nextSessionDate = null;
+        
+        if (action.payload?.data?.nextSessionDate) {
+          nextSessionDate = action.payload.data.nextSessionDate;
+        } else if (action.payload?.nextSessionDate) {
+          nextSessionDate = action.payload.nextSessionDate;
+        } else if (action.payload?.data?.data?.nextSessionDate) {
+          nextSessionDate = action.payload.data.data.nextSessionDate;
+        }
+        
+        console.log('Redux: 提取的 nextSessionDate:', nextSessionDate);
+        
         if (nextSessionDate) {
-          state.queueStatus = {
-            ...state.queueStatus,
-            nextSessionDate: nextSessionDate
-          };
-          // 同時更新單獨的 nextSessionDate 字段以保持向後兼容性
           state.nextSessionDate = nextSessionDate;
+          
+          // 更新queueStatus中的nextSessionDate
+          if (state.queueStatus) {
+            state.queueStatus = {
+              ...state.queueStatus,
+              nextSessionDate: nextSessionDate
+            };
+          }
+          
+          console.log('Redux: nextSessionDate 更新成功');
+        } else {
+          console.warn('Redux: 無法從響應中提取 nextSessionDate');
         }
       })
       .addCase(setNextSessionDate.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+        console.error('Redux setNextSessionDate rejected:', {
+          error: action.payload,
+          timestamp: new Date().toISOString()
+        });
       })
       
       // 開關候位功能（管理員）
@@ -451,16 +489,7 @@ const queueSlice = createSlice({
       })
       .addCase(toggleQueueStatus.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 正確訪問後端返回的數據結構
-        const isQueueOpen = action.payload?.data?.isQueueOpen !== undefined 
-          ? action.payload.data.isQueueOpen 
-          : action.payload?.isQueueOpen;
-        if (isQueueOpen !== undefined) {
-          state.queueStatus = {
-            ...state.queueStatus,
-            isQueueOpen: isQueueOpen
-          };
-        }
+        state.isQueueOpen = action.payload.isQueueOpen;
       })
       .addCase(toggleQueueStatus.rejected, (state, action) => {
         state.isLoading = false;
@@ -473,14 +502,11 @@ const queueSlice = createSlice({
       })
       .addCase(setMaxQueueNumber.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 正確訪問後端返回的數據結構
-        const maxQueueNumber = action.payload?.data?.maxQueueNumber || action.payload?.maxQueueNumber;
-        if (maxQueueNumber !== undefined) {
-          state.queueStatus = {
-            ...state.queueStatus,
-            maxQueueNumber: maxQueueNumber
-          };
-        }
+        // 更新系統設定中的最大候位上限
+        state.queueStatus = {
+          ...state.queueStatus,
+          maxQueueNumber: action.payload.maxQueueNumber
+        };
       })
       .addCase(setMaxQueueNumber.rejected, (state, action) => {
         state.isLoading = false;
@@ -493,14 +519,11 @@ const queueSlice = createSlice({
       })
       .addCase(setMinutesPerCustomer.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 正確訪問後端返回的數據結構
-        const minutesPerCustomer = action.payload?.data?.minutesPerCustomer || action.payload?.minutesPerCustomer;
-        if (minutesPerCustomer !== undefined) {
-          state.queueStatus = {
-            ...state.queueStatus,
-            minutesPerCustomer: minutesPerCustomer
-          };
-        }
+        // 更新系統設定中的每位客戶預估處理時間
+        state.queueStatus = {
+          ...state.queueStatus,
+          minutesPerCustomer: action.payload.minutesPerCustomer
+        };
       })
       .addCase(setMinutesPerCustomer.rejected, (state, action) => {
         state.isLoading = false;
