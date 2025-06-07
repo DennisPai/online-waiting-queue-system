@@ -410,7 +410,15 @@ const queueSlice = createSlice({
       })
       .addCase(setNextSessionDate.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.nextSessionDate = action.payload.nextSessionDate;
+        // 確保存儲為字符串，而不是Date對象
+        state.nextSessionDate = typeof action.payload.nextSessionDate === 'string' 
+          ? action.payload.nextSessionDate 
+          : action.payload.nextSessionDate;
+        
+        // 同時更新queueStatus中的nextSessionDate
+        if (state.queueStatus) {
+          state.queueStatus.nextSessionDate = state.nextSessionDate;
+        }
       })
       .addCase(setNextSessionDate.rejected, (state, action) => {
         state.isLoading = false;
