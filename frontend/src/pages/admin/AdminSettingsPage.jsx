@@ -113,9 +113,11 @@ const AdminSettingsPage = () => {
 
   // 處理設置下次辦事時間
   const handleSetNextSessionDate = async () => {
-    console.log('開始設置下次辦事時間，當前日期值:', nextSessionDate);
+    console.log('=== 開始設置下次辦事時間 ===');
+    console.log('當前日期值:', nextSessionDate);
     console.log('日期類型:', typeof nextSessionDate);
     console.log('日期有效性:', nextSessionDate instanceof Date);
+    console.log('日期getTime():', nextSessionDate ? nextSessionDate.getTime() : 'N/A');
 
     try {
       setLoading(true);
@@ -134,7 +136,7 @@ const AdminSettingsPage = () => {
       if (!(nextSessionDate instanceof Date)) {
         console.error('不是有效的Date對象:', nextSessionDate);
         dispatch(showAlert({
-          message: '無效的日期格式',
+          message: '無效的日期格式，請重新選擇日期',
           severity: 'error'
         }));
         return;
@@ -142,7 +144,7 @@ const AdminSettingsPage = () => {
 
       // 檢查日期是否有效
       if (isNaN(nextSessionDate.getTime())) {
-        console.error('日期無效:', nextSessionDate);
+        console.error('日期無效，getTime()返回NaN:', nextSessionDate);
         dispatch(showAlert({
           message: '請選擇有效的日期',
           severity: 'error'
@@ -154,7 +156,7 @@ const AdminSettingsPage = () => {
       let isoString;
       try {
         isoString = nextSessionDate.toISOString();
-        console.log('轉換後的ISO字符串:', isoString);
+        console.log('成功轉換為ISO字符串:', isoString);
       } catch (error) {
         console.error('日期轉換失敗:', error);
         dispatch(showAlert({
@@ -164,19 +166,21 @@ const AdminSettingsPage = () => {
         return;
       }
 
-      console.log('發送到後端的日期:', isoString);
+      console.log('準備發送到後端的日期:', isoString);
       
       // 調用Redux action
       const result = await dispatch(setNextSessionDate(isoString));
       
-      console.log('Redux action 結果:', result);
+      console.log('Redux action 完整結果:', result);
+      console.log('Redux action 類型:', result.type);
+      console.log('Redux action 載荷:', result.payload);
       
       if (setNextSessionDate.fulfilled.match(result)) {
-        console.log('設置成功，重新載入系統設定');
+        console.log('設置成功，開始重新載入系統設定');
         // 設置成功後重新載入系統設定
         try {
-          await dispatch(getQueueStatus());
-          console.log('系統設定重新載入成功');
+          const statusResult = await dispatch(getQueueStatus());
+          console.log('系統設定重新載入結果:', statusResult);
         } catch (loadError) {
           console.error('重新載入系統設定失敗:', loadError);
         }
@@ -186,44 +190,98 @@ const AdminSettingsPage = () => {
           severity: 'success'
         }));
       } else {
-        console.error('設置失敗，Redux結果:', result);
-        const errorMessage = result.payload?.message || result.error?.message || '設置失敗';
+        console.error('設置失敗');
+        console.error('Redux錯誤結果:', result);
+        console.error('錯誤載荷:', result.payload);
+        console.error('錯誤信息:', result.error);
+        
+        // 更詳細的錯誤處理
+        let errorMessage = '設置失敗，請稍後再試';
+        
+        if (result.payload) {
+          if (typeof result.payload === 'string') {
+            errorMessage = result.payload;
+          } else if (result.payload.message) {
+            errorMessage = result.payload.message;
+          } else if (result.payload.error) {
+            errorMessage = result.payload.error;
+          }
+        } else if (result.error && result.error.message) {
+          errorMessage = result.error.message;
+        }
+        
+        console.log('最終錯誤信息:', errorMessage);
+        
         dispatch(showAlert({
           message: errorMessage,
           severity: 'error'
         }));
       }
     } catch (error) {
-      console.error('設置下次辦事時間失敗:', error);
+      console.error('=== 設置下次辦事時間發生例外 ===');
+      console.error('例外詳細:', error);
+      console.error('例外堆疊:', error.stack);
       dispatch(showAlert({
         message: '設置失敗，請稍後再試',
         severity: 'error'
       }));
     } finally {
       setLoading(false);
+      console.log('=== 設置下次辦事時間結束 ===');
     }
   };
 
   // 處理日期選擇變更
   const handleDateChange = (newDate) => {
     try {
-      console.log('處理日期變更:', newDate);
+      console.log('處理日期變更 - 原始值:', newDate);
+      console.log('處理日期變更 - 類型:', typeof newDate);
+      console.log('處理日期變更 - 是否為Date:', newDate instanceof Date);
       
-      // 檢查日期是否有效
-      if (newDate && newDate instanceof Date && !isNaN(newDate.getTime())) {
-        setNextSessionDate(newDate);
-        console.log('日期設置成功:', newDate);
-      } else if (newDate === null) {
-        // 允許清空日期
+      // 處理null或undefined
+      if (newDate === null || newDate === undefined) {
+        console.log('日期為空，設置為null');
         setNextSessionDate(null);
-        console.log('日期已清空');
+        return;
+      }
+      
+      // 嘗試轉換為Date對象
+      let dateObj = newDate;
+      
+      // 如果不是Date對象，嘗試轉換
+      if (!(newDate instanceof Date)) {
+        console.log('不是Date對象，嘗試轉換:', newDate);
+        if (typeof newDate === 'string') {
+          dateObj = new Date(newDate);
+        } else if (typeof newDate === 'number') {
+          dateObj = new Date(newDate);
+        } else {
+          console.warn('無法處理的日期類型:', typeof newDate);
+          setNextSessionDate(null);
+          return;
+        }
+      }
+      
+      // 檢查轉換後的日期是否有效
+      if (dateObj && !isNaN(dateObj.getTime())) {
+        console.log('日期設置成功:', dateObj);
+        console.log('日期ISO格式:', dateObj.toISOString());
+        setNextSessionDate(dateObj);
       } else {
-        console.warn('無效的日期:', newDate);
+        console.warn('轉換後的日期無效:', dateObj);
         setNextSessionDate(null);
+        dispatch(showAlert({
+          message: '選擇的日期格式無效，請重新選擇',
+          severity: 'warning'
+        }));
       }
     } catch (error) {
       console.error('日期處理錯誤:', error);
       setNextSessionDate(null);
+      dispatch(showAlert({
+        message: '日期處理發生錯誤，請重新選擇',
+        severity: 'error'
+      }));
     }
   };
 
@@ -389,6 +447,8 @@ const AdminSettingsPage = () => {
                     value={nextSessionDate}
                     onChange={(newDate) => {
                       console.log('DateTimePicker 日期變更:', newDate);
+                      console.log('新日期類型:', typeof newDate);
+                      console.log('新日期是否為Date:', newDate instanceof Date);
                       try {
                         handleDateChange(newDate);
                       } catch (error) {

@@ -266,10 +266,29 @@ exports.updateQueueStatus = async (req, res) => {
 // 設置下次辦事時間
 exports.setNextSessionDate = async (req, res) => {
   try {
+    console.log('=== 後端設置下次辦事時間 ===');
+    console.log('請求體:', req.body);
     const { nextSessionDate } = req.body;
     
+    console.log('接收到的日期字符串:', nextSessionDate);
+    console.log('日期字符串類型:', typeof nextSessionDate);
+    
     // 驗證日期格式
-    if (!nextSessionDate || isNaN(new Date(nextSessionDate).getTime())) {
+    if (!nextSessionDate) {
+      console.error('日期字符串為空');
+      return res.status(400).json({
+        success: false,
+        message: '下次辦事時間不能為空'
+      });
+    }
+    
+    // 嘗試轉換日期
+    const dateObj = new Date(nextSessionDate);
+    console.log('轉換後的Date對象:', dateObj);
+    console.log('Date對象getTime():', dateObj.getTime());
+    
+    if (isNaN(dateObj.getTime())) {
+      console.error('無效的日期格式:', nextSessionDate);
       return res.status(400).json({
         success: false,
         message: '無效的日期格式'
@@ -277,23 +296,30 @@ exports.setNextSessionDate = async (req, res) => {
     }
     
     // 獲取系統設定
+    console.log('獲取系統設定...');
     const settings = await SystemSetting.getSettings();
+    console.log('當前系統設定:', settings);
     
     // 更新下次辦事時間
-    settings.nextSessionDate = new Date(nextSessionDate);
+    console.log('更新下次辦事時間...');
+    settings.nextSessionDate = dateObj;
     settings.updatedBy = req.user.id;
     
-    await settings.save();
+    const savedSettings = await settings.save();
+    console.log('保存後的設定:', savedSettings);
     
+    console.log('=== 設置成功 ===');
     res.status(200).json({
       success: true,
       message: '下次辦事時間設置成功',
       data: {
-        nextSessionDate: settings.nextSessionDate
+        nextSessionDate: savedSettings.nextSessionDate
       }
     });
   } catch (error) {
-    console.error('設置下次辦事時間錯誤:', error);
+    console.error('=== 設置下次辦事時間錯誤 ===');
+    console.error('錯誤詳細:', error);
+    console.error('錯誤堆疊:', error.stack);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',
