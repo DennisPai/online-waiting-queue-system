@@ -121,83 +121,12 @@ export const updateQueueOrder = createAsyncThunk(
 export const setNextSessionDate = createAsyncThunk(
   'queue/setNextSessionDate',
   async (nextSessionDate, { rejectWithValue, getState }) => {
-    // 安全的日誌記錄函數
-    const safeLog = (level, message, data) => {
-      try {
-        if (window.logger && window.logger[level]) {
-          window.logger[level](message, data, 'queueSlice');
-        } else {
-          console[level](`[queueSlice] ${message}`, data);
-        }
-      } catch (logError) {
-        console.warn('日誌記錄失敗:', logError.message);
-      }
-    };
-
     try {
-      // 參數驗證
-      if (!nextSessionDate) {
-        safeLog('error', 'nextSessionDate 參數為空');
-        return rejectWithValue('下次辦事時間不能為空');
-      }
-
-      // 日期格式驗證
-      let dateString;
-      try {
-        if (typeof nextSessionDate === 'string') {
-          // 確保字符串是有效的ISO日期格式
-          const testDate = new Date(nextSessionDate);
-          if (isNaN(testDate.getTime())) {
-            throw new Error('無效的日期字符串');
-          }
-          dateString = nextSessionDate;
-        } else if (nextSessionDate instanceof Date) {
-          if (isNaN(nextSessionDate.getTime())) {
-            throw new Error('無效的Date對象');
-          }
-          dateString = nextSessionDate.toISOString();
-        } else {
-          throw new Error('不支持的日期格式');
-        }
-      } catch (dateError) {
-        safeLog('error', '日期格式驗證失敗', { nextSessionDate, error: dateError.message });
-        return rejectWithValue('日期格式錯誤: ' + dateError.message);
-      }
-
       const { token } = getState().auth;
-      
-      if (!token) {
-        safeLog('error', '認證令牌不存在');
-        return rejectWithValue('認證令牌不存在，請重新登入');
-      }
-      
-      safeLog('info', 'setNextSessionDate 開始', {
-        dateString,
-        hasToken: !!token,
-        timestamp: new Date().toISOString()
-      });
-      
-      const response = await queueService.setNextSessionDate(dateString, token);
-      
-      safeLog('info', 'setNextSessionDate 成功', {
-        response,
-        timestamp: new Date().toISOString()
-      });
-      
-      return response;
+      const response = await queueService.setNextSessionDate(nextSessionDate, token);
+      return response.data;
     } catch (error) {
-      safeLog('error', 'setNextSessionDate 錯誤', {
-        error: {
-          message: error.message,
-          stack: error.stack,
-          response: error.response?.data
-        },
-        timestamp: new Date().toISOString()
-      });
-      
-      // 確保錯誤訊息是字符串
-      const errorMessage = error.message || error.toString() || '設置下次辦事時間失敗';
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(error.response?.data?.message || '設置下次辦事時間失敗');
     }
   }
 );
@@ -359,29 +288,14 @@ const queueSlice = createSlice({
         state.queueStatus = action.payload;
         state.isQueueOpen = action.payload.isOpen;
         
-        // 安全的日期處理
-        const safeDateAssignment = (dateValue) => {
-          try {
-            if (!dateValue) return null;
-            if (typeof dateValue === 'string') {
-              const testDate = new Date(dateValue);
-              return !isNaN(testDate.getTime()) ? dateValue : null;
-            }
-            return null;
-          } catch (error) {
-            console.warn('getQueueStatus 日期處理錯誤:', error);
-            return null;
-          }
-        };
-        
         if (action.payload.isOpen) {
           state.currentQueue = action.payload.currentQueueNumber;
           state.waitingCount = action.payload.waitingCount;
           state.estimatedWaitTime = action.payload.estimatedWaitTime;
           state.estimatedEndTime = action.payload.estimatedEndTime;
-          state.nextSessionDate = safeDateAssignment(action.payload.nextSessionDate);
+          state.nextSessionDate = action.payload.nextSessionDate;
         } else {
-          state.nextSessionDate = safeDateAssignment(action.payload.nextSessionDate);
+          state.nextSessionDate = action.payload.nextSessionDate;
         }
       })
       .addCase(getQueueStatus.rejected, (state, action) => {
@@ -493,128 +407,19 @@ const queueSlice = createSlice({
       // 設置下次辦事時間（管理員）
       .addCase(setNextSessionDate.pending, (state) => {
         state.isLoading = true;
-        state.error = null;
-        console.log('Redux: setNextSessionDate pending');
       })
       .addCase(setNextSessionDate.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.error = null;
-        
-        // 安全的日誌記錄
-        const safeLog = (level, message, data) => {
-          try {
-            if (window.logger && window.logger[level]) {
-              window.logger[level](message, data, 'queueSlice');
-            } else {
-              console[level](`[queueSlice] ${message}`, data);
-            }
-          } catch (logError) {
-            console.warn('日誌記錄失敗:', logError.message);
-          }
+        // 更新狀態，確保同時更新 nextSessionDate 和 queueStatus
+        state.nextSessionDate = action.payload.data?.nextSessionDate || action.payload.nextSessionDate;
+        state.queueStatus = {
+          ...state.queueStatus,
+          nextSessionDate: action.payload.data?.nextSessionDate || action.payload.nextSessionDate
         };
-        
-        safeLog('info', 'setNextSessionDate fulfilled 開始', {
-          payload: action.payload,
-          payloadType: typeof action.payload,
-          timestamp: new Date().toISOString()
-        });
-        
-        // 安全地檢查和提取響應數據
-        let nextSessionDate = null;
-        
-        try {
-          // 多層級檢查響應數據結構
-          if (action.payload) {
-            if (action.payload.data?.nextSessionDate) {
-              nextSessionDate = action.payload.data.nextSessionDate;
-              safeLog('debug', '從 payload.data.nextSessionDate 提取日期');
-            } else if (action.payload.nextSessionDate) {
-              nextSessionDate = action.payload.nextSessionDate;
-              safeLog('debug', '從 payload.nextSessionDate 提取日期');
-            } else if (action.payload.data?.data?.nextSessionDate) {
-              nextSessionDate = action.payload.data.data.nextSessionDate;
-              safeLog('debug', '從 payload.data.data.nextSessionDate 提取日期');
-            }
-          }
-          
-          if (nextSessionDate) {
-            // 安全地處理日期對象
-            let dateToStore = null;
-            
-            if (typeof nextSessionDate === 'string') {
-              // 驗證字符串是否為有效的ISO日期
-              const testDate = new Date(nextSessionDate);
-              if (!isNaN(testDate.getTime())) {
-                dateToStore = nextSessionDate;
-              } else {
-                throw new Error('無效的日期字符串格式');
-              }
-            } else if (nextSessionDate instanceof Date) {
-              // 驗證 Date 對象是否有效
-              if (!isNaN(nextSessionDate.getTime())) {
-                dateToStore = nextSessionDate.toISOString();
-              } else {
-                throw new Error('無效的 Date 對象');
-              }
-            } else {
-              throw new Error('不支持的日期數據類型');
-            }
-            
-            // 更新狀態
-            state.systemSettings = {
-              ...state.systemSettings,
-              nextSessionDate: dateToStore
-            };
-            
-            safeLog('info', 'setNextSessionDate 狀態更新成功', {
-              oldDate: state.systemSettings?.nextSessionDate,
-              newDate: dateToStore,
-              timestamp: new Date().toISOString()
-            });
-          } else {
-            safeLog('warn', '響應中未找到 nextSessionDate', {
-              payload: action.payload
-            });
-          }
-        } catch (error) {
-          safeLog('error', 'setNextSessionDate fulfilled 處理錯誤', {
-            error: {
-              message: error.message,
-              stack: error.stack
-            },
-            payload: action.payload,
-            timestamp: new Date().toISOString()
-          });
-          
-          // 即使處理失敗，也要確保狀態的一致性
-          state.error = error.message || '日期處理錯誤';
-        }
       })
       .addCase(setNextSessionDate.rejected, (state, action) => {
         state.isLoading = false;
-        
-        // 安全的日誌記錄
-        const safeLog = (level, message, data) => {
-          try {
-            if (window.logger && window.logger[level]) {
-              window.logger[level](message, data, 'queueSlice');
-            } else {
-              console[level](`[queueSlice] ${message}`, data);
-            }
-          } catch (logError) {
-            console.warn('日誌記錄失敗:', logError.message);
-          }
-        };
-        
-        const errorMessage = action.payload || action.error?.message || '設置下次辦事時間失敗';
-        state.error = errorMessage;
-        
-        safeLog('error', 'setNextSessionDate rejected', {
-          payload: action.payload,
-          error: action.error,
-          errorMessage,
-          timestamp: new Date().toISOString()
-        });
+        state.error = action.payload;
       })
       
       // 開關候位功能（管理員）

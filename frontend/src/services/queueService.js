@@ -1,5 +1,4 @@
 import axios from 'axios';
-import logger from '../utils/logger';
 
 // 根據環境決定API基礎URL
 const getApiBaseUrl = () => {
@@ -139,155 +138,17 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
 
 // 設置下次辦事時間
 const setNextSessionDate = async (nextSessionDate, token) => {
-  const method = 'PUT';
-  const url = `${ADMIN_API_URL}/settings/nextSession`;
-  
-  // 安全的日誌記錄函數
-  const safeLogger = {
-    apiRequest: (method, url, data, component) => {
-      if (window.logger) {
-        window.logger.apiRequest(method, url, data, component);
-      } else {
-        console.log(`[${component}] API請求: ${method} ${url}`, data);
-      }
-    },
-    apiResponse: (method, url, data, component) => {
-      if (window.logger) {
-        window.logger.apiResponse(method, url, data, component);
-      } else {
-        console.log(`[${component}] API響應: ${method} ${url}`, data);
-      }
-    },
-    apiError: (method, url, error, component) => {
-      if (window.logger) {
-        window.logger.apiError(method, url, error, component);
-      } else {
-        console.error(`[${component}] API錯誤: ${method} ${url}`, error);
-      }
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`
     }
   };
-  
-  try {
-    // 參數驗證
-    if (!nextSessionDate) {
-      throw new Error('下次辦事時間參數不能為空');
-    }
-    
-    if (!token) {
-      throw new Error('認證令牌不能為空');
-    }
-    
-    // 日期格式驗證
-    const testDate = new Date(nextSessionDate);
-    if (isNaN(testDate.getTime())) {
-      throw new Error('無效的日期格式');
-    }
-    
-    const data = { nextSessionDate };
-    
-    console.log('queueService setNextSessionDate 開始:', {
-      nextSessionDate,
-      url,
-      data,
-      hasToken: !!token,
-      timestamp: new Date().toISOString()
-    });
-    
-    safeLogger.apiRequest(method, url, data, 'queueService');
-    
-    const config = {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 30000 // 30秒超時
-    };
-    
-    console.log('queueService: 準備發送請求', {
-      url,
-      data,
-      headers: {
-        ...config.headers,
-        Authorization: token ? 'Bearer [REDACTED]' : 'missing'
-      }
-    });
-    
-    const response = await axios.put(url, data, config);
-    
-    console.log('queueService setNextSessionDate API 響應:', {
-      status: response.status,
-      statusText: response.statusText,
-      data: response.data,
-      timestamp: new Date().toISOString()
-    });
-    
-    // 驗證響應格式
-    if (!response.data) {
-      throw new Error('API 返回空響應數據');
-    }
-    
-    if (response.data.success === false) {
-      throw new Error(response.data.message || 'API 操作失敗');
-    }
-    
-    safeLogger.apiResponse(method, url, response.data, 'queueService');
-    
-    console.log('queueService setNextSessionDate 成功完成:', {
-      responseData: response.data,
-      timestamp: new Date().toISOString()
-    });
-    
-    return response.data;
-  } catch (error) {
-    console.error('queueService setNextSessionDate 錯誤:', {
-      url,
-      error: {
-        message: error.message,
-        name: error.name,
-        code: error.code,
-        stack: error.stack,
-        response: error.response ? {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data
-        } : null
-      },
-      timestamp: new Date().toISOString()
-    });
-    
-    safeLogger.apiError(method, url, error, 'queueService');
-    
-    // 根據不同類型的錯誤提供相應的錯誤訊息
-    let errorMessage = '設置下次辦事時間失敗';
-    
-    if (error.code === 'ECONNABORTED') {
-      errorMessage = '請求超時，請檢查網路連接';
-    } else if (error.response) {
-      // 服務器響應錯誤
-      if (error.response.status === 401) {
-        errorMessage = '認證失敗，請重新登入';
-      } else if (error.response.status === 403) {
-        errorMessage = '權限不足，無法執行此操作';
-      } else if (error.response.status >= 500) {
-        errorMessage = '服務器內部錯誤，請稍後再試';
-      } else if (error.response.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-    } else if (error.request) {
-      // 網路錯誤
-      errorMessage = '網路連接失敗，請檢查網路設定';
-    } else if (error.message) {
-      // 其他錯誤
-      errorMessage = error.message;
-    }
-    
-    // 創建標準化的錯誤對象
-    const standardError = new Error(errorMessage);
-    standardError.originalError = error;
-    standardError.response = error.response;
-    
-    throw standardError;
-  }
+  const response = await axios.put(
+    `${ADMIN_API_URL}/settings/nextSession`,
+    { nextSessionDate },
+    config
+  );
+  return response.data;
 };
 
 // 開關候位功能

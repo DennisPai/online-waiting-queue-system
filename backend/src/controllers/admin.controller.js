@@ -266,84 +266,38 @@ exports.updateQueueStatus = async (req, res) => {
 // 設置下次辦事時間
 exports.setNextSessionDate = async (req, res) => {
   try {
-    console.log('收到設置下次辦事時間請求:', {
-      body: req.body,
-      user: req.user?.id,
-      timestamp: new Date().toISOString()
-    });
-
     const { nextSessionDate } = req.body;
     
-    // 詳細的日期驗證
-    if (!nextSessionDate) {
-      console.error('設置下次辦事時間失敗: nextSessionDate 為空');
-      return res.status(400).json({
-        success: false,
-        message: '缺少必要參數: nextSessionDate'
-      });
-    }
-
-    const dateObj = new Date(nextSessionDate);
-    if (isNaN(dateObj.getTime())) {
-      console.error('設置下次辦事時間失敗: 無效的日期格式', nextSessionDate);
+    // 驗證日期格式
+    if (!nextSessionDate || isNaN(new Date(nextSessionDate).getTime())) {
       return res.status(400).json({
         success: false,
         message: '無效的日期格式'
       });
     }
     
-    console.log('日期驗證通過:', dateObj.toISOString());
-
     // 獲取系統設定
-    console.log('獲取系統設定...');
     const settings = await SystemSetting.getSettings();
-    console.log('系統設定獲取成功:', {
-      id: settings._id,
-      currentNextSessionDate: settings.nextSessionDate
-    });
     
     // 更新下次辦事時間
-    const oldDate = settings.nextSessionDate;
-    settings.nextSessionDate = dateObj;
-    settings.updatedBy = req.user?.id;
+    settings.nextSessionDate = new Date(nextSessionDate);
+    settings.updatedBy = req.user.id;
     
-    console.log('準備保存設定:', {
-      oldDate: oldDate ? oldDate.toISOString() : null,
-      newDate: settings.nextSessionDate.toISOString(),
-      updatedBy: settings.updatedBy
-    });
+    await settings.save();
     
-    const savedSettings = await settings.save();
-    console.log('設定保存成功:', {
-      id: savedSettings._id,
-      nextSessionDate: savedSettings.nextSessionDate.toISOString()
-    });
-    
-    const responseData = {
+    res.status(200).json({
       success: true,
       message: '下次辦事時間設置成功',
       data: {
-        nextSessionDate: savedSettings.nextSessionDate.toISOString()
+        nextSessionDate: settings.nextSessionDate
       }
-    };
-
-    console.log('響應數據:', responseData);
-    
-    res.status(200).json(responseData);
-  } catch (error) {
-    console.error('設置下次辦事時間發生錯誤:', {
-      error: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
     });
-    
+  } catch (error) {
+    console.error('設置下次辦事時間錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',
-      error: process.env.NODE_ENV === 'development' ? {
-        message: error.message,
-        stack: error.stack
-      } : {}
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
     });
   }
 };
