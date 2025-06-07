@@ -111,52 +111,44 @@
 
 ## 快速開始
 
-### 前置需求
+### 🌐 線上部署版本
+本系統已部署至 Zeabur 雲平台，可直接訪問使用：
+- **線上網址**: https://your-app-domain.zeabur.app
+- **管理後台**: https://your-app-domain.zeabur.app/admin/login
+- **預設管理員帳號**: admin / admin123
+
+### 🛠 本地開發
+
+#### 前置需求
 - Node.js (v16+)
 - npm 或 yarn
 - MongoDB
 - Docker 與 Docker Compose
 
-### 本地開發
+#### ⚠️ 重要：本專案必須使用Docker進行開發
 
 1. 克隆此儲存庫
 ```bash
-git clone <repository-url>
-cd queue-system
+git clone https://github.com/DennisPai/online-waiting-queue-system.git
+cd online-waiting-queue-system
 ```
 
-2. 安裝依賴
+2. 使用Docker啟動服務
 ```bash
-# 安裝後端依賴
+# 建構並啟動所有服務
+docker-compose build
+docker-compose up -d
+
+# 初始化管理員帳號
 cd backend
 npm install
-
-# 安裝前端依賴
-cd ../frontend
-npm install
+node init-admin.js
 ```
 
-3. 設定環境變數
-```bash
-# 在backend目錄中創建.env檔案
-cp .env.example .env
-# 編輯.env檔案設定必要的環境變數
-```
-
-4. 啟動開發伺服器
-```bash
-# 啟動後端服務
-cd backend
-npm run dev
-
-# 另一個終端中啟動前端服務
-cd frontend
-npm start
-```
-
-5. 訪問應用
-   - 前端: http://localhost:3000
+3. 訪問應用
+   - 前端: http://localhost:3100
    - 後端API: http://localhost:8080/api
+   - 管理後台: http://localhost:3100/admin/login
 
 ### Docker部署
 
@@ -339,33 +331,44 @@ mongodb://admin:password@localhost:27017/queue_system?authSource=admin
 ## 專案結構
 
 ```
-queue-system/
-├── backend/             # 後端API伺服器
-│   ├── src/             # 源代碼
-│   │   ├── config/      # 配置文件
-│   │   ├── controllers/ # 控制器
-│   │   ├── models/      # 資料模型
-│   │   ├── routes/      # API路由
-│   │   ├── services/    # 業務邏輯
-│   │   ├── utils/       # 工具函數
-│   │   └── app.js       # 應用入口
-│   ├── .env.example     # 環境變數範例
-│   └── package.json     # 後端依賴
+online-waiting-queue-system/
+├── backend/                          # 後端API伺服器
+│   ├── src/                          # 源代碼
+│   │   ├── config/                   # 配置文件
+│   │   ├── controllers/              # 控制器
+│   │   ├── models/                   # 資料模型
+│   │   ├── routes/                   # API路由
+│   │   ├── services/                 # 業務邏輯
+│   │   ├── utils/                    # 工具函數
+│   │   └── app.js                    # 應用入口
+│   ├── .env.example                  # 環境變數範例 (Zeabur部署用)
+│   ├── Dockerfile                    # Docker配置
+│   ├── init-admin.js                 # 管理員初始化腳本
+│   ├── update-existing-customers.js  # 虛歲批量更新腳本
+│   └── package.json                  # 後端依賴
 │
-├── frontend/            # 前端React應用
-│   ├── public/          # 靜態文件
-│   ├── src/             # 源代碼
-│   │   ├── assets/      # 資源文件
-│   │   ├── components/  # 共用元件
-│   │   ├── pages/       # 頁面元件
-│   │   ├── redux/       # Redux狀態管理
-│   │   │   └── slices/  # Redux切片
-│   │   ├── services/    # API服務
-│   │   └── App.js       # 應用入口
-│   └── package.json     # 前端依賴
+├── frontend/                         # 前端React應用
+│   ├── public/                       # 靜態文件
+│   ├── src/                          # 源代碼
+│   │   ├── components/               # 共用元件
+│   │   ├── contexts/                 # React Context
+│   │   ├── pages/                    # 頁面元件
+│   │   │   └── admin/                # 管理員頁面
+│   │   ├── redux/                    # Redux狀態管理
+│   │   │   └── slices/               # Redux切片
+│   │   ├── services/                 # API服務
+│   │   ├── utils/                    # 工具函數
+│   │   └── App.js                    # 應用入口
+│   ├── Dockerfile                    # Docker配置
+│   ├── nginx.conf                    # Nginx配置
+│   └── package.json                  # 前端依賴
 │
-├── docker-compose.yml   # Docker配置
-└── README.md            # 專案文檔
+├── .gitignore                        # Git忽略檔案
+├── docker-compose.yml                # Docker Compose配置
+├── DEPLOYMENT.md                     # 部署指南
+├── AI_DEVELOPMENT_GUIDE.md           # AI開發指南
+├── 線上候位系統開發文檔.md               # 完整開發文檔
+└── README.md                         # 專案說明
 ```
 
 ## 重要實現功能
@@ -709,15 +712,24 @@ node update-existing-customers.js
 ## 🌐 線上部署
 
 ### Zeabur 部署
-本專案已配置為可直接部署到 Zeabur 平台。詳細部署步驟請參考 [`DEPLOYMENT.md`](./DEPLOYMENT.md)。
+本專案已成功部署至 Zeabur 平台，採用自動化 CI/CD 流程：
 
-#### 快速部署連結
-[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates)
+#### 🔄 更新流程
+1. **本地修改** → 修改代碼並測試
+2. **提交GitHub** → `git add .` → `git commit -m "更新內容"` → `git push`
+3. **自動部署** → Zeabur 自動檢測更新並重新部署
 
-### 部署要求
+#### 🏗 架構組成
+- **前端服務**: React.js 應用 (Nginx)
+- **後端服務**: Node.js + Express API
+- **資料庫服務**: MongoDB 5.0+
+- **網域配置**: 自動HTTPS證書
+
+#### 📋 部署要求
 - Node.js 16+
 - MongoDB 5.0+
-- Docker 支援
+- 環境變數正確配置
+- 詳細部署指南: [`DEPLOYMENT.md`](./DEPLOYMENT.md)
 
 ## 授權協議
 MIT 

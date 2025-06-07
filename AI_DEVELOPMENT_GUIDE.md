@@ -276,10 +276,17 @@ docker-compose up -d
 
 ### 💡 AI助手使用建議
 
+#### 🏠 本地開發
 - 每次修改代碼後，自動執行Docker重新建構
 - 提供測試網址和登入資訊給用戶
 - 檢查功能的響應式設計
 - 確認新功能在Docker環境中正常運作
 - **修復轉換功能後務必運行測試腳本驗證**
 - 遇到問題時查看Docker容器日誌: `docker logs queue-frontend` 或 `docker logs queue-backend`
-- **遇到轉換相關問題時，優先檢查上述關鍵技術問題清單** 
+- **遇到轉換相關問題時，優先檢查上述關鍵技術問題清單**
+
+#### 🌐 Zeabur部署更新
+- 系統已部署至Zeabur平台，網址：`https://your-app-domain.zeabur.app`
+- 更新流程：本地修改 → `git push` → Zeabur自動重新部署
+- 部署通常需要3-5分鐘完成
+- 提醒用戶推送代碼後檢查線上版本功能正常 

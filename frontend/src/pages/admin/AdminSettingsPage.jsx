@@ -17,8 +17,7 @@ import {
   Divider
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider, DateTimePicker } from '@mui/x-date-pickers';
 import { zhTW } from 'date-fns/locale';
 import {
   toggleQueueStatus,
@@ -77,6 +76,8 @@ const AdminSettingsPage = () => {
             severity: 'success'
           })
         );
+        // 重新載入系統設定以確保狀態同步
+        dispatch(getQueueStatus());
       })
       .catch((error) => {
         dispatch(
@@ -105,10 +106,12 @@ const AdminSettingsPage = () => {
       .then(() => {
         dispatch(
           showAlert({
-            message: '下次辦事時間設定成功',
+            message: '下次辦事時間設置成功',
             severity: 'success'
           })
         );
+        // 重新載入系統設定以確保狀態同步
+        dispatch(getQueueStatus());
       })
       .catch((error) => {
         dispatch(
@@ -146,6 +149,8 @@ const AdminSettingsPage = () => {
             severity: 'success'
           })
         );
+        // 重新載入系統設定以確保狀態同步
+        dispatch(getQueueStatus());
       })
       .catch((error) => {
         dispatch(
@@ -194,6 +199,8 @@ const AdminSettingsPage = () => {
             severity: 'success'
           })
         );
+        // 重新載入系統設定以確保狀態同步
+        dispatch(getQueueStatus());
       })
       .catch((error) => {
         dispatch(
@@ -253,7 +260,7 @@ const AdminSettingsPage = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                下次辦事時間設定
+                下次辦事時間設置
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
@@ -261,14 +268,7 @@ const AdminSettingsPage = () => {
                     label="選擇日期和時間"
                     value={nextSessionDate}
                     onChange={handleDateChange}
-                    slots={{
-                      textField: TextField
-                    }}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true
-                      }
-                    }}
+                    renderInput={(params) => <TextField {...params} fullWidth />}
                   />
                 </LocalizationProvider>
               </Box>
@@ -279,13 +279,13 @@ const AdminSettingsPage = () => {
                   onClick={handleSetNextSessionDate}
                   disabled={!nextSessionDate}
                 >
-                  設定下次辦事時間
+                  設置下次辦事時間
                 </Button>
               </Box>
               {nextSessionDate && (
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="info">
-                    您設定的下次辦事時間是：
+                    您設置的下次辦事時間是：
                     {nextSessionDate.toLocaleString('zh-TW', {
                       year: 'numeric',
                       month: 'long',
@@ -303,7 +303,7 @@ const AdminSettingsPage = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                最大候位上限設定
+                最大候位上限設置
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <TextField
@@ -339,7 +339,7 @@ const AdminSettingsPage = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                每位客戶預估處理時間設定
+                每位客戶預估處理時間設置
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <TextField

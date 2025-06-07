@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
-// 連接到 MongoDB  
+// 連接到 MongoDB
 const mongoUri = process.env.MONGODB_URI || 
                  process.env.DATABASE_URL || 
                  process.env.MONGO_CONNECTION_STRING ||
