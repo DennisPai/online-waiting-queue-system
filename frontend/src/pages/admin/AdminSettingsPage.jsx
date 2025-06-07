@@ -41,10 +41,24 @@ const AdminSettingsPage = () => {
     dispatch(getQueueStatus())
       .unwrap()
       .then((result) => {
+        console.log('載入系統設置結果:', result);
         setIsQueueOpen(result.isOpen);
+        
+        // 安全地設置 nextSessionDate，確保是有效的日期
         if (result.nextSessionDate) {
-          setNextSessionDate(new Date(result.nextSessionDate));
+          const dateValue = new Date(result.nextSessionDate);
+          if (!isNaN(dateValue.getTime())) {
+            console.log('設置有效的下次辦事時間:', dateValue);
+            setNextSessionDate(dateValue);
+          } else {
+            console.warn('無效的下次辦事時間:', result.nextSessionDate);
+            setNextSessionDate(null);
+          }
+        } else {
+          console.log('未設置下次辦事時間');
+          setNextSessionDate(null);
         }
+        
         if (result.maxQueueNumber) {
           setMaxQueueNumberLocal(result.maxQueueNumber);
         }
@@ -53,6 +67,7 @@ const AdminSettingsPage = () => {
         }
       })
       .catch((error) => {
+        console.error('載入系統設置失敗:', error);
         dispatch(
           showAlert({
             message: error,
@@ -89,7 +104,7 @@ const AdminSettingsPage = () => {
 
   // 處理設置下次辦事時間
   const handleSetNextSessionDate = () => {
-    if (!nextSessionDate) {
+    if (!nextSessionDate || isNaN(nextSessionDate.getTime())) {
       dispatch(
         showAlert({
           message: '請選擇有效的日期和時間',
@@ -112,7 +127,18 @@ const AdminSettingsPage = () => {
           })
         );
         // 重新載入系統狀態以確保同步
-        dispatch(getQueueStatus());
+        dispatch(getQueueStatus())
+          .unwrap()
+          .then((updatedResult) => {
+            console.log('重新載入系統狀態:', updatedResult);
+            // 重新設置頁面狀態以保持同步
+            if (updatedResult.nextSessionDate) {
+              const dateValue = new Date(updatedResult.nextSessionDate);
+              if (!isNaN(dateValue.getTime())) {
+                setNextSessionDate(dateValue);
+              }
+            }
+          });
       })
       .catch((error) => {
         console.error('設定失敗:', error);
@@ -271,6 +297,8 @@ const AdminSettingsPage = () => {
                     value={nextSessionDate}
                     onChange={handleDateChange}
                     renderInput={(params) => <TextField {...params} fullWidth />}
+                    minDate={new Date()}
+                    ampm={false}
                   />
                 </LocalizationProvider>
               </Box>
@@ -284,7 +312,7 @@ const AdminSettingsPage = () => {
                   設置下次辦事時間
                 </Button>
               </Box>
-              {nextSessionDate && (
+              {nextSessionDate && !isNaN(nextSessionDate.getTime()) && (
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="info">
                     您設置的下次辦事時間是：
@@ -394,15 +422,16 @@ const AdminSettingsPage = () => {
                         下次辦事時間
                       </Typography>
                       <Typography variant="body1">
-                        {queueStatus.nextSessionDate
-                          ? new Date(queueStatus.nextSessionDate).toLocaleString('zh-TW', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })
-                          : '尚未設置'}
+                        {queueStatus.nextSessionDate ? (() => {
+                          const date = new Date(queueStatus.nextSessionDate);
+                          return !isNaN(date.getTime()) ? date.toLocaleString('zh-TW', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : '日期格式錯誤';
+                        })() : '尚未設置'}
                       </Typography>
                     </Grid>
                     {queueStatus.isOpen && (
