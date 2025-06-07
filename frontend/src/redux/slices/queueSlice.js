@@ -359,14 +359,29 @@ const queueSlice = createSlice({
         state.queueStatus = action.payload;
         state.isQueueOpen = action.payload.isOpen;
         
+        // 安全的日期處理
+        const safeDateAssignment = (dateValue) => {
+          try {
+            if (!dateValue) return null;
+            if (typeof dateValue === 'string') {
+              const testDate = new Date(dateValue);
+              return !isNaN(testDate.getTime()) ? dateValue : null;
+            }
+            return null;
+          } catch (error) {
+            console.warn('getQueueStatus 日期處理錯誤:', error);
+            return null;
+          }
+        };
+        
         if (action.payload.isOpen) {
           state.currentQueue = action.payload.currentQueueNumber;
           state.waitingCount = action.payload.waitingCount;
           state.estimatedWaitTime = action.payload.estimatedWaitTime;
           state.estimatedEndTime = action.payload.estimatedEndTime;
-          state.nextSessionDate = action.payload.nextSessionDate;
+          state.nextSessionDate = safeDateAssignment(action.payload.nextSessionDate);
         } else {
-          state.nextSessionDate = action.payload.nextSessionDate;
+          state.nextSessionDate = safeDateAssignment(action.payload.nextSessionDate);
         }
       })
       .addCase(getQueueStatus.rejected, (state, action) => {

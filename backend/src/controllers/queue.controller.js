@@ -67,6 +67,20 @@ exports.getQueueStatus = async (req, res) => {
     // 獲取系統設定
     const settings = await SystemSetting.getSettings();
     
+    // 安全地處理日期格式
+    const formatSafeDate = (date) => {
+      try {
+        if (!date) return null;
+        if (date instanceof Date && !isNaN(date.getTime())) {
+          return date.toISOString();
+        }
+        return null;
+      } catch (error) {
+        console.warn('日期格式化錯誤:', error);
+        return null;
+      }
+    };
+
     // 若候位系統已關閉，直接返回下次辦事時間
     if (!settings.isQueueOpen) {
       return res.status(200).json({
@@ -75,7 +89,7 @@ exports.getQueueStatus = async (req, res) => {
           isOpen: false,
           maxQueueNumber: settings.maxQueueNumber,
           minutesPerCustomer: settings.minutesPerCustomer,
-          nextSessionDate: settings.nextSessionDate,
+          nextSessionDate: formatSafeDate(settings.nextSessionDate),
           message: '候位系統目前已關閉'
         }
       });
@@ -116,7 +130,7 @@ exports.getQueueStatus = async (req, res) => {
         minutesPerCustomer: settings.minutesPerCustomer,
         waitingCount,
         estimatedWaitTime,
-        nextSessionDate: settings.nextSessionDate,
+        nextSessionDate: formatSafeDate(settings.nextSessionDate),
         estimatedEndTime: estimatedEndTime ? estimatedEndTime.toISOString() : null,
         message: `目前叫號: ${settings.currentQueueNumber}, 等待人數: ${waitingCount}`
       }

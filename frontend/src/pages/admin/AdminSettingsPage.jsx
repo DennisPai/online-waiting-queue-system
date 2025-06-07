@@ -27,7 +27,6 @@ import {
   setMinutesPerCustomer
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
-import logger from '../../utils/logger';
 
 const AdminSettingsPage = () => {
   const dispatch = useDispatch();
@@ -36,6 +35,80 @@ const AdminSettingsPage = () => {
   const [nextSessionDate, setNextSessionDate] = useState(null);
   const [maxQueueNumber, setMaxQueueNumberLocal] = useState(100);
   const [minutesPerCustomer, setMinutesPerCustomerLocal] = useState(13);
+
+  // 安全的日期驗證和轉換函數
+  const safeDateConversion = (dateValue, context = 'unknown') => {
+    const safeLog = (level, message, data) => {
+      try {
+        if (window.logger && window.logger[level]) {
+          window.logger[level](message, data, 'AdminSettingsPage');
+        } else {
+          console[level](`[AdminSettingsPage] ${message}`, data);
+        }
+      } catch (logError) {
+        console.warn('日誌記錄失敗:', logError.message);
+      }
+    };
+
+    try {
+      // 檢查是否為null或undefined
+      if (dateValue === null || dateValue === undefined) {
+        safeLog('debug', `${context}: 日期值為null/undefined，返回null`);
+        return null;
+      }
+
+      // 檢查是否為空字符串
+      if (dateValue === '') {
+        safeLog('debug', `${context}: 日期值為空字符串，返回null`);
+        return null;
+      }
+
+      // 嘗試轉換為Date對象
+      let dateObj;
+      if (dateValue instanceof Date) {
+        dateObj = dateValue;
+      } else {
+        dateObj = new Date(dateValue);
+      }
+
+      // 檢查轉換後的Date對象是否有效
+      if (isNaN(dateObj.getTime())) {
+        safeLog('warn', `${context}: 無效的日期值`, { 
+          originalValue: dateValue,
+          type: typeof dateValue,
+          dateObj: dateObj.toString()
+        });
+        return null;
+      }
+
+      // 檢查是否為合理的日期範圍（例如1900年到2100年之間）
+      const year = dateObj.getFullYear();
+      if (year < 1900 || year > 2100) {
+        safeLog('warn', `${context}: 日期年份超出合理範圍`, { 
+          year,
+          originalValue: dateValue,
+          isoString: dateObj.toISOString()
+        });
+        return null;
+      }
+
+      safeLog('debug', `${context}: 日期轉換成功`, {
+        originalValue: dateValue,
+        convertedDate: dateObj.toISOString()
+      });
+
+      return dateObj;
+    } catch (error) {
+      safeLog('error', `${context}: 日期轉換過程中發生錯誤`, {
+        originalValue: dateValue,
+        error: {
+          message: error.message,
+          stack: error.stack
+        }
+      });
+      return null;
+    }
+  };
 
   // 加載系統設置
   useEffect(() => {
@@ -67,34 +140,9 @@ const AdminSettingsPage = () => {
         // 設置候位系統狀態
         setIsQueueOpen(result.isOpen);
         
-        // 安全地處理下次辦事時間
-        if (result.nextSessionDate) {
-          try {
-            const dateValue = new Date(result.nextSessionDate);
-            
-            // 檢查日期是否有效
-            if (!isNaN(dateValue.getTime())) {
-              setNextSessionDate(dateValue);
-              safeLog('debug', '設定下次辦事時間成功', {
-                originalValue: result.nextSessionDate,
-                parsedDate: dateValue.toISOString()
-              });
-            } else {
-              safeLog('warn', '下次辦事時間數據無效，忽略設定', {
-                nextSessionDate: result.nextSessionDate
-              });
-              setNextSessionDate(null);
-            }
-          } catch (dateError) {
-            safeLog('error', '解析下次辦事時間失敗', {
-              nextSessionDate: result.nextSessionDate,
-              error: dateError.message
-            });
-            setNextSessionDate(null);
-          }
-        } else {
-          setNextSessionDate(null);
-        }
+        // 使用安全的日期轉換處理下次辦事時間
+        const convertedDate = safeDateConversion(result.nextSessionDate, 'useEffect-系統設定載入');
+        setNextSessionDate(convertedDate);
         
         // 設置最大候位上限
         if (result.maxQueueNumber) {
@@ -108,6 +156,13 @@ const AdminSettingsPage = () => {
       })
       .catch((error) => {
         safeLog('error', '系統設定載入失敗', { error });
+        
+        // 載入失敗時，確保狀態為安全的預設值
+        setNextSessionDate(null);
+        setIsQueueOpen(false);
+        setMaxQueueNumberLocal(100);
+        setMinutesPerCustomerLocal(13);
+        
         dispatch(
           showAlert({
             message: error.message || error || '系統設定載入失敗',
@@ -339,31 +394,20 @@ const AdminSettingsPage = () => {
         }
       };
 
-      // 安全地處理日期轉換
-      const safeGetISOString = (date) => {
-        try {
-          if (!date) return null;
-          if (date instanceof Date && !isNaN(date.getTime())) {
-            return date.toISOString();
-          }
-          return null;
-        } catch (error) {
-          console.warn('日期轉換失敗:', error);
-          return null;
-        }
-      };
-
+      // 使用安全的日期轉換
+      const convertedDate = safeDateConversion(newDate, 'handleDateChange');
+      
       logDebug('日期選擇變更', {
-        oldDate: safeGetISOString(nextSessionDate),
-        newDate: safeGetISOString(newDate),
-        newDateValid: newDate instanceof Date && !isNaN(newDate.getTime())
+        originalDate: newDate,
+        convertedDate: convertedDate ? convertedDate.toISOString() : null,
+        isValid: convertedDate !== null
       });
       
-      setNextSessionDate(newDate);
+      setNextSessionDate(convertedDate);
     } catch (error) {
       console.error('handleDateChange 錯誤:', error);
-      // 即使日誌記錄失敗，也要更新狀態
-      setNextSessionDate(newDate);
+      // 即使處理失敗，也確保設定安全的值
+      setNextSessionDate(null);
     }
   };
 
@@ -525,7 +569,24 @@ const AdminSettingsPage = () => {
                     label="選擇日期和時間"
                     value={nextSessionDate}
                     onChange={handleDateChange}
-                    renderInput={(params) => <TextField {...params} fullWidth />}
+                    renderInput={(params) => (
+                      <TextField 
+                        {...params} 
+                        fullWidth 
+                        error={!!params.error}
+                        helperText={params.error ? '請選擇有效的日期和時間' : ''}
+                      />
+                    )}
+                    componentsProps={{
+                      textField: {
+                        onError: (reason, value) => {
+                          console.warn('DateTimePicker 錯誤:', { reason, value });
+                          if (window.logger) {
+                            window.logger.warn('DateTimePicker 錯誤', { reason, value }, 'AdminSettingsPage');
+                          }
+                        }
+                      }
+                    }}
                   />
                 </LocalizationProvider>
               </Box>
@@ -543,14 +604,25 @@ const AdminSettingsPage = () => {
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="info">
                     您設置的下次辦事時間是：
-                    {nextSessionDate.toLocaleString('zh-TW', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      weekday: 'long'
-                    })}
+                    {(() => {
+                      try {
+                        if (nextSessionDate instanceof Date && !isNaN(nextSessionDate.getTime())) {
+                          return nextSessionDate.toLocaleString('zh-TW', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            weekday: 'long'
+                          });
+                        } else {
+                          return '日期格式異常';
+                        }
+                      } catch (error) {
+                        console.warn('日期顯示錯誤:', error);
+                        return '日期顯示錯誤';
+                      }
+                    })()}
                   </Alert>
                 </Box>
               )}
@@ -649,15 +721,29 @@ const AdminSettingsPage = () => {
                         下次辦事時間
                       </Typography>
                       <Typography variant="body1">
-                        {queueStatus.nextSessionDate
-                          ? new Date(queueStatus.nextSessionDate).toLocaleString('zh-TW', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })
-                          : '尚未設置'}
+                        {(() => {
+                          try {
+                            if (queueStatus.nextSessionDate) {
+                              const date = safeDateConversion(queueStatus.nextSessionDate, '系統狀態顯示');
+                              if (date) {
+                                return date.toLocaleString('zh-TW', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                });
+                              } else {
+                                return '日期格式異常';
+                              }
+                            } else {
+                              return '尚未設置';
+                            }
+                          } catch (error) {
+                            console.warn('系統狀態日期顯示錯誤:', error);
+                            return '日期顯示錯誤';
+                          }
+                        })()}
                       </Typography>
                     </Grid>
                     {queueStatus.isOpen && (
