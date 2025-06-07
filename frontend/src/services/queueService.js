@@ -4,31 +4,15 @@ import axios from 'axios';
 const getApiBaseUrl = () => {
   // 在生產環境中使用後端服務的完整URL
   if (process.env.NODE_ENV === 'production') {
-    const apiUrl = process.env.REACT_APP_API_URL;
-    console.log('生產環境 API URL:', apiUrl);
-    if (apiUrl) {
-      return apiUrl;
-    }
-    // 如果沒有設定REACT_APP_API_URL，則嘗試使用當前網域
-    console.warn('未設定 REACT_APP_API_URL，使用當前網域');
-    return window.location.origin;
+    return process.env.REACT_APP_API_URL || window.location.origin;
   }
   // 開發環境使用代理
-  console.log('開發環境，使用空字串（代理）');
   return '';
 };
 
 const API_BASE_URL = getApiBaseUrl();
 const API_URL = `${API_BASE_URL}/api/queue`;
 const ADMIN_API_URL = `${API_BASE_URL}/api/admin`;
-
-console.log('API配置:', {
-  NODE_ENV: process.env.NODE_ENV,
-  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
-  API_BASE_URL,
-  API_URL,
-  ADMIN_API_URL
-});
 
 // 公共 API
 
@@ -154,33 +138,17 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
 
 // 設置下次辦事時間
 const setNextSessionDate = async (nextSessionDate, token) => {
-  try {
-    console.log('API調用 - 設置下次辦事時間:', { nextSessionDate, token: token ? '存在' : '不存在' });
-    
-    const config = {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    };
-    
-    const response = await axios.put(
-      `${ADMIN_API_URL}/settings/nextSession`,
-      { nextSessionDate },
-      config
-    );
-    
-    console.log('API回應 - 設置下次辦事時間:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('API錯誤 - 設置下次辦事時間:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message
-    });
-    throw error.response?.data || error;
-  }
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  };
+  const response = await axios.put(
+    `${ADMIN_API_URL}/settings/nextSession`,
+    { nextSessionDate },
+    config
+  );
+  return response.data;
 };
 
 // 開關候位功能

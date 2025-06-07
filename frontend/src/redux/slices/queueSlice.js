@@ -407,22 +407,14 @@ const queueSlice = createSlice({
       // 設置下次辦事時間（管理員）
       .addCase(setNextSessionDate.pending, (state) => {
         state.isLoading = true;
-        state.error = null; // 清除之前的錯誤
       })
       .addCase(setNextSessionDate.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.error = null;
-        // 確保正確更新所有相關狀態
-        state.nextSessionDate = action.payload.data?.nextSessionDate || action.payload.nextSessionDate;
-        // 同時更新queueStatus物件
-        state.queueStatus = {
-          ...state.queueStatus,
-          nextSessionDate: action.payload.data?.nextSessionDate || action.payload.nextSessionDate
-        };
+        state.nextSessionDate = action.payload.nextSessionDate;
       })
       .addCase(setNextSessionDate.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload || '設置下次辦事時間失敗';
+        state.error = action.payload;
       })
       
       // 開關候位功能（管理員）

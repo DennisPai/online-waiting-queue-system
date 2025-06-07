@@ -11,8 +11,11 @@ const initSocket = (token) => {
   // 根據環境決定Socket.io服務器URL
   const getSocketUrl = () => {
     if (process.env.NODE_ENV === 'production') {
-      return process.env.REACT_APP_API_URL || window.location.origin;
+      const apiUrl = process.env.REACT_APP_API_URL;
+      console.log('Socket.io生產環境URL:', apiUrl);
+      return apiUrl || window.location.origin;
     }
+    console.log('Socket.io開發環境使用相對路徑');
     return undefined; // 開發環境使用預設（相對路徑）
   };
 

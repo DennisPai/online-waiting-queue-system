@@ -266,12 +266,10 @@ exports.updateQueueStatus = async (req, res) => {
 // 設置下次辦事時間
 exports.setNextSessionDate = async (req, res) => {
   try {
-    console.log('收到設置下次辦事時間請求:', req.body);
     const { nextSessionDate } = req.body;
     
     // 驗證日期格式
     if (!nextSessionDate || isNaN(new Date(nextSessionDate).getTime())) {
-      console.error('無效的日期格式:', nextSessionDate);
       return res.status(400).json({
         success: false,
         message: '無效的日期格式'
@@ -280,22 +278,12 @@ exports.setNextSessionDate = async (req, res) => {
     
     // 獲取系統設定
     const settings = await SystemSetting.getSettings();
-    console.log('現有系統設定:', {
-      _id: settings._id,
-      currentNextSessionDate: settings.nextSessionDate
-    });
     
     // 更新下次辦事時間
-    const newDate = new Date(nextSessionDate);
-    settings.nextSessionDate = newDate;
+    settings.nextSessionDate = new Date(nextSessionDate);
     settings.updatedBy = req.user.id;
     
     await settings.save();
-    console.log('設定已更新:', {
-      _id: settings._id,
-      newNextSessionDate: settings.nextSessionDate,
-      updatedBy: settings.updatedBy
-    });
     
     res.status(200).json({
       success: true,
