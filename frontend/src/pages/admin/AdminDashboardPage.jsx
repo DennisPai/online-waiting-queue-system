@@ -830,9 +830,22 @@ const AdminDashboardPage = () => {
     setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
   };
 
-  // 處理匯出功能
+  // 處理匯出功能 - 獲取所有客戶資料
   const handleExport = () => {
-    setExportDialogOpen(true);
+    // 重新獲取所有客戶資料（不限制狀態和分頁）
+    dispatch(getQueueList({}))
+      .unwrap()
+      .then(() => {
+        setExportDialogOpen(true);
+      })
+      .catch((error) => {
+        dispatch(
+          showAlert({
+            message: '獲取匯出資料失敗: ' + (error || '未知錯誤'),
+            severity: 'error'
+          })
+        );
+      });
   };
 
   const handleCloseExportDialog = () => {

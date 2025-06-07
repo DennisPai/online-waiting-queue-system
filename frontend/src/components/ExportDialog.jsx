@@ -141,10 +141,15 @@ const ExportDialog = ({ open, onClose, customers = [], loading = false }) => {
         
         <Box sx={{ mt: 2, p: 2, backgroundColor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1 }}>
           <Typography variant="body2" color="primary">
-            <strong>匯出內容包含：</strong>
+            <strong>匯出內容包含最詳細的客戶資料：</strong>
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            候位號碼、姓名、電話、電子郵件、性別、出生年月日、地址、諮詢主題、狀態、登記時間等完整資訊
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.6 }}>
+            • <strong>基本資料</strong>：候位號碼、姓名、電話、電子郵件、性別<br/>
+            • <strong>出生日期</strong>：國曆和農曆完整出生年月日（包含閏月資訊）<br/>
+            • <strong>地址資訊</strong>：最多3個地址及其類型<br/>
+            • <strong>家庭成員</strong>：每位家人的完整資料（姓名、出生日期、地址）<br/>
+            • <strong>其他資訊</strong>：諮詢主題、虛歲、狀態、登記時間等<br/>
+            • <strong>匯出格式</strong>：主客戶和家人分別為獨立行，便於詳細分析
           </Typography>
         </Box>
       </DialogContent>
