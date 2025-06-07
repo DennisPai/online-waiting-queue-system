@@ -266,34 +266,67 @@ exports.updateQueueStatus = async (req, res) => {
 // 設置下次辦事時間
 exports.setNextSessionDate = async (req, res) => {
   try {
+    console.log('收到設置下次辦事時間請求:', req.body);
     const { nextSessionDate } = req.body;
     
-    // 驗證日期格式
-    if (!nextSessionDate || isNaN(new Date(nextSessionDate).getTime())) {
+    // 增強的日期驗證
+    if (!nextSessionDate) {
+      console.error('設置下次辦事時間失敗: 缺少nextSessionDate參數');
+      return res.status(400).json({
+        success: false,
+        message: '缺少nextSessionDate參數'
+      });
+    }
+    
+    let dateObj;
+    try {
+      dateObj = new Date(nextSessionDate);
+      if (isNaN(dateObj.getTime()) || dateObj.getTime() <= 0) {
+        throw new Error('Invalid date');
+      }
+    } catch (dateError) {
+      console.error('設置下次辦事時間失敗: 無效的日期格式', { nextSessionDate, error: dateError.message });
       return res.status(400).json({
         success: false,
         message: '無效的日期格式'
       });
     }
     
+    console.log('日期驗證成功:', dateObj);
+    
     // 獲取系統設定
+    console.log('獲取系統設定...');
     const settings = await SystemSetting.getSettings();
+    console.log('獲取到系統設定:', settings._id);
     
     // 更新下次辦事時間
-    settings.nextSessionDate = new Date(nextSessionDate);
+    const oldDate = settings.nextSessionDate;
+    settings.nextSessionDate = dateObj;
     settings.updatedBy = req.user.id;
     
-    await settings.save();
+    console.log('更新設定:', {
+      oldDate: oldDate,
+      newDate: dateObj,
+      updatedBy: req.user.id
+    });
+    
+    const savedSettings = await settings.save();
+    console.log('設定已保存:', savedSettings.nextSessionDate);
     
     res.status(200).json({
       success: true,
       message: '下次辦事時間設置成功',
       data: {
-        nextSessionDate: settings.nextSessionDate
+        nextSessionDate: savedSettings.nextSessionDate
       }
     });
   } catch (error) {
-    console.error('設置下次辦事時間錯誤:', error);
+    console.error('設置下次辦事時間錯誤:', {
+      error: error.message,
+      stack: error.stack,
+      body: req.body,
+      user: req.user?.id
+    });
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',

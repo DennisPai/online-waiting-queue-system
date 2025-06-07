@@ -125,7 +125,7 @@ const AdminSettingsPage = () => {
     console.log('handleSetNextSessionDate 開始執行，nextSessionDate:', nextSessionDate);
     
     // 防止重複執行
-    if (queueStatus.isLoading) {
+    if (isLoading) {
       console.log('已有操作進行中，跳過');
       return;
     }
@@ -171,24 +171,31 @@ const AdminSettingsPage = () => {
       const isoString = dateToSet.toISOString();
       console.log('準備設置下次辦事時間:', isoString);
       
-      const result = await dispatch(setNextSessionDate(isoString)).unwrap();
-      console.log('設置下次辦事時間成功，結果:', result);
-      
-      dispatch(
-        showAlert({
-          message: '下次辦事時間設置成功',
-          severity: 'success'
-        })
-      );
-      
-      // 重新載入系統設定以確保顯示最新狀態
-      setTimeout(async () => {
-        try {
-          await dispatch(getQueueStatus()).unwrap();
-        } catch (reloadError) {
-          console.error('重新載入系統設定失敗:', reloadError);
-        }
-      }, 500);
+      // 使用try-catch來捕獲Redux錯誤
+      try {
+        const result = await dispatch(setNextSessionDate(isoString)).unwrap();
+        console.log('設置下次辦事時間成功，結果:', result);
+        
+        dispatch(
+          showAlert({
+            message: '下次辦事時間設置成功',
+            severity: 'success'
+          })
+        );
+        
+        // 重新載入系統設定以確保顯示最新狀態
+        setTimeout(async () => {
+          try {
+            await dispatch(getQueueStatus()).unwrap();
+          } catch (reloadError) {
+            console.error('重新載入系統設定失敗:', reloadError);
+          }
+        }, 500);
+        
+      } catch (reduxError) {
+        console.error('Redux操作失敗:', reduxError);
+        throw reduxError; // 重新拋出以便被外層catch捕獲
+      }
       
     } catch (error) {
       console.error('設置下次辦事時間失敗，詳細錯誤:', error);
@@ -196,14 +203,26 @@ const AdminSettingsPage = () => {
       // 清理狀態以防止持續錯誤
       setNextSessionDate(null);
       
+      // 處理不同類型的錯誤信息
+      let errorMessage = '設置下次辦事時間失敗';
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.message) {
+        if (error.message.includes('Redux')) {
+          errorMessage = '系統狀態錯誤，請重新載入頁面後再試';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       dispatch(
         showAlert({
-          message: typeof error === 'string' ? error : error.message || '設置下次辦事時間失敗',
+          message: errorMessage,
           severity: 'error'
         })
       );
     }
-  }, [nextSessionDate, queueStatus.isLoading, dispatch]);
+  }, [nextSessionDate, isLoading, dispatch]);
 
   // 處理日期選擇變更
   const handleDateChange = (newDate) => {

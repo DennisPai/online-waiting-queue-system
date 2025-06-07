@@ -454,32 +454,34 @@ const queueSlice = createSlice({
             let validDate;
             try {
               validDate = new Date(newNextSessionDate);
-            } catch (error) {
-              console.error('Redux: 日期創建失敗:', error);
-              return;
-            }
-            
-            if (!isNaN(validDate.getTime()) && validDate.getTime() > 0) {
-              // 使用 Immer 的安全更新方式
-              state.nextSessionDate = newNextSessionDate;
               
-              // 確保 queueStatus 存在
-              if (!state.queueStatus) {
-                state.queueStatus = {};
+              if (!isNaN(validDate.getTime()) && validDate.getTime() > 0) {
+                // 使用 Immer 的安全更新方式
+                state.nextSessionDate = newNextSessionDate;
+                
+                // 確保 queueStatus 存在
+                if (!state.queueStatus) {
+                  state.queueStatus = {};
+                }
+                
+                state.queueStatus.nextSessionDate = newNextSessionDate;
+                
+                console.log('Redux: 成功更新下次辦事時間:', newNextSessionDate);
+              } else {
+                console.warn('Redux: 接收到無效的日期格式:', newNextSessionDate);
+                state.error = '接收到無效的日期格式';
               }
-              
-              state.queueStatus.nextSessionDate = newNextSessionDate;
-              
-              console.log('Redux: 成功更新下次辦事時間:', newNextSessionDate);
-            } else {
-              console.warn('Redux: 接收到無效的日期格式:', newNextSessionDate);
+            } catch (dateError) {
+              console.error('Redux: 日期創建失敗:', dateError);
+              state.error = '日期創建失敗：' + dateError.message;
             }
           } else {
             console.log('Redux: 未收到有效的下次辦事時間數據');
+            state.error = '未收到有效的下次辦事時間數據';
           }
         } catch (error) {
           console.error('Redux setNextSessionDate.fulfilled 處理錯誤:', error);
-          state.error = '更新下次辦事時間狀態失敗';
+          state.error = '更新下次辦事時間狀態失敗：' + error.message;
         }
       })
       .addCase(setNextSessionDate.rejected, (state, action) => {
