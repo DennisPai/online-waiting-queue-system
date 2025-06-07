@@ -90,37 +90,57 @@ const AdminSettingsPage = () => {
   };
 
   // 處理設置下次辦事時間
-  const handleSetNextSessionDate = () => {
-    if (!nextSessionDate) {
-      dispatch(
-        showAlert({
-          message: '請選擇有效的日期和時間',
-          severity: 'warning'
-        })
-      );
-      return;
-    }
-
-    dispatch(setNextSessionDate(nextSessionDate.toISOString()))
-      .unwrap()
-      .then(() => {
+  const handleSetNextSessionDate = async () => {
+    try {
+      console.log('開始設置下次辦事時間:', nextSessionDate);
+      
+      if (!nextSessionDate) {
         dispatch(
           showAlert({
-            message: '下次辦事時間設置成功',
-            severity: 'success'
+            message: '請選擇有效的日期和時間',
+            severity: 'warning'
           })
         );
-        // 重新載入系統設定以確保狀態同步
-        dispatch(getQueueStatus());
-      })
-      .catch((error) => {
+        return;
+      }
+
+      // 檢查日期是否有效
+      if (isNaN(nextSessionDate.getTime())) {
         dispatch(
           showAlert({
-            message: error,
+            message: '無效的日期格式',
             severity: 'error'
           })
         );
-      });
+        return;
+      }
+
+      const isoDateString = nextSessionDate.toISOString();
+      console.log('轉換為ISO字符串:', isoDateString);
+
+      const result = await dispatch(setNextSessionDate(isoDateString)).unwrap();
+      console.log('設置成功，結果:', result);
+      
+      dispatch(
+        showAlert({
+          message: '下次辦事時間設置成功',
+          severity: 'success'
+        })
+      );
+      
+      // 重新載入系統設定以確保狀態同步
+      await dispatch(getQueueStatus()).unwrap();
+      console.log('系統設定重新載入完成');
+      
+    } catch (error) {
+      console.error('設置下次辦事時間失敗:', error);
+      dispatch(
+        showAlert({
+          message: typeof error === 'string' ? error : error?.message || '設置下次辦事時間失敗',
+          severity: 'error'
+        })
+      );
+    }
   };
 
   // 處理日期選擇變更
@@ -268,7 +288,12 @@ const AdminSettingsPage = () => {
                     label="選擇日期和時間"
                     value={nextSessionDate}
                     onChange={handleDateChange}
-                    renderInput={(params) => <TextField {...params} fullWidth />}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        variant: 'outlined'
+                      }
+                    }}
                   />
                 </LocalizationProvider>
               </Box>
@@ -277,9 +302,9 @@ const AdminSettingsPage = () => {
                   variant="contained"
                   color="primary"
                   onClick={handleSetNextSessionDate}
-                  disabled={!nextSessionDate}
+                  disabled={!nextSessionDate || isLoading}
                 >
-                  設置下次辦事時間
+                  {isLoading ? '設置中...' : '設置下次辦事時間'}
                 </Button>
               </Box>
               {nextSessionDate && (

@@ -122,11 +122,26 @@ export const setNextSessionDate = createAsyncThunk(
   'queue/setNextSessionDate',
   async (nextSessionDate, { rejectWithValue, getState }) => {
     try {
+      console.log('Redux thunk - 設置下次辦事時間:', nextSessionDate);
       const { token } = getState().auth;
+      if (!token) {
+        throw new Error('未找到認證令牌');
+      }
       const response = await queueService.setNextSessionDate(nextSessionDate, token);
+      console.log('Redux thunk - 設置成功:', response);
       return response;
     } catch (error) {
-      const errorMessage = error?.message || error?.response?.data?.message || '設置下次辦事時間失敗';
+      console.error('Redux thunk - 設置失敗:', error);
+      let errorMessage = '設置下次辦事時間失敗';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
       return rejectWithValue(errorMessage);
     }
   }
