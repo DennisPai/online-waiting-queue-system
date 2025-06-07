@@ -30,9 +30,65 @@ const AdminSettingsPage = () => {
   const dispatch = useDispatch();
   const { queueStatus, isLoading, error } = useSelector((state) => state.queue);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
-  const [nextSessionDate, setNextSessionDate] = useState(new Date());
+  const [nextSessionDateString, setNextSessionDateString] = useState('');
   const [maxQueueNumber, setMaxQueueNumberLocal] = useState(100);
   const [minutesPerCustomer, setMinutesPerCustomerLocal] = useState(13);
+
+  // 安全的日期格式化函數
+  const formatDateForInput = (dateString) => {
+    try {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      // 格式化為 datetime-local input 所需的 YYYY-MM-DDTHH:MM 格式
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hour = String(date.getHours()).padStart(2, '0');
+      const minute = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hour}:${minute}`;
+    } catch (error) {
+      console.warn('格式化日期時發生錯誤:', error);
+      return '';
+    }
+  };
+
+  // 安全的日期顯示函數
+  const formatDateForDisplay = (dateString) => {
+    try {
+      if (!dateString) return '未設定';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '日期格式錯誤';
+      
+      return date.toLocaleString('zh-TW', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        weekday: 'long'
+      });
+    } catch (error) {
+      console.warn('顯示日期時發生錯誤:', error);
+      return '日期格式錯誤';
+    }
+  };
+
+  // 安全的日期驗證函數
+  const isValidFutureDate = (dateString) => {
+    try {
+      if (!dateString) return false;
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return false;
+      
+      const now = new Date();
+      return date > now;
+    } catch (error) {
+      console.warn('驗證日期時發生錯誤:', error);
+      return false;
+    }
+  };
 
   // 加載系統設置
   useEffect(() => {
@@ -40,24 +96,16 @@ const AdminSettingsPage = () => {
       .unwrap()
       .then((result) => {
         setIsQueueOpen(result.isOpen);
+        
+        // 安全處理下次辦事時間
         if (result.nextSessionDate) {
-          try {
-            const date = new Date(result.nextSessionDate);
-            // 檢查日期是否有效
-            if (!isNaN(date.getTime())) {
-              setNextSessionDate(date);
-            } else {
-              console.warn('無效的下次辦事時間:', result.nextSessionDate);
-              setNextSessionDate(new Date());
-            }
-          } catch (error) {
-            console.warn('解析下次辦事時間時發生錯誤:', error);
-            setNextSessionDate(new Date());
-          }
+          setNextSessionDateString(result.nextSessionDate);
         }
+        
         if (result.maxQueueNumber) {
           setMaxQueueNumberLocal(result.maxQueueNumber);
         }
+        
         if (result.minutesPerCustomer) {
           setMinutesPerCustomerLocal(result.minutesPerCustomer);
         }
@@ -100,7 +148,7 @@ const AdminSettingsPage = () => {
   // 處理設置下次辦事時間
   const handleSetNextSessionDate = async () => {
     try {
-      if (!nextSessionDate) {
+      if (!nextSessionDateString) {
         dispatch(
           showAlert({
             message: '請選擇有效的日期和時間',
@@ -110,34 +158,28 @@ const AdminSettingsPage = () => {
         return;
       }
 
-      let dateObj;
+      // 多層驗證確保日期有效性
+      if (!isValidFutureDate(nextSessionDateString)) {
+        dispatch(
+          showAlert({
+            message: '下次辦事時間必須晚於現在時間',
+            severity: 'warning'
+          })
+        );
+        return;
+      }
+
+      // 轉換為ISO字符串用於API調用
       let isoString;
-
       try {
-        // 安全地處理Date對象
-        dateObj = typeof nextSessionDate === 'string' ? new Date(nextSessionDate) : nextSessionDate;
-        
-        if (!dateObj || isNaN(dateObj.getTime())) {
-          throw new Error('無效的日期');
+        const dateObj = new Date(nextSessionDateString);
+        if (isNaN(dateObj.getTime())) {
+          throw new Error('無效的日期格式');
         }
-
-        // 驗證日期不能是過去的時間
-        const now = new Date();
-        if (dateObj < now) {
-          dispatch(
-            showAlert({
-              message: '下次辦事時間不能早於現在時間',
-              severity: 'warning'
-            })
-          );
-          return;
-        }
-
         isoString = dateObj.toISOString();
         console.log('準備設置時間:', isoString);
-
       } catch (dateError) {
-        console.error('日期處理錯誤:', dateError);
+        console.error('日期轉換錯誤:', dateError);
         dispatch(
           showAlert({
             message: '日期格式無效，請重新選擇',
@@ -147,6 +189,7 @@ const AdminSettingsPage = () => {
         return;
       }
 
+      // 調用API設置時間
       const result = await dispatch(setNextSessionDate(isoString)).unwrap();
       console.log('設置時間成功:', result);
       
@@ -167,7 +210,27 @@ const AdminSettingsPage = () => {
     }
   };
 
-
+  // 處理日期時間輸入變更
+  const handleDateTimeChange = (event) => {
+    const value = event.target.value;
+    console.log('日期時間變更:', value);
+    
+    if (value) {
+      try {
+        // 驗證輸入的日期時間格式
+        const dateObj = new Date(value);
+        if (!isNaN(dateObj.getTime())) {
+          setNextSessionDateString(dateObj.toISOString());
+        } else {
+          console.warn('無效的日期時間:', value);
+        }
+      } catch (error) {
+        console.error('解析日期時間錯誤:', error);
+      }
+    } else {
+      setNextSessionDateString('');
+    }
+  };
 
   // 處理設定最大候位上限
   const handleSetMaxQueueNumber = () => {
@@ -303,38 +366,8 @@ const AdminSettingsPage = () => {
                 <TextField
                   label="選擇日期和時間"
                   type="datetime-local"
-                  value={nextSessionDate ? (() => {
-                    try {
-                      const dateObj = typeof nextSessionDate === 'string' ? new Date(nextSessionDate) : nextSessionDate;
-                      if (dateObj && !isNaN(dateObj.getTime())) {
-                        // 格式化為 datetime-local input 格式 (YYYY-MM-DDTHH:MM)
-                        const year = dateObj.getFullYear();
-                        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                        const day = String(dateObj.getDate()).padStart(2, '0');
-                        const hour = String(dateObj.getHours()).padStart(2, '0');
-                        const minute = String(dateObj.getMinutes()).padStart(2, '0');
-                        return `${year}-${month}-${day}T${hour}:${minute}`;
-                      }
-                    } catch (error) {
-                      console.warn('格式化日期時發生錯誤:', error);
-                    }
-                    return '';
-                  })() : ''}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    if (value) {
-                      try {
-                        const dateObj = new Date(value);
-                        if (!isNaN(dateObj.getTime())) {
-                          setNextSessionDate(dateObj);
-                        }
-                      } catch (error) {
-                        console.warn('解析日期時發生錯誤:', error);
-                      }
-                    } else {
-                      setNextSessionDate(null);
-                    }
-                  }}
+                  value={formatDateForInput(nextSessionDateString)}
+                  onChange={handleDateTimeChange}
                   fullWidth
                   InputLabelProps={{
                     shrink: true,
@@ -347,40 +380,15 @@ const AdminSettingsPage = () => {
                   variant="contained"
                   color="primary"
                   onClick={handleSetNextSessionDate}
-                  disabled={!nextSessionDate || (() => {
-                    try {
-                      const dateObj = typeof nextSessionDate === 'string' ? new Date(nextSessionDate) : nextSessionDate;
-                      return isNaN(dateObj.getTime());
-                    } catch {
-                      return true;
-                    }
-                  })()}
+                  disabled={!nextSessionDateString || !isValidFutureDate(nextSessionDateString)}
                 >
                   設置下次辦事時間
                 </Button>
               </Box>
-              {nextSessionDate && (
+              {nextSessionDateString && (
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="info">
-                    您設置的下次辦事時間是：
-                    {(() => {
-                      try {
-                        const dateObj = typeof nextSessionDate === 'string' ? new Date(nextSessionDate) : nextSessionDate;
-                        if (!isNaN(dateObj.getTime())) {
-                          return dateObj.toLocaleString('zh-TW', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            weekday: 'long'
-                          });
-                        }
-                        return '日期格式錯誤';
-                      } catch (error) {
-                        return '日期格式錯誤';
-                      }
-                    })()}
+                    您設置的下次辦事時間是：{formatDateForDisplay(nextSessionDateString)}
                   </Alert>
                 </Box>
               )}
@@ -468,64 +476,36 @@ const AdminSettingsPage = () => {
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="body2" color="text.secondary">
-                        候位系統狀態
+                        目前叫號
                       </Typography>
-                      <Typography variant="body1">
-                        {queueStatus.isOpen ? '開啟' : '關閉'}
+                      <Typography variant="h6">
+                        {queueStatus.currentNumber || '無'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        等待人數
+                      </Typography>
+                      <Typography variant="h6">
+                        {queueStatus.waitingCount || 0} 人
                       </Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="body2" color="text.secondary">
                         下次辦事時間
                       </Typography>
-                      <Typography variant="body1">
-                        {queueStatus.nextSessionDate
-                          ? new Date(queueStatus.nextSessionDate).toLocaleString('zh-TW', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })
-                          : '尚未設置'}
+                      <Typography variant="h6">
+                        {formatDateForDisplay(queueStatus.nextSessionDate)}
                       </Typography>
                     </Grid>
-                    {queueStatus.isOpen && (
-                      <>
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" color="text.secondary">
-                            目前叫號
-                          </Typography>
-                          <Typography variant="body1">
-                            {queueStatus.currentQueueNumber || 0}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" color="text.secondary">
-                            等待人數
-                          </Typography>
-                          <Typography variant="body1">
-                            {queueStatus.waitingCount || 0} 人
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" color="text.secondary">
-                            最大候位上限
-                          </Typography>
-                          <Typography variant="body1">
-                            {queueStatus.maxQueueNumber || 100} 人
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" color="text.secondary">
-                            每位客戶預估處理時間
-                          </Typography>
-                          <Typography variant="body1">
-                            {queueStatus.minutesPerCustomer || 13} 分鐘
-                          </Typography>
-                        </Grid>
-                      </>
-                    )}
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        系統狀態
+                      </Typography>
+                      <Typography variant="h6" color={queueStatus.isOpen ? 'success.main' : 'error.main'}>
+                        {queueStatus.isOpen ? '開啟' : '關閉'}
+                      </Typography>
+                    </Grid>
                   </Grid>
                 </CardContent>
               </Card>
