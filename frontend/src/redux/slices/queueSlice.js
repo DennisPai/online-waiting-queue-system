@@ -122,11 +122,25 @@ export const setNextSessionDate = createAsyncThunk(
   'queue/setNextSessionDate',
   async (nextSessionDate, { rejectWithValue, getState }) => {
     try {
-      const { token } = getState().auth;
-      const response = await queueService.setNextSessionDate(nextSessionDate, token);
-      return response.data;
+      const authState = getState().auth;
+      console.log('Redux setNextSessionDate: auth state:', { 
+        hasToken: !!authState.token, 
+        user: authState.user ? authState.user.username : '無用戶' 
+      });
+      
+      if (!authState.token) {
+        console.error('Redux setNextSessionDate: 缺少認證token');
+        return rejectWithValue('用戶未登入或認證已過期，請重新登入');
+      }
+
+      console.log('Redux setNextSessionDate: 準備調用API service，數據:', nextSessionDate);
+      const response = await queueService.setNextSessionDate(nextSessionDate, authState.token);
+      console.log('Redux setNextSessionDate: API調用成功，回應:', response);
+      return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || '設置下次辦事時間失敗');
+      console.error('Redux setNextSessionDate: 錯誤:', error);
+      const errorMessage = error?.message || error?.response?.data?.message || '設置下次辦事時間失敗';
+      return rejectWithValue(errorMessage);
     }
   }
 );

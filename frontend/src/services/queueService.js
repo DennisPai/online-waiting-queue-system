@@ -138,17 +138,32 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
 
 // 設置下次辦事時間
 const setNextSessionDate = async (nextSessionDate, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/settings/nextSession`,
-    { nextSessionDate },
-    config
-  );
-  return response.data;
+  try {
+    console.log('queueService.setNextSessionDate 調用:', { nextSessionDate, token: token ? '已提供' : '未提供' });
+    
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    
+    const url = `${ADMIN_API_URL}/settings/nextSession`;
+    console.log('API請求URL:', url);
+    console.log('請求數據:', { nextSessionDate });
+    
+    const response = await axios.put(url, { nextSessionDate }, config);
+    
+    console.log('API回應:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('setNextSessionDate API錯誤:', {
+      error: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      url: `${ADMIN_API_URL}/settings/nextSession`
+    });
+    throw error.response?.data || error;
+  }
 };
 
 // 開關候位功能

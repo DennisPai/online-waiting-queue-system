@@ -107,6 +107,8 @@ const AdminSettingsPage = () => {
 
   // 處理設置下次辦事時間
   const handleSetNextSessionDate = async () => {
+    console.log('handleSetNextSessionDate 開始執行，nextSessionDate:', nextSessionDate);
+    
     if (!nextSessionDate) {
       dispatch(
         showAlert({
@@ -117,22 +119,37 @@ const AdminSettingsPage = () => {
       return;
     }
 
-    // 驗證日期是否有效
-    if (isNaN(nextSessionDate.getTime())) {
+    // 更安全的日期驗證
+    let dateToSet;
+    try {
+      if (nextSessionDate instanceof Date) {
+        if (isNaN(nextSessionDate.getTime())) {
+          throw new Error('Invalid Date object');
+        }
+        dateToSet = nextSessionDate;
+      } else {
+        dateToSet = new Date(nextSessionDate);
+        if (isNaN(dateToSet.getTime())) {
+          throw new Error('Cannot convert to valid Date');
+        }
+      }
+    } catch (dateError) {
+      console.error('日期驗證失敗:', dateError);
       dispatch(
         showAlert({
-          message: '選擇的日期無效，請重新選擇',
-          severity: 'warning'
+          message: '選擇的日期時間無效，請重新選擇',
+          severity: 'error'
         })
       );
       return;
     }
 
     try {
-      console.log('設置下次辦事時間:', nextSessionDate.toISOString());
+      const isoString = dateToSet.toISOString();
+      console.log('準備設置下次辦事時間:', isoString);
       
-      const result = await dispatch(setNextSessionDate(nextSessionDate.toISOString())).unwrap();
-      console.log('設置下次辦事時間成功:', result);
+      const result = await dispatch(setNextSessionDate(isoString)).unwrap();
+      console.log('設置下次辦事時間成功，結果:', result);
       
       dispatch(
         showAlert({
@@ -142,12 +159,16 @@ const AdminSettingsPage = () => {
       );
       
       // 重新載入系統設定以確保顯示最新狀態
-      setTimeout(() => {
-        dispatch(getQueueStatus());
+      setTimeout(async () => {
+        try {
+          await dispatch(getQueueStatus()).unwrap();
+        } catch (reloadError) {
+          console.error('重新載入系統設定失敗:', reloadError);
+        }
       }, 500);
       
     } catch (error) {
-      console.error('設置下次辦事時間失敗:', error);
+      console.error('設置下次辦事時間失敗，詳細錯誤:', error);
       dispatch(
         showAlert({
           message: typeof error === 'string' ? error : error.message || '設置下次辦事時間失敗',
@@ -311,8 +332,8 @@ const AdminSettingsPage = () => {
                     slotProps={{
                       textField: {
                         fullWidth: true,
-                        error: nextSessionDate && isNaN(nextSessionDate.getTime()),
-                        helperText: nextSessionDate && isNaN(nextSessionDate.getTime()) ? '無效的日期格式' : ''
+                        error: nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate.getTime())),
+                        helperText: nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate.getTime())) ? '無效的日期格式' : ''
                       }
                     }}
                   />
@@ -328,7 +349,7 @@ const AdminSettingsPage = () => {
                   設置下次辦事時間
                 </Button>
               </Box>
-              {nextSessionDate && !isNaN(nextSessionDate.getTime()) && (
+              {nextSessionDate && (nextSessionDate instanceof Date) && !isNaN(nextSessionDate.getTime()) && (
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="info">
                     您設置的下次辦事時間是：
@@ -351,7 +372,7 @@ const AdminSettingsPage = () => {
                 </Box>
               )}
               
-              {nextSessionDate && isNaN(nextSessionDate.getTime()) && (
+              {nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate.getTime())) && (
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="error">
                     日期格式無效，請重新選擇日期時間
