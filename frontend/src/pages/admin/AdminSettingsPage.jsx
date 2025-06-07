@@ -45,15 +45,30 @@ const AdminSettingsPage = () => {
         
         setIsQueueOpen(result.isOpen);
         
-        // 安全處理 nextSessionDate
+        // 更安全的日期處理
         if (result.nextSessionDate) {
-          const date = new Date(result.nextSessionDate);
-          // 檢查日期是否有效
-          if (!isNaN(date.getTime())) {
-            setNextSessionDate(date);
-            console.log('成功設定下次辦事時間:', date);
-          } else {
-            console.warn('無效的下次辦事時間格式:', result.nextSessionDate);
+          try {
+            let date;
+            if (result.nextSessionDate instanceof Date) {
+              date = result.nextSessionDate;
+            } else if (typeof result.nextSessionDate === 'string' || typeof result.nextSessionDate === 'number') {
+              date = new Date(result.nextSessionDate);
+            } else {
+              console.warn('無法識別的日期格式:', result.nextSessionDate);
+              setNextSessionDate(null);
+              return;
+            }
+            
+            // 檢查日期是否有效
+            if (date && !isNaN(date.getTime()) && date.getTime() > 0) {
+              setNextSessionDate(date);
+              console.log('成功設定下次辦事時間:', date);
+            } else {
+              console.warn('無效的下次辦事時間:', result.nextSessionDate);
+              setNextSessionDate(null);
+            }
+          } catch (dateError) {
+            console.error('日期解析錯誤:', dateError, '原始值:', result.nextSessionDate);
             setNextSessionDate(null);
           }
         } else {
@@ -106,45 +121,53 @@ const AdminSettingsPage = () => {
   };
 
   // 處理設置下次辦事時間
-  const handleSetNextSessionDate = async () => {
+  const handleSetNextSessionDate = React.useCallback(async () => {
     console.log('handleSetNextSessionDate 開始執行，nextSessionDate:', nextSessionDate);
     
-    if (!nextSessionDate) {
-      dispatch(
-        showAlert({
-          message: '請選擇有效的日期和時間',
-          severity: 'warning'
-        })
-      );
+    // 防止重複執行
+    if (queueStatus.isLoading) {
+      console.log('已有操作進行中，跳過');
       return;
     }
-
-    // 更安全的日期驗證
-    let dateToSet;
+    
     try {
-      if (nextSessionDate instanceof Date) {
-        if (isNaN(nextSessionDate.getTime())) {
-          throw new Error('Invalid Date object');
-        }
-        dateToSet = nextSessionDate;
-      } else {
-        dateToSet = new Date(nextSessionDate);
-        if (isNaN(dateToSet.getTime())) {
-          throw new Error('Cannot convert to valid Date');
-        }
+      if (!nextSessionDate) {
+        dispatch(
+          showAlert({
+            message: '請選擇有效的日期和時間',
+            severity: 'warning'
+          })
+        );
+        return;
       }
-    } catch (dateError) {
-      console.error('日期驗證失敗:', dateError);
-      dispatch(
-        showAlert({
-          message: '選擇的日期時間無效，請重新選擇',
-          severity: 'error'
-        })
-      );
-      return;
-    }
 
-    try {
+      // 更強的日期驗證
+      let dateToSet;
+      try {
+        if (nextSessionDate instanceof Date) {
+          if (isNaN(nextSessionDate.getTime()) || nextSessionDate.getTime() <= 0) {
+            throw new Error('Invalid Date object');
+          }
+          dateToSet = nextSessionDate;
+        } else {
+          dateToSet = new Date(nextSessionDate);
+          if (isNaN(dateToSet.getTime()) || dateToSet.getTime() <= 0) {
+            throw new Error('Cannot convert to valid Date');
+          }
+        }
+      } catch (dateError) {
+        console.error('日期驗證失敗:', dateError);
+        dispatch(
+          showAlert({
+            message: '選擇的日期時間無效，請重新選擇',
+            severity: 'error'
+          })
+        );
+        // 清空無效日期以防後續問題
+        setNextSessionDate(null);
+        return;
+      }
+
       const isoString = dateToSet.toISOString();
       console.log('準備設置下次辦事時間:', isoString);
       
@@ -169,6 +192,10 @@ const AdminSettingsPage = () => {
       
     } catch (error) {
       console.error('設置下次辦事時間失敗，詳細錯誤:', error);
+      
+      // 清理狀態以防止持續錯誤
+      setNextSessionDate(null);
+      
       dispatch(
         showAlert({
           message: typeof error === 'string' ? error : error.message || '設置下次辦事時間失敗',
@@ -176,7 +203,7 @@ const AdminSettingsPage = () => {
         })
       );
     }
-  };
+  }, [nextSessionDate, queueStatus.isLoading, dispatch]);
 
   // 處理日期選擇變更
   const handleDateChange = (newDate) => {
@@ -354,6 +381,12 @@ const AdminSettingsPage = () => {
                         fullWidth: true,
                         error: nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate?.getTime?.() || 0)),
                         helperText: nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate?.getTime?.() || 0)) ? '無效的日期格式' : ''
+                      }
+                    }}
+                    onError={(error) => {
+                      console.warn('DateTimePicker 錯誤:', error);
+                      if (error) {
+                        setNextSessionDate(null);
                       }
                     }}
                   />

@@ -437,23 +437,49 @@ const queueSlice = createSlice({
       })
       .addCase(setNextSessionDate.fulfilled, (state, action) => {
         state.isLoading = false;
+        state.error = null;
         
-        // 更安全的數據提取
-        const newNextSessionDate = action.payload?.data?.nextSessionDate || action.payload?.nextSessionDate;
-        
-        // 驗證日期有效性
-        if (newNextSessionDate) {
-          const date = new Date(newNextSessionDate);
-          if (!isNaN(date.getTime())) {
-            state.nextSessionDate = newNextSessionDate;
-            state.queueStatus = {
-              ...state.queueStatus,
-              nextSessionDate: newNextSessionDate
-            };
-            console.log('Redux: 成功更新下次辦事時間:', newNextSessionDate);
+        try {
+          // 更安全的數據提取
+          const responseData = action.payload;
+          const newNextSessionDate = responseData?.data?.nextSessionDate || 
+                                     responseData?.nextSessionDate || 
+                                     responseData?.setting?.nextSessionDate;
+          
+          console.log('Redux setNextSessionDate.fulfilled: 原始響應:', responseData);
+          console.log('Redux setNextSessionDate.fulfilled: 提取的日期:', newNextSessionDate);
+          
+          // 驗證日期有效性
+          if (newNextSessionDate) {
+            let validDate;
+            try {
+              validDate = new Date(newNextSessionDate);
+            } catch (error) {
+              console.error('Redux: 日期創建失敗:', error);
+              return;
+            }
+            
+            if (!isNaN(validDate.getTime()) && validDate.getTime() > 0) {
+              // 使用 Immer 的安全更新方式
+              state.nextSessionDate = newNextSessionDate;
+              
+              // 確保 queueStatus 存在
+              if (!state.queueStatus) {
+                state.queueStatus = {};
+              }
+              
+              state.queueStatus.nextSessionDate = newNextSessionDate;
+              
+              console.log('Redux: 成功更新下次辦事時間:', newNextSessionDate);
+            } else {
+              console.warn('Redux: 接收到無效的日期格式:', newNextSessionDate);
+            }
           } else {
-            console.warn('Redux: 接收到無效的日期格式:', newNextSessionDate);
+            console.log('Redux: 未收到有效的下次辦事時間數據');
           }
+        } catch (error) {
+          console.error('Redux setNextSessionDate.fulfilled 處理錯誤:', error);
+          state.error = '更新下次辦事時間狀態失敗';
         }
       })
       .addCase(setNextSessionDate.rejected, (state, action) => {
