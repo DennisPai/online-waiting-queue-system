@@ -39,34 +39,78 @@ const AdminSettingsPage = () => {
 
   // 加載系統設置
   useEffect(() => {
-    logger.info('AdminSettingsPage 組件已掛載，開始載入系統設定', null, 'AdminSettingsPage');
+    // 安全的日誌記錄函數
+    const safeLog = (level, message, data) => {
+      try {
+        if (window.logger && window.logger[level]) {
+          window.logger[level](message, data, 'AdminSettingsPage');
+        } else {
+          console[level](`[AdminSettingsPage] ${message}`, data);
+        }
+      } catch (logError) {
+        console.warn('日誌記錄失敗:', logError.message);
+      }
+    };
+
+    safeLog('info', '開始載入系統設定');
     
     dispatch(getQueueStatus())
       .unwrap()
       .then((result) => {
-        logger.info('系統設定載入成功', {
+        safeLog('info', '系統設定載入成功', {
           isOpen: result.isOpen,
           nextSessionDate: result.nextSessionDate,
           maxQueueNumber: result.maxQueueNumber,
           minutesPerCustomer: result.minutesPerCustomer
-        }, 'AdminSettingsPage');
+        });
         
+        // 設置候位系統狀態
         setIsQueueOpen(result.isOpen);
+        
+        // 安全地處理下次辦事時間
         if (result.nextSessionDate) {
-          setNextSessionDate(new Date(result.nextSessionDate));
+          try {
+            const dateValue = new Date(result.nextSessionDate);
+            
+            // 檢查日期是否有效
+            if (!isNaN(dateValue.getTime())) {
+              setNextSessionDate(dateValue);
+              safeLog('debug', '設定下次辦事時間成功', {
+                originalValue: result.nextSessionDate,
+                parsedDate: dateValue.toISOString()
+              });
+            } else {
+              safeLog('warn', '下次辦事時間數據無效，忽略設定', {
+                nextSessionDate: result.nextSessionDate
+              });
+              setNextSessionDate(null);
+            }
+          } catch (dateError) {
+            safeLog('error', '解析下次辦事時間失敗', {
+              nextSessionDate: result.nextSessionDate,
+              error: dateError.message
+            });
+            setNextSessionDate(null);
+          }
+        } else {
+          setNextSessionDate(null);
         }
+        
+        // 設置最大候位上限
         if (result.maxQueueNumber) {
           setMaxQueueNumberLocal(result.maxQueueNumber);
         }
+        
+        // 設置每位客戶預估處理時間
         if (result.minutesPerCustomer) {
           setMinutesPerCustomerLocal(result.minutesPerCustomer);
         }
       })
       .catch((error) => {
-        logger.error('系統設定載入失敗', { error }, 'AdminSettingsPage');
+        safeLog('error', '系統設定載入失敗', { error });
         dispatch(
           showAlert({
-            message: error,
+            message: error.message || error || '系統設定載入失敗',
             severity: 'error'
           })
         );
@@ -75,18 +119,31 @@ const AdminSettingsPage = () => {
 
   // 處理開關候位系統
   const handleToggleQueueStatus = () => {
+    // 安全的日誌記錄函數
+    const safeLog = (level, message, data) => {
+      try {
+        if (window.logger && window.logger[level]) {
+          window.logger[level](message, data, 'AdminSettingsPage');
+        } else {
+          console[level](`[AdminSettingsPage] ${message}`, data);
+        }
+      } catch (logError) {
+        console.warn('日誌記錄失敗:', logError.message);
+      }
+    };
+
     const newStatus = !isQueueOpen;
     
-    logger.userAction('切換候位系統狀態', { 
+    safeLog('info', '切換候位系統狀態', { 
       oldStatus: isQueueOpen, 
       newStatus 
-    }, 'AdminSettingsPage');
+    });
     
     dispatch(toggleQueueStatus(newStatus))
       .unwrap()
       .then(() => {
         setIsQueueOpen(newStatus);
-        logger.info('候位系統狀態切換成功', { newStatus }, 'AdminSettingsPage');
+        safeLog('info', '候位系統狀態切換成功', { newStatus });
         dispatch(
           showAlert({
             message: newStatus ? '候位系統已開啟' : '候位系統已關閉',
@@ -95,10 +152,10 @@ const AdminSettingsPage = () => {
         );
       })
       .catch((error) => {
-        logger.error('候位系統狀態切換失敗', { error, newStatus }, 'AdminSettingsPage');
+        safeLog('error', '候位系統狀態切換失敗', { error, newStatus });
         dispatch(
           showAlert({
-            message: error,
+            message: error.message || error || '切換候位系統狀態失敗',
             severity: 'error'
           })
         );
@@ -107,57 +164,119 @@ const AdminSettingsPage = () => {
 
   // 處理設置下次辦事時間
   const handleSetNextSessionDate = () => {
-    logger.userAction('點擊設定下次辦事時間按鈕', {
-      nextSessionDate: nextSessionDate ? nextSessionDate.toISOString() : null
-    }, 'AdminSettingsPage');
-
-    // 參數驗證
-    if (!nextSessionDate) {
-      logger.warn('設定下次辦事時間失敗：日期為空', null, 'AdminSettingsPage');
-      dispatch(
-        showAlert({
-          message: '請選擇有效的日期和時間',
-          severity: 'warning'
-        })
-      );
-      return;
-    }
-
-    // 日期有效性檢查
     try {
-      const testDate = new Date(nextSessionDate);
-      if (isNaN(testDate.getTime())) {
-        throw new Error('無效的日期對象');
-      }
-      
-      const isoDateString = testDate.toISOString();
-      
-      logger.info('準備發送設定下次辦事時間請求', {
-        originalDate: nextSessionDate,
-        testDate: testDate,
-        isoString: isoDateString,
-        timestamp: new Date().toISOString()
-      }, 'AdminSettingsPage');
+      // 使用安全的日誌記錄
+      const logUserAction = (message, data) => {
+        if (window.logger) {
+          window.logger.userAction(message, data, 'AdminSettingsPage');
+        } else {
+          console.log(`[AdminSettingsPage] ${message}`, data);
+        }
+      };
 
-      // 使用 try-catch 包裝整個 dispatch 調用
+      const logInfo = (message, data) => {
+        if (window.logger) {
+          window.logger.info(message, data, 'AdminSettingsPage');
+        } else {
+          console.log(`[AdminSettingsPage] ${message}`, data);
+        }
+      };
+
+      const logError = (message, data) => {
+        if (window.logger) {
+          window.logger.error(message, data, 'AdminSettingsPage');
+        } else {
+          console.error(`[AdminSettingsPage] ${message}`, data);
+        }
+      };
+
+      // 安全地記錄用戶操作
+      try {
+        logUserAction('點擊設定下次辦事時間按鈕', {
+          nextSessionDate: nextSessionDate ? nextSessionDate.toISOString() : null,
+          hasValidDate: nextSessionDate instanceof Date && !isNaN(nextSessionDate.getTime())
+        });
+      } catch (logError) {
+        console.warn('日誌記錄失敗，但繼續執行:', logError.message);
+      }
+
+      // 參數驗證
+      if (!nextSessionDate) {
+        logError('設定下次辦事時間失敗：日期為空', null);
+        dispatch(
+          showAlert({
+            message: '請選擇有效的日期和時間',
+            severity: 'warning'
+          })
+        );
+        return;
+      }
+
+      // 日期有效性檢查
+      let testDate;
+      let isoDateString;
+      
+      try {
+        // 確保 nextSessionDate 是一個有效的 Date 對象
+        if (nextSessionDate instanceof Date) {
+          testDate = nextSessionDate;
+        } else {
+          testDate = new Date(nextSessionDate);
+        }
+        
+        // 檢查日期是否有效
+        if (isNaN(testDate.getTime())) {
+          throw new Error('無效的日期對象');
+        }
+        
+        // 安全地轉換為 ISO 字符串
+        isoDateString = testDate.toISOString();
+        
+        logInfo('日期驗證通過，準備發送設定下次辦事時間請求', {
+          originalDate: nextSessionDate,
+          testDate: testDate,
+          isoString: isoDateString,
+          timestamp: new Date().toISOString()
+        });
+      } catch (dateError) {
+        logError('日期格式錯誤', {
+          nextSessionDate,
+          dateError: {
+            message: dateError.message,
+            stack: dateError.stack
+          },
+          timestamp: new Date().toISOString()
+        });
+        
+        dispatch(
+          showAlert({
+            message: '日期格式錯誤：' + dateError.message,
+            severity: 'error'
+          })
+        );
+        return;
+      }
+
+      // 使用 Promise.resolve 包裝整個 dispatch 調用，確保錯誤捕獲
       Promise.resolve()
         .then(() => {
-          logger.debug('開始 dispatch setNextSessionDate', { isoDateString }, 'AdminSettingsPage');
+          logInfo('開始 dispatch setNextSessionDate', { isoDateString });
           return dispatch(setNextSessionDate(isoDateString));
         })
         .then((action) => {
-          logger.debug('dispatch setNextSessionDate 完成', { action }, 'AdminSettingsPage');
-          return action;
-        })
-        .then((action) => {
-          // 使用 unwrap 處理結果
+          logInfo('dispatch setNextSessionDate 完成', { 
+            actionType: action.type,
+            actionPayload: action.payload 
+          });
+          
+          // 檢查 action 結果
           if (action.type.endsWith('/fulfilled')) {
             // 成功情況
-            logger.info('設定下次辦事時間成功', {
+            logInfo('設定下次辦事時間成功', {
               requestDate: isoDateString,
               actionPayload: action.payload,
               timestamp: new Date().toISOString()
-            }, 'AdminSettingsPage');
+            });
             
             dispatch(
               showAlert({
@@ -167,7 +286,7 @@ const AdminSettingsPage = () => {
             );
             
             // 強制重新載入系統狀態
-            logger.debug('重新載入系統狀態', null, 'AdminSettingsPage');
+            logInfo('重新載入系統狀態');
             dispatch(getQueueStatus());
           } else if (action.type.endsWith('/rejected')) {
             // 失敗情況
@@ -175,8 +294,8 @@ const AdminSettingsPage = () => {
           }
         })
         .catch((error) => {
-          logger.error('設定下次辦事時間失敗', {
-            requestDate: isoDateString,
+          logError('設定下次辦事時間失敗', {
+            requestDate: isoDateString || 'N/A',
             error: {
               message: error.message || error,
               stack: error.stack,
@@ -184,7 +303,7 @@ const AdminSettingsPage = () => {
               name: error.name
             },
             timestamp: new Date().toISOString()
-          }, 'AdminSettingsPage');
+          });
           
           const errorMessage = error.message || error || '設定下次辦事時間失敗';
           
@@ -195,20 +314,13 @@ const AdminSettingsPage = () => {
             })
           );
         });
-    } catch (dateError) {
-      // 日期格式錯誤
-      logger.error('日期格式錯誤', {
-        nextSessionDate,
-        dateError: {
-          message: dateError.message,
-          stack: dateError.stack
-        },
-        timestamp: new Date().toISOString()
-      }, 'AdminSettingsPage');
+    } catch (outerError) {
+      // 最外層錯誤捕獲
+      console.error('handleSetNextSessionDate 最外層錯誤:', outerError);
       
       dispatch(
         showAlert({
-          message: '日期格式錯誤：' + dateError.message,
+          message: '系統錯誤：' + outerError.message,
           severity: 'error'
         })
       );
@@ -217,12 +329,42 @@ const AdminSettingsPage = () => {
 
   // 處理日期選擇變更
   const handleDateChange = (newDate) => {
-    logger.debug('日期選擇變更', {
-      oldDate: nextSessionDate ? nextSessionDate.toISOString() : null,
-      newDate: newDate ? newDate.toISOString() : null
-    }, 'AdminSettingsPage');
-    
-    setNextSessionDate(newDate);
+    try {
+      // 安全的日誌記錄
+      const logDebug = (message, data) => {
+        if (window.logger) {
+          window.logger.debug(message, data, 'AdminSettingsPage');
+        } else {
+          console.log(`[AdminSettingsPage] ${message}`, data);
+        }
+      };
+
+      // 安全地處理日期轉換
+      const safeGetISOString = (date) => {
+        try {
+          if (!date) return null;
+          if (date instanceof Date && !isNaN(date.getTime())) {
+            return date.toISOString();
+          }
+          return null;
+        } catch (error) {
+          console.warn('日期轉換失敗:', error);
+          return null;
+        }
+      };
+
+      logDebug('日期選擇變更', {
+        oldDate: safeGetISOString(nextSessionDate),
+        newDate: safeGetISOString(newDate),
+        newDateValid: newDate instanceof Date && !isNaN(newDate.getTime())
+      });
+      
+      setNextSessionDate(newDate);
+    } catch (error) {
+      console.error('handleDateChange 錯誤:', error);
+      // 即使日誌記錄失敗，也要更新狀態
+      setNextSessionDate(newDate);
+    }
   };
 
   // 處理設定最大候位上限

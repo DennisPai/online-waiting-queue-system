@@ -142,6 +142,31 @@ const setNextSessionDate = async (nextSessionDate, token) => {
   const method = 'PUT';
   const url = `${ADMIN_API_URL}/settings/nextSession`;
   
+  // 安全的日誌記錄函數
+  const safeLogger = {
+    apiRequest: (method, url, data, component) => {
+      if (window.logger) {
+        window.logger.apiRequest(method, url, data, component);
+      } else {
+        console.log(`[${component}] API請求: ${method} ${url}`, data);
+      }
+    },
+    apiResponse: (method, url, data, component) => {
+      if (window.logger) {
+        window.logger.apiResponse(method, url, data, component);
+      } else {
+        console.log(`[${component}] API響應: ${method} ${url}`, data);
+      }
+    },
+    apiError: (method, url, error, component) => {
+      if (window.logger) {
+        window.logger.apiError(method, url, error, component);
+      } else {
+        console.error(`[${component}] API錯誤: ${method} ${url}`, error);
+      }
+    }
+  };
+  
   try {
     // 參數驗證
     if (!nextSessionDate) {
@@ -168,7 +193,7 @@ const setNextSessionDate = async (nextSessionDate, token) => {
       timestamp: new Date().toISOString()
     });
     
-    logger.apiRequest(method, url, data, 'queueService');
+    safeLogger.apiRequest(method, url, data, 'queueService');
     
     const config = {
       headers: {
@@ -205,7 +230,7 @@ const setNextSessionDate = async (nextSessionDate, token) => {
       throw new Error(response.data.message || 'API 操作失敗');
     }
     
-    logger.apiResponse(method, url, response.data, 'queueService');
+    safeLogger.apiResponse(method, url, response.data, 'queueService');
     
     console.log('queueService setNextSessionDate 成功完成:', {
       responseData: response.data,
@@ -230,7 +255,7 @@ const setNextSessionDate = async (nextSessionDate, token) => {
       timestamp: new Date().toISOString()
     });
     
-    logger.apiError(method, url, error, 'queueService');
+    safeLogger.apiError(method, url, error, 'queueService');
     
     // 根據不同類型的錯誤提供相應的錯誤訊息
     let errorMessage = '設置下次辦事時間失敗';
