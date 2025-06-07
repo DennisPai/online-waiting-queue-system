@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ENDPOINTS } from '../config/api';
 
 // 根據環境決定API基礎URL
 const getApiBaseUrl = () => {
@@ -18,34 +19,54 @@ const ADMIN_API_URL = `${API_BASE_URL}/api/admin`;
 
 // 獲取候位狀態
 const getQueueStatus = async () => {
-  const response = await axios.get(`${API_URL}/status`);
-  return response.data;
+  try {
+    const response = await axios.get(`${API_ENDPOINTS.QUEUE}/status`);
+    return response.data;
+  } catch (error) {
+    console.error('獲取候位狀態錯誤:', error);
+    throw error;
+  }
 };
 
 // 登記候位
 const registerQueue = async (queueData) => {
-  const response = await axios.post(`${API_URL}/register`, queueData);
-  return response.data;
+  try {
+    const response = await axios.post(`${API_ENDPOINTS.QUEUE}/register`, queueData);
+    return response.data;
+  } catch (error) {
+    console.error('登記候位錯誤:', error);
+    throw error;
+  }
 };
 
 // 獲取特定候位號碼的狀態
 const getQueueNumberStatus = async (queueNumber) => {
-  const response = await axios.get(`${API_URL}/status/${queueNumber}`);
-  return response.data;
+  try {
+    const response = await axios.get(`${API_ENDPOINTS.QUEUE}/status/${queueNumber}`);
+    return response.data;
+  } catch (error) {
+    console.error('獲取候位號碼狀態錯誤:', error);
+    throw error;
+  }
 };
 
 // 通過姓名和電話查詢候位號碼
 const searchQueueByNameAndPhone = async (name, phone) => {
-  const response = await axios.get(`${API_URL}/search`, {
-    params: { name, phone }
-  });
-  return response.data;
+  try {
+    const response = await axios.get(`${API_ENDPOINTS.QUEUE}/search`, {
+      params: { name, phone }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('查詢候位號碼錯誤:', error);
+    throw error;
+  }
 };
 
 // 獲取排序的候位號碼（公共API）
 const getPublicOrderedNumbers = async () => {
   try {
-    const response = await axios.get(`${API_URL}/ordered-numbers`);
+    const response = await axios.get(`${API_ENDPOINTS.QUEUE}/ordered-numbers`);
     return response.data;
   } catch (error) {
     console.error('獲取公共排序候位號碼錯誤:', error);
@@ -61,7 +82,7 @@ const getOrderedQueueNumbers = async (token) => {
     }
   };
   try {
-    const response = await axios.get(`${ADMIN_API_URL}/queue/ordered-numbers`, config);
+    const response = await axios.get(`${API_ENDPOINTS.ADMIN}/queue/ordered-numbers`, config);
     return response.data;
   } catch (error) {
     console.error('獲取順序客戶號碼錯誤:', error);
@@ -73,40 +94,55 @@ const getOrderedQueueNumbers = async (token) => {
 
 // 獲取候位列表
 const getQueueList = async (params = {}, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    },
-    params
-  };
-  const response = await axios.get(`${ADMIN_API_URL}/queue/list`, config);
-  return response.data;
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      params
+    };
+    const response = await axios.get(`${API_ENDPOINTS.ADMIN}/queue/list`, config);
+    return response.data;
+  } catch (error) {
+    console.error('獲取候位列表錯誤:', error);
+    throw error;
+  }
 };
 
 // 呼叫下一位
 const callNextQueue = async (token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  };
-  const response = await axios.put(`${ADMIN_API_URL}/queue/next`, {}, config);
-  return response.data;
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.put(`${API_ENDPOINTS.ADMIN}/queue/next`, {}, config);
+    return response.data;
+  } catch (error) {
+    console.error('呼叫下一位錯誤:', error);
+    throw error;
+  }
 };
 
 // 更新候位狀態
 const updateQueueStatus = async (queueId, status, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/queue/${queueId}/status`,
-    { status },
-    config
-  );
-  return response.data;
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.put(
+      `${API_ENDPOINTS.ADMIN}/queue/${queueId}/status`,
+      { status },
+      config
+    );
+    return response.data;
+  } catch (error) {
+    console.error('更新候位狀態錯誤:', error);
+    throw error;
+  }
 };
 
 // 更新候位順序
@@ -118,7 +154,7 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
       }
     };
     const response = await axios.put(
-      `${ADMIN_API_URL}/queue/updateOrder`,
+      `${API_ENDPOINTS.ADMIN}/queue/updateOrder`,
       { queueId, newOrder },
       config
     );
@@ -138,113 +174,145 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
 
 // 設置下次辦事時間
 const setNextSessionDate = async (nextSessionDate, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/settings/nextSession`,
-    { nextSessionDate },
-    config
-  );
-  return response.data;
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.put(
+      `${API_ENDPOINTS.ADMIN}/settings/nextSession`,
+      { nextSessionDate },
+      config
+    );
+    return response.data;
+  } catch (error) {
+    console.error('設置下次辦事時間錯誤:', error);
+    throw error;
+  }
 };
 
 // 開關候位功能
 const toggleQueueStatus = async (isOpen, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/settings/queueStatus`,
-    { isOpen },
-    config
-  );
-  return response.data;
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.put(
+      `${API_ENDPOINTS.ADMIN}/settings/queueStatus`,
+      { isOpen },
+      config
+    );
+    return response.data;
+  } catch (error) {
+    console.error('開關候位功能錯誤:', error);
+    throw error;
+  }
 };
 
 // 設定最大候位上限
 const setMaxQueueNumber = async (maxQueueNumber, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/settings/maxQueueNumber`,
-    { maxQueueNumber },
-    config
-  );
-  return response.data;
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.put(
+      `${API_ENDPOINTS.ADMIN}/settings/maxQueueNumber`,
+      { maxQueueNumber },
+      config
+    );
+    return response.data;
+  } catch (error) {
+    console.error('設定最大候位上限錯誤:', error);
+    throw error;
+  }
 };
 
 // 更新客戶資料
 const updateQueueData = async (queueId, customerData, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/queue/${queueId}/update`,
-    customerData,
-    config
-  );
-  return response.data;
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.put(
+      `${API_ENDPOINTS.ADMIN}/queue/${queueId}/update`,
+      customerData,
+      config
+    );
+    return response.data;
+  } catch (error) {
+    console.error('更新客戶資料錯誤:', error);
+    throw error;
+  }
 };
 
 // 刪除客戶資料
 const deleteCustomer = async (queueId, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  };
-  const response = await axios.delete(
-    `${ADMIN_API_URL}/queue/${queueId}/delete`,
-    config
-  );
-  return response.data;
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/${queueId}`, config);
+    return response.data;
+  } catch (error) {
+    console.error('刪除客戶資料錯誤:', error);
+    throw error;
+  }
 };
 
 // 設定每位客戶預估處理時間
 const setMinutesPerCustomer = async (minutesPerCustomer, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  };
-  const response = await axios.put(
-    `${ADMIN_API_URL}/settings/minutesPerCustomer`,
-    { minutesPerCustomer },
-    config
-  );
-  return response.data;
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.put(
+      `${API_ENDPOINTS.ADMIN}/settings/minutesPerCustomer`,
+      { minutesPerCustomer },
+      config
+    );
+    return response.data;
+  } catch (error) {
+    console.error('設定處理時間錯誤:', error);
+    throw error;
+  }
 };
 
-// 清除所有候位資料
+// 清空所有候位
 const clearAllQueue = async (token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  };
-  const response = await axios.delete(
-    `${ADMIN_API_URL}/queue/clear-all`,
-    config
-  );
-  return response.data;
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/clear`, config);
+    return response.data;
+  } catch (error) {
+    console.error('清空候位錯誤:', error);
+    throw error;
+  }
 };
 
 const queueService = {
+  // 公共 API
   getQueueStatus,
   registerQueue,
   getQueueNumberStatus,
   searchQueueByNameAndPhone,
   getPublicOrderedNumbers,
+  
+  // 管理員 API
   getQueueList,
   callNextQueue,
   updateQueueStatus,
@@ -253,10 +321,10 @@ const queueService = {
   toggleQueueStatus,
   setMaxQueueNumber,
   updateQueueData,
-  getOrderedQueueNumbers,
   deleteCustomer,
+  setMinutesPerCustomer,
   clearAllQueue,
-  setMinutesPerCustomer
+  getOrderedQueueNumbers
 };
 
 export default queueService; 

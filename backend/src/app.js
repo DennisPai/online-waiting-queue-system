@@ -20,42 +20,32 @@ const initializeData = require('./utils/init-data');
 const app = express();
 const server = http.createServer(app);
 
-// 環境變數配置
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3100';
-const SOCKET_CORS_ORIGIN = process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3100';
-
-console.log('=== 後端伺服器配置 ===');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('PORT:', process.env.PORT || 8080);
-console.log('CORS_ORIGIN:', CORS_ORIGIN);
-console.log('SOCKET_CORS_ORIGIN:', SOCKET_CORS_ORIGIN);
-console.log('========================');
-
-// 設置Socket.io
+// 設置Socket.io，優化CORS設定
 const io = socketIo(server, {
   cors: {
-    origin: SOCKET_CORS_ORIGIN,
+    origin: process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3100',
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
 
-// 中間件
+// 中間件 - 優化CORS設定
 app.use(cors({
-  origin: CORS_ORIGIN,
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3100',
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// 健康檢查端點
+// 添加健康檢查端點
 app.get('/health', (req, res) => {
   res.status(200).json({ 
-    status: 'OK',
-    message: '線上候位系統API服務運行中',
-    timestamp: new Date().toISOString()
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'queue-system-backend'
   });
 });
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // 基本路由
 app.get('/', (req, res) => {
@@ -84,7 +74,7 @@ app.use((err, req, res, next) => {
 // Socket.io 連接處理
 require('./services/socket.service')(io);
 
-// 連接到MongoDB
+// 連接到MongoDB - 優化連接邏輯
 const mongoUri = process.env.MONGODB_URI || 
                  process.env.DATABASE_URL || 
                  process.env.MONGO_CONNECTION_STRING ||
@@ -94,23 +84,23 @@ console.log('嘗試連接到MongoDB:', mongoUri.replace(/\/\/([^:]+):([^@]+)@/, 
 
 mongoose.connect(mongoUri)
   .then(async () => {
-    console.log('✅ 成功連接到MongoDB');
+    console.log('成功連接到MongoDB');
     
     // 初始化數據
     console.log('開始執行數據初始化...');
     const initResult = await initializeData();
-    console.log('數據初始化結果:', initResult ? '✅ 成功' : '❌ 失敗');
+    console.log('數據初始化結果:', initResult ? '成功' : '失敗');
     
     // 啟動伺服器
     const PORT = process.env.PORT || 8080;
-    server.listen(PORT, () => {
-      console.log(`🚀 伺服器運行在連接埠 ${PORT}`);
-      console.log(`📍 API端點: http://localhost:${PORT}`);
-      console.log(`🔗 健康檢查: http://localhost:${PORT}/health`);
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`伺服器運行在連接埠 ${PORT}`);
+      console.log(`CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:3100'}`);
+      console.log(`Socket CORS Origin: ${process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3100'}`);
     });
   })
   .catch(err => {
-    console.error('❌ 無法連接到MongoDB:', err);
+    console.error('無法連接到MongoDB:', err);
     process.exit(1);
   });
 

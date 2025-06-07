@@ -12,16 +12,9 @@ module.exports = (io) => {
       // 獲取token
       const token = socket.handshake.auth.token || socket.handshake.query.token;
       
-      console.log('Socket.io 連接嘗試:', {
-        id: socket.id,
-        hasToken: !!token,
-        origin: socket.handshake.headers.origin
-      });
-      
       // 如果沒有token，也允許連接（僅限於公開事件）
       if (!token) {
         socket.user = null;
-        console.log('Socket.io 公開連接:', socket.id);
         return next();
       }
       
@@ -50,17 +43,14 @@ module.exports = (io) => {
 
   // 連接處理
   io.on('connection', (socket) => {
-    const userInfo = socket.user ? `${socket.user.username}(${socket.user.role})` : '訪客';
-    console.log(`✅ Socket.io 用戶連接: ${socket.id} - ${userInfo}`);
+    console.log('新用戶連接:', socket.id);
     
     // 加入公共候位頻道
     socket.join('queue-updates');
-    console.log(`用戶 ${socket.id} 加入候位更新頻道`);
     
     // 如果是管理員，加入管理員頻道
     if (socket.user && socket.user.role === 'admin') {
       socket.join('admin-updates');
-      console.log(`管理員 ${socket.id} 加入管理員頻道`);
     }
     
     // 監聽客戶端事件
