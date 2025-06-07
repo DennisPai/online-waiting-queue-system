@@ -16,6 +16,7 @@ import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // 匯入字體大小Context
 import { FontSizeProvider } from './contexts/FontSizeContext';
@@ -67,7 +68,11 @@ function App() {
           >
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
-            <Route path="settings" element={<AdminSettingsPage />} />
+            <Route path="settings" element={
+              <ErrorBoundary>
+                <AdminSettingsPage />
+              </ErrorBoundary>
+            } />
           </Route>
           
           {/* 錯誤路由 */}
