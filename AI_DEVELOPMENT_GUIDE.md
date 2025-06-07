@@ -124,6 +124,16 @@ cd backend
 node init-admin.js
 ```
 
+#### 管理員面板功能失效問題（最新修復）
+```bash
+# 症狀: "清除候位"、"匯出資料"、"刪除客戶"功能失效
+# 已修復: API端點不匹配和Props傳遞錯誤問題
+# 確保使用最新版本代碼，包含管理員面板功能修復
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
+
 #### 後台管理「設定下次辦事時間」功能問題
 ```bash
 # 症狀: 白屏、Redux Error #7、設置失敗錯誤
@@ -179,9 +189,48 @@ docker-compose up -d
 
 ### 🔧 關鍵技術問題與解決方案
 
+#### ⚠️ 管理員面板功能常見問題（最新修復）
+
+**問題1: API端點不匹配（已修復）**
+```javascript
+// ❌ 錯誤的API端點調用
+// 清除候位功能
+export const clearAllQueue = async () => {
+  const response = await axios.delete(`${API_BASE_URL}/queue/clear`); // 錯誤端點
+  return response.data;
+};
+
+// ✅ 正確的API端點調用  
+export const clearAllQueue = async () => {
+  const response = await axios.delete(`${API_BASE_URL}/queue/clear-all`); // 正確端點
+  return response.data;
+};
+
+// 刪除客戶功能
+// ❌ 錯誤: axios.delete(`${API_BASE_URL}/queue/${queueId}`)
+// ✅ 正確: axios.delete(`${API_BASE_URL}/queue/${queueId}/delete`)
+```
+
+**問題2: 組件Props傳遞錯誤（已修復）**
+```javascript
+// ❌ 錯誤的Props傳遞
+<ExportDialog
+  open={exportDialogOpen}
+  onClose={() => setExportDialogOpen(false)}
+  data={localQueueList} // 錯誤：應為 customers
+/>
+
+// ✅ 正確的Props傳遞
+<ExportDialog
+  open={exportDialogOpen}
+  onClose={() => setExportDialogOpen(false)}
+  customers={localQueueList} // 正確：使用 customers
+/>
+```
+
 #### ⚠️ 國曆農曆轉換功能常見問題
 
-**問題1: lunar-javascript API錯誤使用**
+**問題3: lunar-javascript API錯誤使用**
 ```javascript
 // ❌ 錯誤用法
 const isLeapMonth = lunar.isLeap(); // 此方法不存在
@@ -191,13 +240,13 @@ const isLeapMonth = lunar.getMonth() < 0;
 const monthValue = Math.abs(lunar.getMonth());
 ```
 
-**問題2: 後端控制器缺少導入**
+**問題4: 後端控制器缺少導入**
 ```javascript
 // 確保在 backend/src/controllers/admin.controller.js 中有以下導入
 import { autoFillDates, autoFillFamilyMembersDates } from '../utils/calendarConverter';
 ```
 
-**問題3: 前端提交數據不完整**
+**問題5: 前端提交數據不完整**
 ```javascript
 // 確保 RegisterPage.jsx 的 submissionData 包含所有必要欄位
 const submissionData = {
@@ -211,7 +260,7 @@ const submissionData = {
 };
 ```
 
-**問題4: 轉換函數調用方式錯誤**
+**問題6: 轉換函數調用方式錯誤**
 ```javascript
 // ❌ 錯誤用法（直接傳入數組）
 processedData.familyMembers = autoFillFamilyMembersDates(processedData.familyMembers);
@@ -221,7 +270,7 @@ const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.fam
 processedData.familyMembers = familyData.familyMembers;
 ```
 
-**問題5: 表格虛歲欄位顯示錯位**
+**問題7: 表格虛歲欄位顯示錯位**
 - 前端表格Body中缺少虛歲欄位的TableCell渲染
 - 需要在 `AdminDashboardPage.jsx` 中添加對應的表格單元格：
 ```javascript
@@ -274,6 +323,10 @@ docker-compose up -d
 #### 📋 問題排查檢查清單
 
 遇到功能異常時，按以下順序檢查：
+- [ ] **管理員面板功能檢查**（最優先）：
+  - [ ] API端點是否匹配（清除候位、刪除客戶）
+  - [ ] 組件Props是否正確傳遞（特別是ExportDialog的customers prop）
+  - [ ] 匯出功能是否顯示正確的客戶筆數
 - [ ] 是否正確導入所有必要函數
 - [ ] 前端提交數據是否包含所有必要欄位  
 - [ ] 後端API是否正確處理新欄位結構
