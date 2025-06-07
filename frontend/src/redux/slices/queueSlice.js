@@ -410,12 +410,24 @@ const queueSlice = createSlice({
       })
       .addCase(setNextSessionDate.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 更新狀態，確保同時更新 nextSessionDate 和 queueStatus
-        state.nextSessionDate = action.payload.data?.nextSessionDate || action.payload.nextSessionDate;
-        state.queueStatus = {
-          ...state.queueStatus,
-          nextSessionDate: action.payload.data?.nextSessionDate || action.payload.nextSessionDate
-        };
+        
+        // 更安全的數據提取
+        const newNextSessionDate = action.payload?.data?.nextSessionDate || action.payload?.nextSessionDate;
+        
+        // 驗證日期有效性
+        if (newNextSessionDate) {
+          const date = new Date(newNextSessionDate);
+          if (!isNaN(date.getTime())) {
+            state.nextSessionDate = newNextSessionDate;
+            state.queueStatus = {
+              ...state.queueStatus,
+              nextSessionDate: newNextSessionDate
+            };
+            console.log('Redux: 成功更新下次辦事時間:', newNextSessionDate);
+          } else {
+            console.warn('Redux: 接收到無效的日期格式:', newNextSessionDate);
+          }
+        }
       })
       .addCase(setNextSessionDate.rejected, (state, action) => {
         state.isLoading = false;

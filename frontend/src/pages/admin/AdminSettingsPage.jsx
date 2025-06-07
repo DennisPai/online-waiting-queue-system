@@ -44,9 +44,22 @@ const AdminSettingsPage = () => {
         console.log('載入系統設定:', result);
         
         setIsQueueOpen(result.isOpen);
+        
+        // 安全處理 nextSessionDate
         if (result.nextSessionDate) {
-          setNextSessionDate(new Date(result.nextSessionDate));
+          const date = new Date(result.nextSessionDate);
+          // 檢查日期是否有效
+          if (!isNaN(date.getTime())) {
+            setNextSessionDate(date);
+            console.log('成功設定下次辦事時間:', date);
+          } else {
+            console.warn('無效的下次辦事時間格式:', result.nextSessionDate);
+            setNextSessionDate(null);
+          }
+        } else {
+          setNextSessionDate(null);
         }
+        
         if (result.maxQueueNumber) {
           setMaxQueueNumberLocal(result.maxQueueNumber);
         }
@@ -93,7 +106,7 @@ const AdminSettingsPage = () => {
   };
 
   // 處理設置下次辦事時間
-  const handleSetNextSessionDate = () => {
+  const handleSetNextSessionDate = async () => {
     if (!nextSessionDate) {
       dispatch(
         showAlert({
@@ -104,35 +117,59 @@ const AdminSettingsPage = () => {
       return;
     }
 
-    console.log('設置下次辦事時間:', nextSessionDate.toISOString());
-    
-    dispatch(setNextSessionDate(nextSessionDate.toISOString()))
-      .unwrap()
-      .then((result) => {
-        console.log('設置下次辦事時間成功:', result);
-        dispatch(
-          showAlert({
-            message: '下次辦事時間設置成功',
-            severity: 'success'
-          })
-        );
-        // 重新載入系統設定以確保顯示最新狀態
+    // 驗證日期是否有效
+    if (isNaN(nextSessionDate.getTime())) {
+      dispatch(
+        showAlert({
+          message: '選擇的日期無效，請重新選擇',
+          severity: 'warning'
+        })
+      );
+      return;
+    }
+
+    try {
+      console.log('設置下次辦事時間:', nextSessionDate.toISOString());
+      
+      const result = await dispatch(setNextSessionDate(nextSessionDate.toISOString())).unwrap();
+      console.log('設置下次辦事時間成功:', result);
+      
+      dispatch(
+        showAlert({
+          message: '下次辦事時間設置成功',
+          severity: 'success'
+        })
+      );
+      
+      // 重新載入系統設定以確保顯示最新狀態
+      setTimeout(() => {
         dispatch(getQueueStatus());
-      })
-      .catch((error) => {
-        console.error('設置下次辦事時間失敗:', error);
-        dispatch(
-          showAlert({
-            message: typeof error === 'string' ? error : error.message || '設置下次辦事時間失敗',
-            severity: 'error'
-          })
-        );
-      });
+      }, 500);
+      
+    } catch (error) {
+      console.error('設置下次辦事時間失敗:', error);
+      dispatch(
+        showAlert({
+          message: typeof error === 'string' ? error : error.message || '設置下次辦事時間失敗',
+          severity: 'error'
+        })
+      );
+    }
   };
 
   // 處理日期選擇變更
   const handleDateChange = (newDate) => {
-    setNextSessionDate(newDate);
+    console.log('日期選擇變更:', newDate);
+    // 檢查新日期是否有效
+    if (newDate && !isNaN(new Date(newDate).getTime())) {
+      setNextSessionDate(newDate);
+    } else if (newDate === null) {
+      // 允許清空日期
+      setNextSessionDate(null);
+    } else {
+      console.warn('無效的日期選擇:', newDate);
+      // 保持原有日期不變
+    }
   };
 
   // 處理設定最大候位上限
@@ -271,7 +308,13 @@ const AdminSettingsPage = () => {
                     label="選擇日期和時間"
                     value={nextSessionDate}
                     onChange={handleDateChange}
-                    renderInput={(params) => <TextField {...params} fullWidth />}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        error: nextSessionDate && isNaN(nextSessionDate.getTime()),
+                        helperText: nextSessionDate && isNaN(nextSessionDate.getTime()) ? '無效的日期格式' : ''
+                      }
+                    }}
                   />
                 </LocalizationProvider>
               </Box>
@@ -285,7 +328,7 @@ const AdminSettingsPage = () => {
                   設置下次辦事時間
                 </Button>
               </Box>
-              {nextSessionDate && (
+              {nextSessionDate && !isNaN(nextSessionDate.getTime()) && (
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="info">
                     您設置的下次辦事時間是：
@@ -301,9 +344,17 @@ const AdminSettingsPage = () => {
                         });
                       } catch (error) {
                         console.error('日期格式化錯誤:', error);
-                        return nextSessionDate.toString();
+                        return `日期格式錯誤: ${nextSessionDate}`;
                       }
                     })()}
+                  </Alert>
+                </Box>
+              )}
+              
+              {nextSessionDate && isNaN(nextSessionDate.getTime()) && (
+                <Box sx={{ mt: 2 }}>
+                  <Alert severity="error">
+                    日期格式無效，請重新選擇日期時間
                   </Alert>
                 </Box>
               )}
