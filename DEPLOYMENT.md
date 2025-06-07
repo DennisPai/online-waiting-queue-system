@@ -95,6 +95,7 @@ REACT_APP_API_URL=https://your-backend-service.zeabur.app
 - [ ] 候位查詢功能正常
 - [ ] 管理員登入正常
 - [ ] 後台管理功能正常
+- [ ] **系統設定功能**（特別是設定下次辦事時間）
 
 ### 管理員登入資訊
 - **網址**：`https://your-frontend-domain.zeabur.app/admin/login`
@@ -126,10 +127,59 @@ REACT_APP_API_URL=https://your-backend-service.zeabur.app
 - 確認 `init-admin.js` 腳本已執行
 - 檢查後端日誌是否有錯誤
 
+**🆕 5. 設定下次辦事時間功能問題**
+- **症狀**：設定時間後畫面全白，重新整理後時間沒有被設定
+- **可能原因**：
+  - 前端環境變數 `REACT_APP_API_URL` 設定錯誤
+  - CORS 配置問題
+  - JWT 認證錯誤
+  - API 請求失敗
+- **解決步驟**：
+  1. 檢查瀏覽器控制台是否有錯誤訊息
+  2. 確認網路請求是否成功發送到正確的API端點
+  3. 檢查後端服務日誌是否有錯誤
+  4. 驗證JWT Token是否有效
+  5. 確認時區設定是否正確
+
+**🆕 6. API請求相關問題**
+- **檢查步驟**：
+  ```javascript
+  // 在瀏覽器控制台執行，檢查API配置
+  console.log('API配置檢查:', {
+    NODE_ENV: process.env.NODE_ENV,
+    REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+    當前網域: window.location.origin
+  });
+  ```
+- 確保前端服務可以正確解析後端API URL
+- 檢查網路請求是否被CORS政策阻擋
+
 ### 查看服務日誌
 1. 在 Zeabur 控制台中點擊對應服務
 2. 選擇「Logs」頁籤查看運行日誌
 3. 如有錯誤，根據錯誤訊息進行排除
+
+### 📊 調試檢查清單
+
+當系統設定功能出現問題時，按順序檢查：
+
+1. **前端環境變數檢查**
+   - [ ] `REACT_APP_API_URL` 是否正確設定
+   - [ ] 是否在建構前設定環境變數
+
+2. **API連接檢查**  
+   - [ ] 瀏覽器網路面板查看API請求狀態
+   - [ ] 檢查請求URL是否正確
+   - [ ] 檢查請求標頭是否包含正確的Authorization
+
+3. **後端服務檢查**
+   - [ ] 後端服務是否正常運行
+   - [ ] 檢查後端日誌是否有錯誤
+   - [ ] MongoDB 連接是否正常
+
+4. **認證檢查**
+   - [ ] JWT Token 是否有效
+   - [ ] 是否已正確登入管理員帳號
 
 ## 📞 支援聯繫
 

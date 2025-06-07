@@ -4,15 +4,31 @@ import axios from 'axios';
 const getApiBaseUrl = () => {
   // 在生產環境中使用後端服務的完整URL
   if (process.env.NODE_ENV === 'production') {
-    return process.env.REACT_APP_API_URL || window.location.origin;
+    const apiUrl = process.env.REACT_APP_API_URL;
+    console.log('生產環境 API URL:', apiUrl);
+    if (apiUrl) {
+      return apiUrl;
+    }
+    // 如果沒有設定REACT_APP_API_URL，則嘗試使用當前網域
+    console.warn('未設定 REACT_APP_API_URL，使用當前網域');
+    return window.location.origin;
   }
   // 開發環境使用代理
+  console.log('開發環境，使用空字串（代理）');
   return '';
 };
 
 const API_BASE_URL = getApiBaseUrl();
 const API_URL = `${API_BASE_URL}/api/queue`;
 const ADMIN_API_URL = `${API_BASE_URL}/api/admin`;
+
+console.log('API配置:', {
+  NODE_ENV: process.env.NODE_ENV,
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+  API_BASE_URL,
+  API_URL,
+  ADMIN_API_URL
+});
 
 // 公共 API
 
@@ -139,17 +155,7 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
 // 設置下次辦事時間
 const setNextSessionDate = async (nextSessionDate, token) => {
   try {
-    console.log('=== queueService.setNextSessionDate 開始 ===');
-    console.log('函數參數:', { 
-      nextSessionDate, 
-      nextSessionDateType: typeof nextSessionDate,
-      token: token ? '已提供' : '未提供',
-      tokenLength: token ? token.length : 0
-    });
-    
-    if (!token) {
-      throw new Error('認證token缺失');
-    }
+    console.log('API調用 - 設置下次辦事時間:', { nextSessionDate, token: token ? '存在' : '不存在' });
     
     const config = {
       headers: {
@@ -158,56 +164,22 @@ const setNextSessionDate = async (nextSessionDate, token) => {
       }
     };
     
-    const requestBody = { nextSessionDate };
-    const url = `${ADMIN_API_URL}/settings/nextSession`;
+    const response = await axios.put(
+      `${ADMIN_API_URL}/settings/nextSession`,
+      { nextSessionDate },
+      config
+    );
     
-    console.log('準備發送API請求:', {
-      method: 'PUT',
-      url: url,
-      requestBody: requestBody,
-      headers: config.headers
-    });
-    
-    const response = await axios.put(url, requestBody, config);
-    
-    console.log('=== API請求成功 ===');
-    console.log('回應狀態:', response.status);
-    console.log('回應數據:', response.data);
-    console.log('回應headers:', response.headers);
-    
+    console.log('API回應 - 設置下次辦事時間:', response.data);
     return response.data;
   } catch (error) {
-    console.error('=== queueService.setNextSessionDate 錯誤 ===');
-    console.error('錯誤類型:', error.constructor.name);
-    console.error('錯誤詳情:', {
-      message: error.message,
-      stack: error.stack,
-      response: error.response ? {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        headers: error.response.headers
-      } : '無回應對象',
-      request: error.request ? {
-        method: error.request.method,
-        url: error.request.responseURL || error.request.url,
-        status: error.request.status
-      } : '無請求對象',
-      config: error.config ? {
-        method: error.config.method,
-        url: error.config.url,
-        data: error.config.data
-      } : '無配置對象'
+    console.error('API錯誤 - 設置下次辦事時間:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
     });
-    
-    // 確保錯誤信息被正確拋出
-    if (error.response?.data) {
-      console.log('拋出回應數據錯誤:', error.response.data);
-      throw error.response.data;
-    } else {
-      console.log('拋出原始錯誤:', error);
-      throw error;
-    }
+    throw error.response?.data || error;
   }
 };
 

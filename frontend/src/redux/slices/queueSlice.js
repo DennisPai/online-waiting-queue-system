@@ -122,56 +122,11 @@ export const setNextSessionDate = createAsyncThunk(
   'queue/setNextSessionDate',
   async (nextSessionDate, { rejectWithValue, getState }) => {
     try {
-      const authState = getState().auth;
-      console.log('Redux setNextSessionDate: auth state:', { 
-        hasToken: !!authState.token, 
-        user: authState.user ? authState.user.username : '無用戶' 
-      });
-      
-      if (!authState.token) {
-        console.error('Redux setNextSessionDate: 缺少認證token');
-        return rejectWithValue('用戶未登入或認證已過期，請重新登入');
-      }
-
-      console.log('Redux setNextSessionDate: 準備調用API service，數據:', nextSessionDate);
-      const response = await queueService.setNextSessionDate(nextSessionDate, authState.token);
-      console.log('Redux setNextSessionDate: API調用成功，回應:', response);
-      return response;
+      const { token } = getState().auth;
+      const response = await queueService.setNextSessionDate(nextSessionDate, token);
+      return response.data;
     } catch (error) {
-      console.error('Redux setNextSessionDate: 錯誤詳情:', {
-        error,
-        message: error?.message,
-        response: error?.response?.data,
-        status: error?.response?.status,
-        errors: error?.errors
-      });
-      
-      // 詳細的錯誤處理
-      let errorMessage = '設置下次辦事時間失敗';
-      
-      if (error?.errors && Array.isArray(error.errors)) {
-        // express-validator 錯誤格式
-        errorMessage = error.errors.map(err => err.msg).join('；');
-      } else if (error?.response?.status === 400) {
-        if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-          // express-validator 格式
-          errorMessage = error.response.data.errors.map(err => err.msg).join('；');
-        } else if (error?.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        } else {
-          errorMessage = '請求數據格式錯誤，請檢查日期時間是否正確';
-        }
-      } else if (error?.response?.status === 401) {
-        errorMessage = '認證已過期，請重新登入';
-      } else if (error?.response?.status === 403) {
-        errorMessage = '權限不足，無法執行此操作';
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(error.response?.data?.message || '設置下次辦事時間失敗');
     }
   }
 );
@@ -452,59 +407,22 @@ const queueSlice = createSlice({
       // 設置下次辦事時間（管理員）
       .addCase(setNextSessionDate.pending, (state) => {
         state.isLoading = true;
+        state.error = null; // 清除之前的錯誤
       })
       .addCase(setNextSessionDate.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        
-        try {
-          // 更安全的數據提取
-          const responseData = action.payload;
-          const newNextSessionDate = responseData?.data?.nextSessionDate || 
-                                     responseData?.nextSessionDate || 
-                                     responseData?.setting?.nextSessionDate;
-          
-          console.log('Redux setNextSessionDate.fulfilled: 原始響應:', responseData);
-          console.log('Redux setNextSessionDate.fulfilled: 提取的日期:', newNextSessionDate);
-          
-          // 驗證日期有效性
-          if (newNextSessionDate) {
-            let validDate;
-            try {
-              validDate = new Date(newNextSessionDate);
-              
-              if (!isNaN(validDate.getTime()) && validDate.getTime() > 0) {
-                // 使用 Immer 的安全更新方式
-                state.nextSessionDate = newNextSessionDate;
-                
-                // 確保 queueStatus 存在
-                if (!state.queueStatus) {
-                  state.queueStatus = {};
-                }
-                
-                state.queueStatus.nextSessionDate = newNextSessionDate;
-                
-                console.log('Redux: 成功更新下次辦事時間:', newNextSessionDate);
-              } else {
-                console.warn('Redux: 接收到無效的日期格式:', newNextSessionDate);
-                state.error = '接收到無效的日期格式';
-              }
-            } catch (dateError) {
-              console.error('Redux: 日期創建失敗:', dateError);
-              state.error = '日期創建失敗：' + dateError.message;
-            }
-          } else {
-            console.log('Redux: 未收到有效的下次辦事時間數據');
-            state.error = '未收到有效的下次辦事時間數據';
-          }
-        } catch (error) {
-          console.error('Redux setNextSessionDate.fulfilled 處理錯誤:', error);
-          state.error = '更新下次辦事時間狀態失敗：' + error.message;
-        }
+        // 確保正確更新所有相關狀態
+        state.nextSessionDate = action.payload.data?.nextSessionDate || action.payload.nextSessionDate;
+        // 同時更新queueStatus物件
+        state.queueStatus = {
+          ...state.queueStatus,
+          nextSessionDate: action.payload.data?.nextSessionDate || action.payload.nextSessionDate
+        };
       })
       .addCase(setNextSessionDate.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        state.error = action.payload || '設置下次辦事時間失敗';
       })
       
       // 開關候位功能（管理員）
