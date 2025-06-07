@@ -113,8 +113,9 @@
 
 ### 🌐 線上部署版本
 本系統已部署至 Zeabur 雲平台，可直接訪問使用：
-- **線上網址**: https://your-app-domain.zeabur.app
-- **管理後台**: https://your-app-domain.zeabur.app/admin/login
+- **前端網址**: https://online-waiting-queue-system.zeabur.app
+- **後端API**: https://online-waiting-queue-system-backend.zeabur.app
+- **管理後台**: https://online-waiting-queue-system.zeabur.app/admin/login
 - **預設管理員帳號**: admin / admin123
 
 ### 🛠 本地開發
@@ -555,6 +556,7 @@ services:
       - "8080:8080"
     environment:
       - MONGODB_URI=mongodb://admin:password@mongodb:27017/queue_system?authSource=admin
+      - MONGO_CONNECTION_STRING=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}
       - CORS_ORIGIN=http://localhost:3100
       - SOCKET_CORS_ORIGIN=http://localhost:3100
 

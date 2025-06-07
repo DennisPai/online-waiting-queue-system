@@ -286,7 +286,14 @@ docker-compose up -d
 - **遇到轉換相關問題時，優先檢查上述關鍵技術問題清單**
 
 #### 🌐 Zeabur部署更新
-- 系統已部署至Zeabur平台，網址：`https://your-app-domain.zeabur.app`
+- 系統已部署至Zeabur平台：
+  - **前端**：`https://online-waiting-queue-system.zeabur.app`
+  - **後端API**：`https://online-waiting-queue-system-backend.zeabur.app`
+  - **管理後台**：`https://online-waiting-queue-system.zeabur.app/admin/login`
 - 更新流程：本地修改 → `git push` → Zeabur自動重新部署
 - 部署通常需要3-5分鐘完成
+- **⚠️ 重要PORT配置**：
+  - 前端必須設定 `PORT=80`，避免與後端PORT 8080衝突
+  - 未正確設定會導致502錯誤
+  - 後端需添加 `MONGO_CONNECTION_STRING` 環境變數
 - 提醒用戶推送代碼後檢查線上版本功能正常 

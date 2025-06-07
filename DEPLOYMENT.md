@@ -7,6 +7,12 @@
 - [x] Zeabur 帳號 ([zeabur.com](https://zeabur.com))
 - [x] 程式碼已上傳至 GitHub repository
 
+### 🌐 實際部署案例
+本系統已成功部署範例：
+- **前端服務**: https://online-waiting-queue-system.zeabur.app
+- **後端API**: https://online-waiting-queue-system-backend.zeabur.app
+- **管理後台**: https://online-waiting-queue-system.zeabur.app/admin/login
+
 ## 🚀 Zeabur 部署步驟
 
 ### 1. 登入 Zeabur 並創建專案
@@ -30,6 +36,7 @@
    PORT=8080
    JWT_SECRET=your_strong_jwt_secret_key_32_chars_minimum
    JWT_EXPIRES_IN=1d
+   MONGO_CONNECTION_STRING=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}
    ```
    
    ⚠️ **JWT_SECRET 安全建議**：
@@ -51,11 +58,13 @@
    ```
    ⚠️ 注意：請將 `your-backend-service.zeabur.app` 替換為步驟3中記錄的實際後端服務網域
 
-5. **PORT 配置說明**：
-   - **前端 PORT**：Zeabur 自動處理，無需手動設定
+5. **⚠️ 重要 PORT 配置說明**：
+   - **前端 PORT**：必須手動設定為 `PORT=80`，避免與後端衝突
+   - **原因**：同一GitHub專案部署時，Zeabur會自動分配相同PORT，導致衝突
+   - **解決方案**：在前端服務環境變數中明確設定 `PORT=80`
    - **Nginx 內部**：使用 PORT 80（Docker 配置）
    - **Zeabur 外部**：自動分配 HTTPS 連接埠（443）
-   - **結論**：前端部署時不需要設定 PORT 環境變數
+   - **衝突症狀**：未設定時前端會顯示502錯誤
 
 6. Zeabur 會自動檢測到 React 應用並正確建構
 7. 等待前端服務部署完成
@@ -91,12 +100,18 @@ JWT_SECRET=your_strong_jwt_secret_key_32_chars_minimum
 JWT_EXPIRES_IN=1d
 CORS_ORIGIN=https://your-frontend-domain.zeabur.app
 SOCKET_CORS_ORIGIN=https://your-frontend-domain.zeabur.app
+MONGO_CONNECTION_STRING=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}
 ```
 
 ### 前端必要環境變數
 ```
 REACT_APP_API_URL=https://your-backend-service.zeabur.app
+PORT=80
 ```
+
+⚠️ **PORT設定重要性**：
+- 前端必須明確設定 `PORT=80`，否則與後端PORT 8080衝突會導致502錯誤
+- 同一GitHub專案部署時，Zeabur預設會分配相同PORT給前後端服務
 
 ⚠️ **重要提醒**：
 - 前端環境變數必須在**建構前**設定，建構後無法修改
@@ -106,6 +121,8 @@ REACT_APP_API_URL=https://your-backend-service.zeabur.app
 
 ### MongoDB 連接
 - Zeabur 會自動提供 `MONGODB_URI` 環境變數
+- 後端還需要 `MONGO_CONNECTION_STRING` 用於靈活的資料庫連接配置
+- 格式：`MONGO_CONNECTION_STRING=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}`
 - 通常格式為：`mongodb://username:password@host:port/database`
 
 ## 📊 PORT 配置詳細說明
@@ -140,6 +157,7 @@ REACT_APP_API_URL=https://your-backend-service.zeabur.app
 
 ### 管理員登入資訊
 - **網址**：`https://your-frontend-domain.zeabur.app/admin/login`
+- **實際範例**：`https://online-waiting-queue-system.zeabur.app/admin/login`
 - **帳號**：`admin`
 - **密碼**：`admin123`
 
@@ -150,8 +168,11 @@ REACT_APP_API_URL=https://your-backend-service.zeabur.app
 ### 常見問題
 
 **1. 前端顯示502錯誤**
-- **最常見原因**：前端環境變數 `REACT_APP_API_URL` 未設定或設定錯誤
-- 檢查前端服務的環境變數是否包含正確的後端URL
+- **最常見原因1**：前端環境變數 `REACT_APP_API_URL` 未設定或設定錯誤
+- **最常見原因2**：前端未設定 `PORT=80`，與後端PORT 8080衝突
+- 檢查前端服務的環境變數是否包含：
+  - `REACT_APP_API_URL=https://your-backend-service.zeabur.app`
+  - `PORT=80`
 - 確認後端服務是否正常運行
 - 在瀏覽器控制台查看API請求是否成功
 

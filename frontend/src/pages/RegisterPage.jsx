@@ -331,8 +331,17 @@ const RegisterPage = () => {
 
     // 出生日期驗證
     if (!formData.birthYear) errors.birthYear = '請輸入出生年';
-    else if (isNaN(formData.birthYear) || formData.birthYear < 1900 || formData.birthYear > new Date().getFullYear()) {
+    else if (isNaN(formData.birthYear)) {
       errors.birthYear = '請輸入有效的出生年';
+    } else {
+      const year = parseInt(formData.birthYear);
+      // 檢查是否為合理的年份範圍：
+      // 民國年：1-150（對應西元1912-2061）
+      // 西元年：1900-當前年份
+      const currentYear = new Date().getFullYear();
+      if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
+        errors.birthYear = '請輸入有效的出生年（民國1-150年或西元1900年後）';
+      }
     }
     
     if (!formData.birthMonth) errors.birthMonth = '請輸入出生月';
@@ -359,6 +368,14 @@ const RegisterPage = () => {
       }
       if (!member.birthYear) {
         errors[`familyMembers.${index}.birthYear`] = '請輸入出生年';
+      } else if (isNaN(member.birthYear)) {
+        errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年';
+      } else {
+        const year = parseInt(member.birthYear);
+        const currentYear = new Date().getFullYear();
+        if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
+          errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年（民國1-150年或西元1900年後）';
+        }
       }
       if (!member.birthMonth) {
         errors[`familyMembers.${index}.birthMonth`] = '請輸入出生月';

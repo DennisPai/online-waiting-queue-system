@@ -88,35 +88,46 @@ const AdminSettingsPage = () => {
   };
 
   // 處理設置下次辦事時間
-  const handleSetNextSessionDate = () => {
-    if (!nextSessionDate) {
+  const handleSetNextSessionDate = async () => {
+    try {
+      if (!nextSessionDate) {
+        dispatch(
+          showAlert({
+            message: '請選擇有效的日期和時間',
+            severity: 'warning'
+          })
+        );
+        return;
+      }
+
+      // 驗證日期是否有效
+      if (isNaN(nextSessionDate.getTime())) {
+        dispatch(
+          showAlert({
+            message: '請選擇有效的日期和時間',
+            severity: 'warning'
+          })
+        );
+        return;
+      }
+
+      const result = await dispatch(setNextSessionDate(nextSessionDate.toISOString())).unwrap();
+      
       dispatch(
         showAlert({
-          message: '請選擇有效的日期和時間',
-          severity: 'warning'
+          message: '下次辦事時間設置成功',
+          severity: 'success'
         })
       );
-      return;
+    } catch (error) {
+      console.error('設置時間錯誤:', error);
+      dispatch(
+        showAlert({
+          message: typeof error === 'string' ? error : '設置下次辦事時間失敗，請稍後再試',
+          severity: 'error'
+        })
+      );
     }
-
-    dispatch(setNextSessionDate(nextSessionDate.toISOString()))
-      .unwrap()
-      .then(() => {
-        dispatch(
-          showAlert({
-            message: '下次辦事時間設置成功',
-            severity: 'success'
-          })
-        );
-      })
-      .catch((error) => {
-        dispatch(
-          showAlert({
-            message: error,
-            severity: 'error'
-          })
-        );
-      });
   };
 
   // 處理日期選擇變更
@@ -260,7 +271,12 @@ const AdminSettingsPage = () => {
                     label="選擇日期和時間"
                     value={nextSessionDate}
                     onChange={handleDateChange}
-                    renderInput={(params) => <TextField {...params} fullWidth />}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        error: false
+                      }
+                    }}
                   />
                 </LocalizationProvider>
               </Box>
