@@ -413,10 +413,23 @@ const AdminSettingsPage = () => {
 
   // 處理設定最大候位上限
   const handleSetMaxQueueNumber = () => {
-    logger.userAction('設定最大候位上限', { maxQueueNumber }, 'AdminSettingsPage');
+    // 安全的日誌記錄函數
+    const safeLog = (level, message, data) => {
+      try {
+        if (window.logger && window.logger[level]) {
+          window.logger[level](message, data, 'AdminSettingsPage');
+        } else {
+          console[level](`[AdminSettingsPage] ${message}`, data);
+        }
+      } catch (logError) {
+        console.warn('日誌記錄失敗:', logError.message);
+      }
+    };
+
+    safeLog('userAction', '設定最大候位上限', { maxQueueNumber });
     
     if (!maxQueueNumber || maxQueueNumber < 1) {
-      logger.warn('設定最大候位上限失敗：數值無效', { maxQueueNumber }, 'AdminSettingsPage');
+      safeLog('warn', '設定最大候位上限失敗：數值無效', { maxQueueNumber });
       dispatch(
         showAlert({
           message: '請輸入有效的最大候位上限（必須大於0）',
@@ -429,7 +442,7 @@ const AdminSettingsPage = () => {
     dispatch(setMaxQueueNumber(maxQueueNumber))
       .unwrap()
       .then(() => {
-        logger.info('設定最大候位上限成功', { maxQueueNumber }, 'AdminSettingsPage');
+        safeLog('info', '設定最大候位上限成功', { maxQueueNumber });
         dispatch(
           showAlert({
             message: '最大候位上限設定成功',
@@ -438,7 +451,7 @@ const AdminSettingsPage = () => {
         );
       })
       .catch((error) => {
-        logger.error('設定最大候位上限失敗', { error, maxQueueNumber }, 'AdminSettingsPage');
+        safeLog('error', '設定最大候位上限失敗', { error, maxQueueNumber });
         dispatch(
           showAlert({
             message: error,
@@ -466,10 +479,23 @@ const AdminSettingsPage = () => {
 
   // 處理設定每位客戶預估處理時間
   const handleSetMinutesPerCustomer = () => {
-    logger.userAction('設定每位客戶預估處理時間', { minutesPerCustomer }, 'AdminSettingsPage');
+    // 安全的日誌記錄函數
+    const safeLog = (level, message, data) => {
+      try {
+        if (window.logger && window.logger[level]) {
+          window.logger[level](message, data, 'AdminSettingsPage');
+        } else {
+          console[level](`[AdminSettingsPage] ${message}`, data);
+        }
+      } catch (logError) {
+        console.warn('日誌記錄失敗:', logError.message);
+      }
+    };
+
+    safeLog('userAction', '設定每位客戶預估處理時間', { minutesPerCustomer });
     
     if (!minutesPerCustomer || minutesPerCustomer < 1 || minutesPerCustomer > 120) {
-      logger.warn('設定每位客戶預估處理時間失敗：數值無效', { minutesPerCustomer }, 'AdminSettingsPage');
+      safeLog('warn', '設定每位客戶預估處理時間失敗：數值無效', { minutesPerCustomer });
       dispatch(
         showAlert({
           message: '請輸入有效的每位客戶預估處理時間（1-120分鐘）',
@@ -482,7 +508,7 @@ const AdminSettingsPage = () => {
     dispatch(setMinutesPerCustomer(minutesPerCustomer))
       .unwrap()
       .then(() => {
-        logger.info('設定每位客戶預估處理時間成功', { minutesPerCustomer }, 'AdminSettingsPage');
+        safeLog('info', '設定每位客戶預估處理時間成功', { minutesPerCustomer });
         dispatch(
           showAlert({
             message: '每位客戶預估處理時間設定成功',
@@ -491,7 +517,7 @@ const AdminSettingsPage = () => {
         );
       })
       .catch((error) => {
-        logger.error('設定每位客戶預估處理時間失敗', { error, minutesPerCustomer }, 'AdminSettingsPage');
+        safeLog('error', '設定每位客戶預估處理時間失敗', { error, minutesPerCustomer });
         dispatch(
           showAlert({
             message: error,
@@ -504,13 +530,39 @@ const AdminSettingsPage = () => {
   // 監控錯誤狀態變化
   useEffect(() => {
     if (error) {
-      logger.error('AdminSettingsPage 檢測到錯誤狀態', { error }, 'AdminSettingsPage');
+      // 安全的日誌記錄函數
+      const safeLog = (level, message, data) => {
+        try {
+          if (window.logger && window.logger[level]) {
+            window.logger[level](message, data, 'AdminSettingsPage');
+          } else {
+            console[level](`[AdminSettingsPage] ${message}`, data);
+          }
+        } catch (logError) {
+          console.warn('日誌記錄失敗:', logError.message);
+        }
+      };
+      
+      safeLog('error', 'AdminSettingsPage 檢測到錯誤狀態', { error });
     }
   }, [error]);
 
   // 監控載入狀態變化
   useEffect(() => {
-    logger.debug('載入狀態變化', { isLoading }, 'AdminSettingsPage');
+    // 安全的日誌記錄函數
+    const safeLog = (level, message, data) => {
+      try {
+        if (window.logger && window.logger[level]) {
+          window.logger[level](message, data, 'AdminSettingsPage');
+        } else {
+          console[level](`[AdminSettingsPage] ${message}`, data);
+        }
+      } catch (logError) {
+        console.warn('日誌記錄失敗:', logError.message);
+      }
+    };
+    
+    safeLog('debug', '載入狀態變化', { isLoading });
   }, [isLoading]);
 
   return (
