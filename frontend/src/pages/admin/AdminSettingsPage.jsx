@@ -180,16 +180,36 @@ const AdminSettingsPage = () => {
 
   // 處理日期選擇變更
   const handleDateChange = (newDate) => {
-    console.log('日期選擇變更:', newDate);
-    // 檢查新日期是否有效
-    if (newDate && !isNaN(new Date(newDate).getTime())) {
-      setNextSessionDate(newDate);
-    } else if (newDate === null) {
-      // 允許清空日期
+    console.log('日期選擇變更:', newDate, '類型:', typeof newDate);
+    
+    try {
+      if (newDate === null || newDate === undefined) {
+        // 允許清空日期
+        setNextSessionDate(null);
+        console.log('日期已清空');
+        return;
+      }
+      
+      // 嘗試創建有效的Date對象
+      let validDate;
+      if (newDate instanceof Date) {
+        validDate = newDate;
+      } else {
+        validDate = new Date(newDate);
+      }
+      
+      // 檢查日期是否有效
+      if (validDate && !isNaN(validDate.getTime()) && validDate.getTime() > 0) {
+        setNextSessionDate(validDate);
+        console.log('成功設置日期:', validDate);
+      } else {
+        console.warn('無效的日期選擇:', newDate);
+        // 設置為null而不是保持原有值，避免錯誤狀態
+        setNextSessionDate(null);
+      }
+    } catch (error) {
+      console.error('日期處理錯誤:', error);
       setNextSessionDate(null);
-    } else {
-      console.warn('無效的日期選擇:', newDate);
-      // 保持原有日期不變
     }
   };
 
@@ -332,8 +352,8 @@ const AdminSettingsPage = () => {
                     slotProps={{
                       textField: {
                         fullWidth: true,
-                        error: nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate.getTime())),
-                        helperText: nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate.getTime())) ? '無效的日期格式' : ''
+                        error: nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate?.getTime?.() || 0)),
+                        helperText: nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate?.getTime?.() || 0)) ? '無效的日期格式' : ''
                       }
                     }}
                   />
@@ -349,20 +369,24 @@ const AdminSettingsPage = () => {
                   設置下次辦事時間
                 </Button>
               </Box>
-              {nextSessionDate && (nextSessionDate instanceof Date) && !isNaN(nextSessionDate.getTime()) && (
+              {nextSessionDate && (nextSessionDate instanceof Date) && !isNaN(nextSessionDate?.getTime?.() || 0) && (
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="info">
                     您設置的下次辦事時間是：
                     {(() => {
                       try {
-                        return nextSessionDate.toLocaleString('zh-TW', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          weekday: 'long'
-                        });
+                        if (nextSessionDate instanceof Date && typeof nextSessionDate.toLocaleString === 'function') {
+                          return nextSessionDate.toLocaleString('zh-TW', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            weekday: 'long'
+                          });
+                        } else {
+                          return `日期格式錯誤: ${nextSessionDate}`;
+                        }
                       } catch (error) {
                         console.error('日期格式化錯誤:', error);
                         return `日期格式錯誤: ${nextSessionDate}`;
@@ -372,7 +396,7 @@ const AdminSettingsPage = () => {
                 </Box>
               )}
               
-              {nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate.getTime())) && (
+              {nextSessionDate && (!(nextSessionDate instanceof Date) || isNaN(nextSessionDate?.getTime?.() || 0)) && (
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="error">
                     日期格式無效，請重新選擇日期時間

@@ -139,7 +139,20 @@ export const setNextSessionDate = createAsyncThunk(
       return response;
     } catch (error) {
       console.error('Redux setNextSessionDate: 錯誤:', error);
-      const errorMessage = error?.message || error?.response?.data?.message || '設置下次辦事時間失敗';
+      
+      // 更詳細的錯誤處理
+      let errorMessage = '設置下次辦事時間失敗';
+      
+      if (error?.response?.status === 401) {
+        errorMessage = '認證已過期，請重新登入';
+      } else if (error?.response?.status === 403) {
+        errorMessage = '權限不足，無法執行此操作';
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       return rejectWithValue(errorMessage);
     }
   }

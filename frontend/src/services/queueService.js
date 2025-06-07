@@ -141,9 +141,14 @@ const setNextSessionDate = async (nextSessionDate, token) => {
   try {
     console.log('queueService.setNextSessionDate 調用:', { nextSessionDate, token: token ? '已提供' : '未提供' });
     
+    if (!token) {
+      throw new Error('認證token缺失');
+    }
+    
     const config = {
       headers: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
     };
     
@@ -160,9 +165,16 @@ const setNextSessionDate = async (nextSessionDate, token) => {
       error: error.message,
       response: error.response?.data,
       status: error.response?.status,
+      config: error.config,
       url: `${ADMIN_API_URL}/settings/nextSession`
     });
-    throw error.response?.data || error;
+    
+    // 確保錯誤信息被正確拋出
+    if (error.response?.data) {
+      throw error.response.data;
+    } else {
+      throw error;
+    }
   }
 };
 
