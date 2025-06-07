@@ -395,15 +395,16 @@ const AdminSettingsPage = () => {
                         }));
                       }
                     }}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        variant: 'outlined',
-                        error: false
-                      }
-                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        fullWidth
+                        variant="outlined"
+                        error={false}
+                      />
+                    )}
                     ampm={false}
-                    format="yyyy/MM/dd HH:mm"
+                    inputFormat="yyyy/MM/dd HH:mm"
                   />
                 </LocalizationProvider>
               </Box>
