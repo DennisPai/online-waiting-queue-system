@@ -36,6 +36,7 @@ const AdminSettingsPage = () => {
   const [maxQueueNumber, setMaxQueueNumberLocal] = useState(100);
   const [minutesPerCustomer, setMinutesPerCustomerLocal] = useState(13);
   const [hasError, setHasError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // 錯誤邊界處理
   useEffect(() => {
@@ -112,25 +113,28 @@ const AdminSettingsPage = () => {
 
   // 處理設置下次辦事時間
   const handleSetNextSessionDate = async () => {
-    // 使用 try-catch 包裝整個函數防止崩潰
+    console.log('開始設置下次辦事時間，當前日期值:', nextSessionDate);
+    console.log('日期類型:', typeof nextSessionDate);
+    console.log('日期有效性:', nextSessionDate instanceof Date);
+
     try {
-      console.log('開始設置下次辦事時間:', nextSessionDate);
+      setLoading(true);
       
-      // 驗證 nextSessionDate 不是 null 或 undefined
+      // 詳細的日期驗證邏輯
       if (!nextSessionDate) {
-        console.warn('nextSessionDate 為空:', nextSessionDate);
+        console.error('日期為空');
         dispatch(showAlert({
-          message: '請選擇有效的日期和時間',
-          severity: 'warning'
+          message: '請選擇日期和時間',
+          severity: 'error'
         }));
         return;
       }
 
-      // 驗證是否為有效的 Date 對象
+      // 檢查是否為Date對象
       if (!(nextSessionDate instanceof Date)) {
-        console.error('nextSessionDate 不是 Date 對象:', typeof nextSessionDate, nextSessionDate);
+        console.error('不是有效的Date對象:', nextSessionDate);
         dispatch(showAlert({
-          message: '日期格式錯誤，請重新選擇日期',
+          message: '無效的日期格式',
           severity: 'error'
         }));
         return;
@@ -138,65 +142,65 @@ const AdminSettingsPage = () => {
 
       // 檢查日期是否有效
       if (isNaN(nextSessionDate.getTime())) {
-        console.error('nextSessionDate 為無效日期:', nextSessionDate);
+        console.error('日期無效:', nextSessionDate);
         dispatch(showAlert({
-          message: '無效的日期格式，請重新選擇日期',
+          message: '請選擇有效的日期',
           severity: 'error'
         }));
         return;
       }
 
-      // 安全地轉換為 ISO 字符串
-      let isoDateString;
+      // 安全地轉換為ISO字符串
+      let isoString;
       try {
-        isoDateString = nextSessionDate.toISOString();
-        console.log('轉換為ISO字符串:', isoDateString);
-      } catch (dateError) {
-        console.error('日期轉換失敗:', dateError);
+        isoString = nextSessionDate.toISOString();
+        console.log('轉換後的ISO字符串:', isoString);
+      } catch (error) {
+        console.error('日期轉換失敗:', error);
         dispatch(showAlert({
-          message: '日期轉換失敗，請重新選擇日期',
+          message: '日期轉換失敗，請重新選擇',
           severity: 'error'
         }));
         return;
       }
 
-      // 禁用按鈕防止重複提交
-      console.log('調用 Redux action 設置下次辦事時間...');
+      console.log('發送到後端的日期:', isoString);
       
-      const result = await dispatch(setNextSessionDate(isoDateString)).unwrap();
-      console.log('設置成功，結果:', result);
+      // 調用Redux action
+      const result = await dispatch(setNextSessionDate(isoString));
       
-      dispatch(showAlert({
-        message: '下次辦事時間設置成功',
-        severity: 'success'
-      }));
+      console.log('Redux action 結果:', result);
       
-      // 重新載入系統設定以確保狀態同步
-      try {
-        await dispatch(getQueueStatus()).unwrap();
-        console.log('系統設定重新載入完成');
-      } catch (reloadError) {
-        console.warn('重新載入系統設定失敗，但設置已成功:', reloadError);
-        // 不顯示錯誤，因為主要操作已成功
+      if (setNextSessionDate.fulfilled.match(result)) {
+        console.log('設置成功，重新載入系統設定');
+        // 設置成功後重新載入系統設定
+        try {
+          await dispatch(getQueueStatus());
+          console.log('系統設定重新載入成功');
+        } catch (loadError) {
+          console.error('重新載入系統設定失敗:', loadError);
+        }
+        
+        dispatch(showAlert({
+          message: '下次辦事時間設置成功',
+          severity: 'success'
+        }));
+      } else {
+        console.error('設置失敗，Redux結果:', result);
+        const errorMessage = result.payload?.message || result.error?.message || '設置失敗';
+        dispatch(showAlert({
+          message: errorMessage,
+          severity: 'error'
+        }));
       }
-      
     } catch (error) {
       console.error('設置下次辦事時間失敗:', error);
-      
-      // 安全地處理錯誤消息
-      let errorMessage = '設置下次辦事時間失敗';
-      if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && error.message) {
-        errorMessage = error.message;
-      } else if (error && error.toString) {
-        errorMessage = error.toString();
-      }
-      
       dispatch(showAlert({
-        message: errorMessage,
+        message: '設置失敗，請稍後再試',
         severity: 'error'
       }));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -413,9 +417,9 @@ const AdminSettingsPage = () => {
                   variant="contained"
                   color="primary"
                   onClick={handleSetNextSessionDate}
-                  disabled={!nextSessionDate || isLoading}
+                  disabled={!nextSessionDate || loading}
                 >
-                  {isLoading ? '設置中...' : '設置下次辦事時間'}
+                  {loading ? '設置中...' : '設置下次辦事時間'}
                 </Button>
               </Box>
               {nextSessionDate && (

@@ -429,13 +429,16 @@ const queueSlice = createSlice({
       })
       .addCase(setNextSessionDate.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 正確訪問後端返回的數據結構並更新 queueStatus 對象
-        state.queueStatus = {
-          ...state.queueStatus,
-          nextSessionDate: action.payload.data.nextSessionDate
-        };
-        // 同時更新單獨的 nextSessionDate 字段以保持向後兼容性
-        state.nextSessionDate = action.payload.data.nextSessionDate;
+        // 正確訪問後端返回的數據結構
+        const nextSessionDate = action.payload?.data?.nextSessionDate || action.payload?.nextSessionDate;
+        if (nextSessionDate) {
+          state.queueStatus = {
+            ...state.queueStatus,
+            nextSessionDate: nextSessionDate
+          };
+          // 同時更新單獨的 nextSessionDate 字段以保持向後兼容性
+          state.nextSessionDate = nextSessionDate;
+        }
       })
       .addCase(setNextSessionDate.rejected, (state, action) => {
         state.isLoading = false;
@@ -448,7 +451,16 @@ const queueSlice = createSlice({
       })
       .addCase(toggleQueueStatus.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.isQueueOpen = action.payload.data.isQueueOpen;
+        // 正確訪問後端返回的數據結構
+        const isQueueOpen = action.payload?.data?.isQueueOpen !== undefined 
+          ? action.payload.data.isQueueOpen 
+          : action.payload?.isQueueOpen;
+        if (isQueueOpen !== undefined) {
+          state.queueStatus = {
+            ...state.queueStatus,
+            isQueueOpen: isQueueOpen
+          };
+        }
       })
       .addCase(toggleQueueStatus.rejected, (state, action) => {
         state.isLoading = false;
@@ -461,11 +473,14 @@ const queueSlice = createSlice({
       })
       .addCase(setMaxQueueNumber.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 更新系統設定中的最大候位上限
-        state.queueStatus = {
-          ...state.queueStatus,
-          maxQueueNumber: action.payload.data.maxQueueNumber
-        };
+        // 正確訪問後端返回的數據結構
+        const maxQueueNumber = action.payload?.data?.maxQueueNumber || action.payload?.maxQueueNumber;
+        if (maxQueueNumber !== undefined) {
+          state.queueStatus = {
+            ...state.queueStatus,
+            maxQueueNumber: maxQueueNumber
+          };
+        }
       })
       .addCase(setMaxQueueNumber.rejected, (state, action) => {
         state.isLoading = false;
@@ -478,11 +493,14 @@ const queueSlice = createSlice({
       })
       .addCase(setMinutesPerCustomer.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 更新系統設定中的每位客戶預估處理時間
-        state.queueStatus = {
-          ...state.queueStatus,
-          minutesPerCustomer: action.payload.data.minutesPerCustomer
-        };
+        // 正確訪問後端返回的數據結構
+        const minutesPerCustomer = action.payload?.data?.minutesPerCustomer || action.payload?.minutesPerCustomer;
+        if (minutesPerCustomer !== undefined) {
+          state.queueStatus = {
+            ...state.queueStatus,
+            minutesPerCustomer: minutesPerCustomer
+          };
+        }
       })
       .addCase(setMinutesPerCustomer.rejected, (state, action) => {
         state.isLoading = false;
