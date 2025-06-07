@@ -111,6 +111,7 @@ const AdminSettingsPage = () => {
       nextSessionDate: nextSessionDate ? nextSessionDate.toISOString() : null
     }, 'AdminSettingsPage');
 
+    // 參數驗證
     if (!nextSessionDate) {
       logger.warn('設定下次辦事時間失敗：日期為空', null, 'AdminSettingsPage');
       dispatch(
@@ -122,33 +123,56 @@ const AdminSettingsPage = () => {
       return;
     }
 
-    const isoDateString = nextSessionDate.toISOString();
-    logger.info('準備發送設定下次辦事時間請求', {
-      originalDate: nextSessionDate,
-      isoString: isoDateString,
-      timestamp: new Date().toISOString()
-    }, 'AdminSettingsPage');
-
-    // 添加 try-catch 包裝 dispatch 調用
+    // 日期有效性檢查
     try {
-      dispatch(setNextSessionDate(isoDateString))
-        .unwrap()
-        .then((result) => {
-          logger.info('設定下次辦事時間成功', {
-            requestDate: isoDateString,
-            responseData: result,
-            timestamp: new Date().toISOString()
-          }, 'AdminSettingsPage');
-          
-          dispatch(
-            showAlert({
-              message: '下次辦事時間設置成功',
-              severity: 'success'
-            })
-          );
-          
-          // 強制重新載入系統狀態
-          dispatch(getQueueStatus());
+      const testDate = new Date(nextSessionDate);
+      if (isNaN(testDate.getTime())) {
+        throw new Error('無效的日期對象');
+      }
+      
+      const isoDateString = testDate.toISOString();
+      
+      logger.info('準備發送設定下次辦事時間請求', {
+        originalDate: nextSessionDate,
+        testDate: testDate,
+        isoString: isoDateString,
+        timestamp: new Date().toISOString()
+      }, 'AdminSettingsPage');
+
+      // 使用 try-catch 包裝整個 dispatch 調用
+      Promise.resolve()
+        .then(() => {
+          logger.debug('開始 dispatch setNextSessionDate', { isoDateString }, 'AdminSettingsPage');
+          return dispatch(setNextSessionDate(isoDateString));
+        })
+        .then((action) => {
+          logger.debug('dispatch setNextSessionDate 完成', { action }, 'AdminSettingsPage');
+          return action;
+        })
+        .then((action) => {
+          // 使用 unwrap 處理結果
+          if (action.type.endsWith('/fulfilled')) {
+            // 成功情況
+            logger.info('設定下次辦事時間成功', {
+              requestDate: isoDateString,
+              actionPayload: action.payload,
+              timestamp: new Date().toISOString()
+            }, 'AdminSettingsPage');
+            
+            dispatch(
+              showAlert({
+                message: '下次辦事時間設置成功',
+                severity: 'success'
+              })
+            );
+            
+            // 強制重新載入系統狀態
+            logger.debug('重新載入系統狀態', null, 'AdminSettingsPage');
+            dispatch(getQueueStatus());
+          } else if (action.type.endsWith('/rejected')) {
+            // 失敗情況
+            throw new Error(action.payload || '設定失敗');
+          }
         })
         .catch((error) => {
           logger.error('設定下次辦事時間失敗', {
@@ -156,32 +180,35 @@ const AdminSettingsPage = () => {
             error: {
               message: error.message || error,
               stack: error.stack,
-              type: typeof error
+              type: typeof error,
+              name: error.name
             },
             timestamp: new Date().toISOString()
           }, 'AdminSettingsPage');
           
+          const errorMessage = error.message || error || '設定下次辦事時間失敗';
+          
           dispatch(
             showAlert({
-              message: error.message || error || '設定下次辦事時間失敗',
+              message: errorMessage,
               severity: 'error'
             })
           );
         });
-    } catch (syncError) {
-      // 捕獲同步錯誤（如果有的話）
-      logger.error('設定下次辦事時間同步錯誤', {
-        requestDate: isoDateString,
-        syncError: {
-          message: syncError.message,
-          stack: syncError.stack
+    } catch (dateError) {
+      // 日期格式錯誤
+      logger.error('日期格式錯誤', {
+        nextSessionDate,
+        dateError: {
+          message: dateError.message,
+          stack: dateError.stack
         },
         timestamp: new Date().toISOString()
       }, 'AdminSettingsPage');
       
       dispatch(
         showAlert({
-          message: '設定失敗：' + syncError.message,
+          message: '日期格式錯誤：' + dateError.message,
           severity: 'error'
         })
       );

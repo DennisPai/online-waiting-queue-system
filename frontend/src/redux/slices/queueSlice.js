@@ -122,37 +122,82 @@ export const setNextSessionDate = createAsyncThunk(
   'queue/setNextSessionDate',
   async (nextSessionDate, { rejectWithValue, getState }) => {
     try {
-      const { token } = getState().auth;
+      // 參數驗證
+      if (!nextSessionDate) {
+        console.error('Redux setNextSessionDate: nextSessionDate 參數為空');
+        return rejectWithValue('下次辦事時間不能為空');
+      }
+
+      // 日期格式驗證
+      let dateString;
+      try {
+        if (typeof nextSessionDate === 'string') {
+          // 確保字符串是有效的ISO日期格式
+          const testDate = new Date(nextSessionDate);
+          if (isNaN(testDate.getTime())) {
+            throw new Error('無效的日期字符串');
+          }
+          dateString = nextSessionDate;
+        } else if (nextSessionDate instanceof Date) {
+          dateString = nextSessionDate.toISOString();
+        } else {
+          throw new Error('不支持的日期格式');
+        }
+      } catch (dateError) {
+        console.error('Redux setNextSessionDate: 日期格式錯誤:', dateError);
+        return rejectWithValue('無效的日期格式');
+      }
+
+      // Token 驗證
+      const state = getState();
+      const { token } = state.auth;
+      
+      if (!token) {
+        console.error('Redux setNextSessionDate: token 不存在');
+        return rejectWithValue('用戶未認證，請重新登入');
+      }
       
       console.log('Redux setNextSessionDate 開始:', {
-        nextSessionDate,
-        token: token ? '存在' : '不存在',
+        dateString,
+        hasToken: !!token,
         timestamp: new Date().toISOString()
       });
       
-      const response = await queueService.setNextSessionDate(nextSessionDate, token);
+      // 呼叫 API 服務
+      const response = await queueService.setNextSessionDate(dateString, token);
       
       console.log('Redux setNextSessionDate 成功:', {
         response,
         timestamp: new Date().toISOString()
       });
       
+      // 確保返回正確的數據格式
+      if (!response) {
+        throw new Error('API 返回空響應');
+      }
+      
       return response;
     } catch (error) {
       console.error('Redux setNextSessionDate 錯誤:', {
         error: {
           message: error.message,
+          name: error.name,
           stack: error.stack,
           response: error.response?.data
         },
         timestamp: new Date().toISOString()
       });
       
-      return rejectWithValue(
-        error.response?.data?.message || 
-        error.message || 
-        '設置下次辦事時間失敗'
-      );
+      // 統一錯誤訊息格式
+      let errorMessage = '設置下次辦事時間失敗';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -440,38 +485,71 @@ const queueSlice = createSlice({
         state.isLoading = false;
         state.error = null;
         
-        console.log('Redux setNextSessionDate fulfilled:', {
+        console.log('Redux setNextSessionDate fulfilled 開始:', {
           payload: action.payload,
+          payloadType: typeof action.payload,
           timestamp: new Date().toISOString()
         });
         
-        // 處理不同的響應數據結構
+        // 安全地檢查和提取響應數據
         let nextSessionDate = null;
         
-        if (action.payload?.data?.nextSessionDate) {
-          nextSessionDate = action.payload.data.nextSessionDate;
-        } else if (action.payload?.nextSessionDate) {
-          nextSessionDate = action.payload.nextSessionDate;
-        } else if (action.payload?.data?.data?.nextSessionDate) {
-          nextSessionDate = action.payload.data.data.nextSessionDate;
-        }
-        
-        console.log('Redux: 提取的 nextSessionDate:', nextSessionDate);
-        
-        if (nextSessionDate) {
-          state.nextSessionDate = nextSessionDate;
-          
-          // 更新queueStatus中的nextSessionDate
-          if (state.queueStatus) {
-            state.queueStatus = {
-              ...state.queueStatus,
-              nextSessionDate: nextSessionDate
-            };
+        try {
+          // 多層級檢查響應數據結構
+          if (action.payload) {
+            if (action.payload.data?.nextSessionDate) {
+              nextSessionDate = action.payload.data.nextSessionDate;
+              console.log('Redux: 從 payload.data.nextSessionDate 提取日期');
+            } else if (action.payload.nextSessionDate) {
+              nextSessionDate = action.payload.nextSessionDate;
+              console.log('Redux: 從 payload.nextSessionDate 提取日期');
+            } else if (action.payload.data?.data?.nextSessionDate) {
+              nextSessionDate = action.payload.data.data.nextSessionDate;
+              console.log('Redux: 從 payload.data.data.nextSessionDate 提取日期');
+            } else if (typeof action.payload === 'string') {
+              // 如果 payload 本身就是日期字符串
+              nextSessionDate = action.payload;
+              console.log('Redux: payload 本身為日期字符串');
+            }
           }
           
-          console.log('Redux: nextSessionDate 更新成功');
-        } else {
-          console.warn('Redux: 無法從響應中提取 nextSessionDate');
+          console.log('Redux: 提取的 nextSessionDate:', nextSessionDate);
+          
+          // 驗證提取的日期
+          if (nextSessionDate) {
+            const testDate = new Date(nextSessionDate);
+            if (isNaN(testDate.getTime())) {
+              throw new Error('提取的日期格式無效');
+            }
+            
+            // 更新狀態
+            state.nextSessionDate = nextSessionDate;
+            
+            // 安全地更新 queueStatus
+            if (state.queueStatus) {
+              state.queueStatus = {
+                ...state.queueStatus,
+                nextSessionDate: nextSessionDate
+              };
+            } else {
+              // 如果 queueStatus 不存在，創建它
+              state.queueStatus = {
+                nextSessionDate: nextSessionDate
+              };
+            }
+            
+            console.log('Redux: nextSessionDate 更新成功:', {
+              nextSessionDate,
+              queueStatusUpdated: !!state.queueStatus
+            });
+          } else {
+            console.warn('Redux: 無法從響應中提取有效的 nextSessionDate');
+            // 設定錯誤但不阻止流程
+            state.error = '響應數據格式異常，但操作可能已成功';
+          }
+        } catch (parseError) {
+          console.error('Redux: 解析響應數據時發生錯誤:', parseError);
+          state.error = '解析響應數據失敗：' + parseError.message;
         }
       })
       .addCase(setNextSessionDate.rejected, (state, action) => {
