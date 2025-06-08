@@ -725,20 +725,34 @@ const StatusPage = () => {
 
               {detailsDialog.mode === 'view' ? (
                 <Grid item xs={12}>
-                  <Typography variant="body1" sx={{ mb: 1 }}>
-                    出生日期：{(() => {
-                      const record = detailsDialog.record;
-                      // 顯示國曆或農曆出生日期（使用民國年）
-                      if (record.gregorianBirthYear && record.gregorianBirthMonth && record.gregorianBirthDay) {
-                        return `${formatMinguoDate(record.gregorianBirthYear, record.gregorianBirthMonth, record.gregorianBirthDay)} (國曆)`;
-                      } else if (record.lunarBirthYear && record.lunarBirthMonth && record.lunarBirthDay) {
-                        const leapText = record.lunarIsLeapMonth ? ' 閏月' : '';
-                        return `${formatMinguoDate(record.lunarBirthYear, record.lunarBirthMonth, record.lunarBirthDay)} (農曆${leapText})`;
-                      } else {
-                        return '出生日期未設定';
-                      }
-                    })()}
-                  </Typography>
+                  {(() => {
+                    const record = detailsDialog.record;
+                    const hasGregorian = record.gregorianBirthYear && record.gregorianBirthMonth && record.gregorianBirthDay;
+                    const hasLunar = record.lunarBirthYear && record.lunarBirthMonth && record.lunarBirthDay;
+                    
+                    if (!hasGregorian && !hasLunar) {
+                      return (
+                        <Typography variant="body1" sx={{ mb: 1 }}>
+                          出生日期：出生日期未設定
+                        </Typography>
+                      );
+                    }
+                    
+                    return (
+                      <>
+                        {hasGregorian && (
+                          <Typography variant="body1" sx={{ mb: 1 }}>
+                            國曆出生日期：{formatMinguoDate(record.gregorianBirthYear, record.gregorianBirthMonth, record.gregorianBirthDay)}
+                          </Typography>
+                        )}
+                        {hasLunar && (
+                          <Typography variant="body1" sx={{ mb: 1 }}>
+                            農曆出生日期：{formatMinguoDate(record.lunarBirthYear, record.lunarBirthMonth, record.lunarBirthDay)}{record.lunarIsLeapMonth ? ' (閏月)' : ''}
+                          </Typography>
+                        )}
+                      </>
+                    );
+                  })()}
                   {detailsDialog.record.virtualAge && (
                     <Typography variant="body1" color="primary" sx={{ fontWeight: 'bold' }}>
                       虛歲：{detailsDialog.record.virtualAge} 歲
