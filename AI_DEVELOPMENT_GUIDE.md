@@ -189,9 +189,56 @@ docker-compose up -d
 
 ### 🔧 關鍵技術問題與解決方案
 
-#### ⚠️ 管理員面板功能常見問題（最新修復）
+#### ⚠️ 客戶出生日期顯示問題（最新修復）
 
-**問題1: API端點不匹配（已修復）**
+**問題1: 後端API欄位格式不匹配（已修復）**
+```javascript
+// 查詢候位時客戶無法正確顯示出生年月日欄位資料
+// ❌ 錯誤：後端返回舊格式欄位
+return {
+  birthYear: record.birthYear,
+  birthMonth: record.birthMonth, 
+  birthDay: record.birthDay,
+  calendarType: record.calendarType,
+  // ... 其他欄位
+};
+
+// ✅ 正確：後端返回新格式欄位
+return {
+  gregorianBirthYear: record.gregorianBirthYear,
+  gregorianBirthMonth: record.gregorianBirthMonth,
+  gregorianBirthDay: record.gregorianBirthDay,
+  lunarBirthYear: record.lunarBirthYear,
+  lunarBirthMonth: record.lunarBirthMonth,
+  lunarBirthDay: record.lunarBirthDay,
+  lunarIsLeapMonth: record.lunarIsLeapMonth,
+  virtualAge: record.virtualAge,
+  // ... 其他欄位
+};
+```
+
+**問題2: 前端出生日期顯示邏輯（已修復）**
+```javascript
+// 客戶查詢時無法完整顯示國曆和農曆出生日期
+// ❌ 錯誤：只顯示其中一種
+if (record.gregorianBirthYear && ...) {
+  return `${formatMinguoDate(...)} (國曆)`;
+} else if (record.lunarBirthYear && ...) {
+  return `${formatMinguoDate(...)} (農曆)`;
+}
+
+// ✅ 正確：同時顯示國曆和農曆
+{hasGregorian && (
+  <Typography>國曆出生日期：{formatMinguoDate(...)}</Typography>
+)}
+{hasLunar && (
+  <Typography>農曆出生日期：{formatMinguoDate(...)} {閏月標示}</Typography>
+)}
+```
+
+#### ⚠️ 管理員面板功能常見問題（之前修復）
+
+**問題3: API端點不匹配（已修復）**
 ```javascript
 // ❌ 錯誤的API端點調用
 // 清除候位功能
@@ -211,7 +258,7 @@ export const clearAllQueue = async () => {
 // ✅ 正確: axios.delete(`${API_BASE_URL}/queue/${queueId}/delete`)
 ```
 
-**問題2: 組件Props傳遞錯誤（已修復）**
+**問題4: 組件Props傳遞錯誤（已修復）**
 ```javascript
 // ❌ 錯誤的Props傳遞
 <ExportDialog
@@ -230,7 +277,7 @@ export const clearAllQueue = async () => {
 
 #### ⚠️ 國曆農曆轉換功能常見問題
 
-**問題3: lunar-javascript API錯誤使用**
+**問題5: lunar-javascript API錯誤使用**
 ```javascript
 // ❌ 錯誤用法
 const isLeapMonth = lunar.isLeap(); // 此方法不存在
@@ -240,13 +287,13 @@ const isLeapMonth = lunar.getMonth() < 0;
 const monthValue = Math.abs(lunar.getMonth());
 ```
 
-**問題4: 後端控制器缺少導入**
+**問題6: 後端控制器缺少導入**
 ```javascript
 // 確保在 backend/src/controllers/admin.controller.js 中有以下導入
 import { autoFillDates, autoFillFamilyMembersDates } from '../utils/calendarConverter';
 ```
 
-**問題5: 前端提交數據不完整**
+**問題7: 前端提交數據不完整**
 ```javascript
 // 確保 RegisterPage.jsx 的 submissionData 包含所有必要欄位
 const submissionData = {
@@ -260,7 +307,7 @@ const submissionData = {
 };
 ```
 
-**問題6: 轉換函數調用方式錯誤**
+**問題8: 轉換函數調用方式錯誤**
 ```javascript
 // ❌ 錯誤用法（直接傳入數組）
 processedData.familyMembers = autoFillFamilyMembersDates(processedData.familyMembers);
@@ -270,7 +317,7 @@ const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.fam
 processedData.familyMembers = familyData.familyMembers;
 ```
 
-**問題7: 表格虛歲欄位顯示錯位**
+**問題9: 表格虛歲欄位顯示錯位**
 - 前端表格Body中缺少虛歲欄位的TableCell渲染
 - 需要在 `AdminDashboardPage.jsx` 中添加對應的表格單元格：
 ```javascript
@@ -323,7 +370,11 @@ docker-compose up -d
 #### 📋 問題排查檢查清單
 
 遇到功能異常時，按以下順序檢查：
-- [ ] **管理員面板功能檢查**（最優先）：
+- [ ] **客戶出生日期顯示檢查**（最優先）：
+  - [ ] 後端API是否返回新的欄位格式（gregorianBirthYear等）
+  - [ ] 前端顯示邏輯是否同時顯示國曆和農曆
+  - [ ] `getQueueByNameAndPhone` API返回的欄位是否正確
+- [ ] **管理員面板功能檢查**：
   - [ ] API端點是否匹配（清除候位、刪除客戶）
   - [ ] 組件Props是否正確傳遞（特別是ExportDialog的customers prop）
   - [ ] 匯出功能是否顯示正確的客戶筆數

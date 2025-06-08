@@ -618,7 +618,28 @@ docker-compose up -d
 
 ### 常見問題與解決方案
 
-#### 1. 管理員面板功能失效問題（已修復）
+#### 1. 客戶出生日期顯示問題（最新修復）
+**問題**：查詢候位時客戶無法正確顯示出生年月日欄位資料，或無法完整顯示國曆和農曆出生日期  
+**原因**：
+- 後端API仍返回舊的出生日期欄位格式而前端期望新格式
+- 前端顯示邏輯使用 `else if`，導致只顯示國曆或農曆其中一種
+
+**已修復的問題**：
+- **後端API欄位格式**：`backend/src/controllers/queue.controller.js` 中的 `getQueueByNameAndPhone` 方法，將返回欄位從舊格式 (`birthYear`, `birthMonth`, `birthDay`, `calendarType`) 更新為新格式
+- **前端顯示邏輯**：`frontend/src/pages/StatusPage.jsx` 中的出生日期顯示邏輯，改為同時顯示國曆和農曆資料（如果都有的話）
+
+**修正後的顯示邏輯**：
+```javascript
+// 同時顯示國曆和農曆
+{hasGregorian && (
+  <Typography>國曆出生日期：{formatMinguoDate(...)}</Typography>
+)}
+{hasLunar && (
+  <Typography>農曆出生日期：{formatMinguoDate(...)} {閏月標示}</Typography>
+)}
+```
+
+#### 2. 管理員面板功能失效問題（已修復）
 **問題**：前後端分離部署後，管理員面板的"清除候位"、"匯出資料"、"刪除客戶"功能失效  
 **已修復的API端點問題**：
 - **清除候位功能**：前端調用 `/queue/clear` → 修正為 `/queue/clear-all`
@@ -632,7 +653,7 @@ docker-compose up -d
 - 確保 `frontend/src/pages/RegisterPage.jsx` 中 `handleSubmit` 函數的 `submissionData` 包含所有必要欄位
 - 必須包含：`email`, `name`, `phone`, `gender`, `addresses`, `consultationTopics`
 
-#### 1.1. 後台管理「設定下次辦事時間」功能問題
+#### 3. 後台管理「設定下次辦事時間」功能問題
 **問題**：點擊「設定下次辦事時間」按鈕後出現白屏或Redux Error #7錯誤  
 **原因**：DateTimePicker組件與Redux序列化機制衝突，Date對象無法序列化存儲  
 **解決方案**：
@@ -640,7 +661,7 @@ docker-compose up -d
 - 所有日期處理改為字符串格式，避免Redux序列化問題
 - 增強錯誤處理機制，提升系統穩定性
 
-#### 2. 後台管理編輯客戶資料時顯示「更新客戶資料失敗」
+#### 4. 後台管理編輯客戶資料時顯示「更新客戶資料失敗」
 **問題**：後台編輯客戶資料保存時失敗  
 **原因**：後端缺少日期轉換工具的導入  
 **解決方案**：
@@ -649,7 +670,7 @@ docker-compose up -d
 import { autoFillDates, autoFillFamilyMembersDates } from '../utils/calendarConverter';
 ```
 
-#### 3. 國曆農曆轉換功能異常
+#### 5. 國曆農曆轉換功能異常
 **問題**：日期轉換功能不工作或出現錯誤  
 **原因**：lunar-javascript 庫API使用不正確  
 **解決方案**：
@@ -657,7 +678,7 @@ import { autoFillDates, autoFillFamilyMembersDates } from '../utils/calendarConv
 - 月份值使用：`Math.abs(lunar.getMonth())`
 - 更新前後端 `calendarConverter.js` 使用正確的API
 
-#### 4. 容器啟動失敗
+#### 6. 容器啟動失敗
 **問題**：Docker容器無法正常啟動  
 **常見原因和解決方案**：
 ```bash
@@ -674,13 +695,13 @@ docker-compose build --no-cache
 docker-compose up -d
 ```
 
-#### 5. 前端ESLint錯誤
+#### 7. 前端ESLint錯誤
 **問題**：前端建構時出現ESLint錯誤  
 **解決方案**：
 - 檢查所有必要的import語句是否正確
 - 確保autoFillDates等工具函數已正確導入
 
-#### 6. 家人資料新增後虛歲不顯示
+#### 8. 家人資料新增後虛歲不顯示
 **問題**：編輯客戶資料新增家人並填寫國曆出生日期後，虛歲顯示"未計算"  
 **原因**：`autoFillFamilyMembersDates` 函數調用方式錯誤  
 **解決方案**：
@@ -694,7 +715,7 @@ const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.fam
 processedData.familyMembers = familyData.familyMembers;
 ```
 
-#### 7. 候台管理虛歲欄位顯示錯位
+#### 9. 候台管理虛歲欄位顯示錯位
 **問題**：開啟虛歲欄位後表格出現空白行，欄位名稱錯位  
 **原因**：表格Body中缺少虛歲欄位的TableCell渲染  
 **解決方案**：
