@@ -437,31 +437,66 @@ exports.getQueueNumberStatus = async (req, res) => {
   }
 };
 
-// 通過姓名和電話查詢候位號碼
+// 通過姓名或電話查詢候位號碼（支持單一條件查詢和家人姓名搜索）
 exports.getQueueByNameAndPhone = async (req, res) => {
   try {
     const { name, phone } = req.query;
     
-    if (!name || !phone) {
+    if (!name && !phone) {
       return res.status(400).json({
         success: false,
-        message: '請提供姓名和電話'
+        message: '請提供姓名或電話其中一個'
       });
     }
     
-    console.log(`通過姓名: ${name} 和電話: ${phone} 查詢候位號碼`);
+    console.log(`查詢條件 - 姓名: ${name || '未提供'}, 電話: ${phone || '未提供'}`);
+    
+    let searchQuery = {};
+    
+    // 構建查詢條件
+    if (name && phone) {
+      // 同時提供姓名和電話：精確匹配主客戶或家人姓名匹配
+      searchQuery = {
+        $and: [
+          { phone: phone },
+          {
+            $or: [
+              { name: name }, // 主客戶姓名匹配
+              { 'familyMembers.name': name } // 家人姓名匹配
+            ]
+          }
+        ]
+      };
+    } else if (name) {
+      // 只提供姓名：匹配主客戶或家人姓名
+      searchQuery = {
+        $or: [
+          { name: name }, // 主客戶姓名匹配
+          { 'familyMembers.name': name } // 家人姓名匹配
+        ]
+      };
+    } else if (phone) {
+      // 只提供電話：匹配主客戶電話
+      searchQuery = { phone: phone };
+    }
     
     // 查找所有匹配的候位記錄
-    const records = await WaitingRecord.find({ 
-      name: name,
-      phone: phone
-    }).sort({ queueNumber: 1 });
+    const records = await WaitingRecord.find(searchQuery).sort({ queueNumber: 1 });
     
     // 如果沒有找到記錄
     if (!records || records.length === 0) {
+      let errorMessage = '查無候位記錄';
+      if (name && phone) {
+        errorMessage += '，請確認姓名和電話是否正確';
+      } else if (name) {
+        errorMessage += '，請確認姓名是否正確（包含本人或家人姓名）';
+      } else if (phone) {
+        errorMessage += '，請確認電話是否正確';
+      }
+      
       return res.status(404).json({
         success: false,
-        message: '查無候位記錄，請確認姓名和電話是否正確'
+        message: errorMessage
       });
     }
     

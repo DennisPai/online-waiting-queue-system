@@ -119,15 +119,20 @@ const StatusPage = () => {
   }, [dispatch, paramQueueNumber]);
 
   const handleSearch = () => {
-    if (!searchName.trim() || !searchPhone.trim()) {
+    // 檢查是否至少輸入其中一個條件
+    if (!searchName.trim() && !searchPhone.trim()) {
       dispatch(showAlert({
-        message: '請輸入姓名和電話',
+        message: '請輸入姓名或電話其中一個進行查詢',
         severity: 'warning'
       }));
       return;
     }
     
-    dispatch(searchQueueByNameAndPhone({ name: searchName, phone: searchPhone }));
+    // 使用修改後的查詢函數，支持單一條件查詢
+    dispatch(searchQueueByNameAndPhone({ 
+      name: searchName.trim() || undefined, 
+      phone: searchPhone.trim() || undefined 
+    }));
   };
 
   // 顯示詳細資料
@@ -405,27 +410,30 @@ const StatusPage = () => {
 
       <Paper sx={{ p: 3, mb: 4 }}>
         <Box component="form" onSubmit={(e) => { e.preventDefault(); handleSearch(); }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            請輸入姓名或電話其中一個進行查詢（姓名查詢包含家人姓名）
+          </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="姓名"
+                label="姓名（選填）"
                 variant="outlined"
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
-                placeholder="請輸入您的姓名"
-                required
+                placeholder="請輸入您或家人的姓名"
+                helperText="可查詢本人或家人姓名"
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="電話"
+                label="電話（選填）"
                 variant="outlined"
                 value={searchPhone}
                 onChange={(e) => setSearchPhone(e.target.value)}
-                placeholder="請輸入您的電話"
-                required
+                placeholder="請輸入您的電話號碼"
+                helperText="請輸入登記時的電話"
               />
             </Grid>
             <Grid item xs={12}>

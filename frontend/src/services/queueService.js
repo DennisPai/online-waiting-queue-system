@@ -50,11 +50,20 @@ const getQueueNumberStatus = async (queueNumber) => {
   }
 };
 
-// 通過姓名和電話查詢候位號碼
-const searchQueueByNameAndPhone = async (name, phone) => {
+// 通過姓名或電話查詢候位號碼（支持單一條件查詢）
+const searchQueueByNameOrPhone = async (name, phone) => {
   try {
+    // 構建查詢參數，過濾空值
+    const params = {};
+    if (name && name.trim()) {
+      params.name = name.trim();
+    }
+    if (phone && phone.trim()) {
+      params.phone = phone.trim();
+    }
+    
     const response = await axios.get(`${API_ENDPOINTS.QUEUE}/search`, {
-      params: { name, phone }
+      params
     });
     return response.data;
   } catch (error) {
@@ -62,6 +71,9 @@ const searchQueueByNameAndPhone = async (name, phone) => {
     throw error;
   }
 };
+
+// 為了向後兼容，保留原函數名的別名
+const searchQueueByNameAndPhone = searchQueueByNameOrPhone;
 
 // 獲取排序的候位號碼（公共API）
 const getPublicOrderedNumbers = async () => {
@@ -310,6 +322,7 @@ const queueService = {
   registerQueue,
   getQueueNumberStatus,
   searchQueueByNameAndPhone,
+  searchQueueByNameOrPhone,
   getPublicOrderedNumbers,
   
   // 管理員 API
