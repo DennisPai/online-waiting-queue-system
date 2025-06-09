@@ -85,10 +85,6 @@ import {
   calculateVirtualAge 
 } from '../../utils/calendarConverter';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
 import RegisterForm from '../RegisterForm';
 
 // 定義可顯示的欄位配置
