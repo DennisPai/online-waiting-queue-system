@@ -51,7 +51,14 @@ function App() {
           {/* 公共路由 */}
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
-            <Route path="register" element={<RegisterResetWrapper />} />
+            <Route 
+              path="register" 
+              element={
+                <ProtectedRoute>
+                  <RegisterResetWrapper />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="status/:queueNumber" element={<StatusResetWrapper />} />
             <Route path="login" element={<LoginPage />} />
           </Route>

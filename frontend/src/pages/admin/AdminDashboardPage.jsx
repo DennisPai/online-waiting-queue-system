@@ -84,6 +84,12 @@ import {
   formatMinguoDate,
   calculateVirtualAge 
 } from '../../utils/calendarConverter';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import RegisterForm from '../RegisterForm';
 
 // 定義可顯示的欄位配置
 const AVAILABLE_COLUMNS = {
@@ -127,6 +133,7 @@ const AdminDashboardPage = () => {
   });
   // 添加匯出對話框狀態
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
   
   // 添加欄位顯示控制狀態
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -1080,6 +1087,26 @@ const AdminDashboardPage = () => {
     }
   };
 
+  const handleOpenRegisterDialog = () => {
+    setRegisterDialogOpen(true);
+  };
+
+  const handleCloseRegisterDialog = () => {
+    setRegisterDialogOpen(false);
+  };
+
+  const handleRegisterSuccess = () => {
+    // 登記成功後關閉對話框並重新載入列表
+    setRegisterDialogOpen(false);
+    loadQueueList();
+    dispatch(
+      showAlert({
+        message: '候位登記成功！',
+        severity: 'success'
+      })
+    );
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -1087,6 +1114,15 @@ const AdminDashboardPage = () => {
           候位管理
         </Typography>
         <Box>
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<PersonAddIcon />}
+            onClick={handleOpenRegisterDialog}
+            sx={{ mr: 1 }}
+          >
+            登記候位
+          </Button>
           <Button
             variant="outlined"
             startIcon={<ViewColumnIcon />}
@@ -2129,6 +2165,27 @@ const AdminDashboardPage = () => {
           </CardContent>
         </Card>
       </Popover>
+
+      {/* 登記候位對話框 */}
+      <Dialog
+        open={registerDialogOpen}
+        onClose={handleCloseRegisterDialog}
+        maxWidth="md"
+        fullWidth
+        scroll="paper"
+      >
+        <DialogTitle>
+          登記候位
+        </DialogTitle>
+        <DialogContent dividers>
+          <RegisterForm onSuccess={handleRegisterSuccess} isDialog={true} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseRegisterDialog}>
+            取消
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

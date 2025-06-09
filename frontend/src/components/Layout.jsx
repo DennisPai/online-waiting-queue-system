@@ -80,15 +80,19 @@ const Layout = () => {
                 <FontSizeSelector variant="buttons" showLabel={false} />
               </Box>
               
-              <Button
-                color="inherit"
-                component={RouterLink}
-                to="/register"
-                sx={{ mr: 1 }}
-                startIcon={<PersonAddIcon />}
-              >
-                我要候位
-              </Button>
+              {/* 只有管理員登入時才顯示我要候位按鈕 */}
+              {isAuthenticated && (
+                <Button
+                  color="inherit"
+                  component={RouterLink}
+                  to="/register"
+                  sx={{ mr: 1 }}
+                  startIcon={<PersonAddIcon />}
+                >
+                  我要候位
+                </Button>
+              )}
+              
               {isAuthenticated ? (
                 <>
                   <Button
@@ -136,17 +140,19 @@ const Layout = () => {
                 <MenuIcon />
               </IconButton>
               <Menu
+                id="menu-appbar"
                 anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleCloseMenu}
                 anchorOrigin={{
-                  vertical: 'bottom',
+                  vertical: 'top',
                   horizontal: 'right',
                 }}
+                keepMounted
                 transformOrigin={{
                   vertical: 'top',
                   horizontal: 'right',
                 }}
+                open={Boolean(anchorEl)}
+                onClose={handleCloseMenu}
               >
                 <MenuItem 
                   component={RouterLink} 
@@ -156,14 +162,17 @@ const Layout = () => {
                   <HomeIcon sx={{ mr: 1 }} />
                   首頁
                 </MenuItem>
-                <MenuItem 
-                  component={RouterLink} 
-                  to="/register" 
-                  onClick={handleCloseMenu}
-                >
-                  <PersonAddIcon sx={{ mr: 1 }} />
-                  我要候位
-                </MenuItem>
+                {/* 只有管理員登入時才顯示我要候位選項 */}
+                {isAuthenticated && (
+                  <MenuItem 
+                    component={RouterLink} 
+                    to="/register" 
+                    onClick={handleCloseMenu}
+                  >
+                    <PersonAddIcon sx={{ mr: 1 }} />
+                    我要候位
+                  </MenuItem>
+                )}
                 {isAuthenticated ? (
                   <>
                     <MenuItem 

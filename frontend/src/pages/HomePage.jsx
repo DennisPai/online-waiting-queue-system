@@ -133,32 +133,35 @@ const HomePage = () => {
           <QueueStatusDisplay queueStatus={queueStatus} isLoading={isLoading} />
         </Grid>
 
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h4" component="div" gutterBottom sx={{ fontSize: { xs: '1.4rem', md: '1.6rem' } }}>
-                我要登記候位
-              </Typography>
-              <Typography variant="body1" color="text.secondary" paragraph sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}>
-                填寫基本資料進行候位登記，系統會自動為您安排候位號碼，省去現場排隊時間。
-              </Typography>
-            </CardContent>
-            <CardActions>
-              <Button
-                component={RouterLink}
-                to="/register"
-                variant="contained"
-                color="primary"
-                size="large"
-                fullWidth
-              >
-                立即候位
-              </Button>
-            </CardActions>
-          </Card>
-        </Grid>
+        {/* 只有管理員登入時才顯示候位登記功能 */}
+        {isAuthenticated && (
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h4" component="div" gutterBottom sx={{ fontSize: { xs: '1.4rem', md: '1.6rem' } }}>
+                  我要登記候位
+                </Typography>
+                <Typography variant="body1" color="text.secondary" paragraph sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}>
+                  填寫基本資料進行候位登記，系統會自動為您安排候位號碼，省去現場排隊時間。
+                </Typography>
+              </CardContent>
+              <CardActions>
+                <Button
+                  component={RouterLink}
+                  to="/register"
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  fullWidth
+                >
+                  立即候位
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        )}
 
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={isAuthenticated ? 6 : 12}>
           <Card>
             <CardContent>
               <Typography variant="h4" component="div" gutterBottom sx={{ fontSize: { xs: '1.4rem', md: '1.6rem' } }}>
