@@ -22,7 +22,10 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Alert
+  Alert,
+  MenuItem,
+  Select,
+  InputLabel
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -123,6 +126,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
     
     // 檢查是否為簡化模式
     const isSimplifiedMode = queueStatus?.simplifiedMode || false;
+    console.log('簡化模式狀態:', isSimplifiedMode, '完整狀態:', queueStatus);
     
     if (isSimplifiedMode) {
       // 簡化模式：只需要姓名
@@ -225,6 +229,70 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
     }
   };
 
+  // 處理地址變更
+  const handleAddressChange = (index, field, value) => {
+    const newAddresses = [...formData.addresses];
+    newAddresses[index] = { ...newAddresses[index], [field]: value };
+    setFormData({ ...formData, addresses: newAddresses });
+    
+    // 清除錯誤
+    const errorKey = `addresses.${index}.${field}`;
+    if (formErrors[errorKey]) {
+      setFormErrors({ ...formErrors, [errorKey]: null });
+    }
+  };
+
+  // 新增地址
+  const addAddress = () => {
+    setFormData({
+      ...formData,
+      addresses: [...formData.addresses, { address: '', addressType: 'home' }]
+    });
+  };
+
+  // 移除地址
+  const removeAddress = (index) => {
+    if (formData.addresses.length > 1) {
+      const newAddresses = formData.addresses.filter((_, i) => i !== index);
+      setFormData({ ...formData, addresses: newAddresses });
+    }
+  };
+
+  // 處理家人變更
+  const handleFamilyMemberChange = (index, field, value) => {
+    const newFamilyMembers = [...formData.familyMembers];
+    newFamilyMembers[index] = { ...newFamilyMembers[index], [field]: value };
+    setFormData({ ...formData, familyMembers: newFamilyMembers });
+    
+    // 清除錯誤
+    const errorKey = `familyMembers.${index}.${field}`;
+    if (formErrors[errorKey]) {
+      setFormErrors({ ...formErrors, [errorKey]: null });
+    }
+  };
+
+  // 新增家人
+  const addFamilyMember = () => {
+    setFormData({
+      ...formData,
+      familyMembers: [...formData.familyMembers, {
+        name: '',
+        birthYear: '',
+        birthMonth: '',
+        birthDay: '',
+        calendarType: 'gregorian',
+        lunarIsLeapMonth: false,
+        address: ''
+      }]
+    });
+  };
+
+  // 移除家人
+  const removeFamilyMember = (index) => {
+    const newFamilyMembers = formData.familyMembers.filter((_, i) => i !== index);
+    setFormData({ ...formData, familyMembers: newFamilyMembers });
+  };
+
   const handleSubmit = () => {
     if (validateForm()) {
       dispatch(registerQueue(formData));
@@ -282,10 +350,12 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
     );
   }
 
+  const isSimplifiedMode = queueStatus?.simplifiedMode || false;
+
   return (
     <Box sx={{ mt: isDialog ? 0 : 2 }}>
       {/* 簡化模式提示 */}
-      {queueStatus?.simplifiedMode && (
+      {isSimplifiedMode && (
         <Alert severity="info" sx={{ mb: 3 }}>
           <Typography variant="body2">
             <strong>簡化模式已開啟</strong><br />
@@ -318,11 +388,11 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         <Grid item xs={12} sm={6}>
           <TextField
-            required={!queueStatus?.simplifiedMode}
+            required={!isSimplifiedMode}
             fullWidth
             id="phone"
             name="phone"
-            label="聯絡手機"
+            label={`聯絡手機${isSimplifiedMode ? ' (選填)' : ''}`}
             value={formData.phone}
             onChange={handleChange}
             error={Boolean(formErrors.phone)}
@@ -332,11 +402,11 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         <Grid item xs={12}>
           <TextField
-            required={!queueStatus?.simplifiedMode}
+            required={!isSimplifiedMode}
             fullWidth
             id="email"
             name="email"
-            label="電子郵件"
+            label={`電子郵件${isSimplifiedMode ? ' (選填)' : ''}`}
             type="email"
             value={formData.email}
             onChange={handleChange}
@@ -360,6 +430,258 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
           </FormControl>
         </Grid>
 
+        {/* 出生日期 */}
+        {!isSimplifiedMode && (
+          <>
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main', mt: 2 }}>
+                出生日期
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12}>
+              <FormControl component="fieldset">
+                <FormLabel component="legend">曆法類型</FormLabel>
+                <RadioGroup
+                  row
+                  name="calendarType"
+                  value={formData.calendarType}
+                  onChange={handleChange}
+                >
+                  <FormControlLabel value="gregorian" control={<Radio />} label="國曆" />
+                  <FormControlLabel value="lunar" control={<Radio />} label="農曆" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <TextField
+                required
+                fullWidth
+                id="birthYear"
+                name="birthYear"
+                label={formData.calendarType === 'gregorian' ? '出生年 (民國或西元)' : '農曆出生年'}
+                value={formData.birthYear}
+                onChange={handleChange}
+                error={Boolean(formErrors.birthYear)}
+                helperText={formErrors.birthYear}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <TextField
+                required
+                fullWidth
+                id="birthMonth"
+                name="birthMonth"
+                label="出生月"
+                type="number"
+                inputProps={{ min: 1, max: 12 }}
+                value={formData.birthMonth}
+                onChange={handleChange}
+                error={Boolean(formErrors.birthMonth)}
+                helperText={formErrors.birthMonth}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <TextField
+                required
+                fullWidth
+                id="birthDay"
+                name="birthDay"
+                label="出生日"
+                type="number"
+                inputProps={{ min: 1, max: 31 }}
+                value={formData.birthDay}
+                onChange={handleChange}
+                error={Boolean(formErrors.birthDay)}
+                helperText={formErrors.birthDay}
+              />
+            </Grid>
+
+            {formData.calendarType === 'lunar' && (
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.lunarIsLeapMonth}
+                      onChange={(e) => setFormData({ ...formData, lunarIsLeapMonth: e.target.checked })}
+                      name="lunarIsLeapMonth"
+                    />
+                  }
+                  label="閏月"
+                />
+              </Grid>
+            )}
+          </>
+        )}
+
+        {/* 地址資料 */}
+        {!isSimplifiedMode && (
+          <>
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                  地址資料
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={addAddress}
+                >
+                  新增地址
+                </Button>
+              </Box>
+            </Grid>
+
+            {formData.addresses.map((address, index) => (
+              <React.Fragment key={index}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    label={`地址 ${index + 1}`}
+                    value={address.address}
+                    onChange={(e) => handleAddressChange(index, 'address', e.target.value)}
+                    error={Boolean(formErrors[`addresses.${index}.address`])}
+                    helperText={formErrors[`addresses.${index}.address`]}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={5}>
+                  <FormControl fullWidth>
+                    <InputLabel>地址類型</InputLabel>
+                    <Select
+                      value={address.addressType}
+                      label="地址類型"
+                      onChange={(e) => handleAddressChange(index, 'addressType', e.target.value)}
+                    >
+                      {addressTypeOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={1}>
+                  <IconButton
+                    onClick={() => removeAddress(index)}
+                    disabled={formData.addresses.length === 1}
+                    color="error"
+                  >
+                    <RemoveIcon />
+                  </IconButton>
+                </Grid>
+              </React.Fragment>
+            ))}
+          </>
+        )}
+
+        {/* 家人資料 */}
+        {!isSimplifiedMode && (
+          <>
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                  家人資料 (選填)
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={addFamilyMember}
+                >
+                  新增家人
+                </Button>
+              </Box>
+            </Grid>
+
+            {formData.familyMembers.map((member, index) => (
+              <Grid item xs={12} key={index}>
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                      <Typography sx={{ flexGrow: 1 }}>
+                        家人 {index + 1}: {member.name || '(未填寫姓名)'}
+                      </Typography>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFamilyMember(index);
+                        }}
+                        size="small"
+                        color="error"
+                      >
+                        <CloseIcon />
+                      </IconButton>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="姓名"
+                          value={member.name}
+                          onChange={(e) => handleFamilyMemberChange(index, 'name', e.target.value)}
+                          error={Boolean(formErrors[`familyMembers.${index}.name`])}
+                          helperText={formErrors[`familyMembers.${index}.name`]}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={2}>
+                        <TextField
+                          fullWidth
+                          label="出生年"
+                          value={member.birthYear}
+                          onChange={(e) => handleFamilyMemberChange(index, 'birthYear', e.target.value)}
+                          error={Boolean(formErrors[`familyMembers.${index}.birthYear`])}
+                          helperText={formErrors[`familyMembers.${index}.birthYear`]}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={2}>
+                        <TextField
+                          fullWidth
+                          label="出生月"
+                          type="number"
+                          inputProps={{ min: 1, max: 12 }}
+                          value={member.birthMonth}
+                          onChange={(e) => handleFamilyMemberChange(index, 'birthMonth', e.target.value)}
+                          error={Boolean(formErrors[`familyMembers.${index}.birthMonth`])}
+                          helperText={formErrors[`familyMembers.${index}.birthMonth`]}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={2}>
+                        <TextField
+                          fullWidth
+                          label="出生日"
+                          type="number"
+                          inputProps={{ min: 1, max: 31 }}
+                          value={member.birthDay}
+                          onChange={(e) => handleFamilyMemberChange(index, 'birthDay', e.target.value)}
+                          error={Boolean(formErrors[`familyMembers.${index}.birthDay`])}
+                          helperText={formErrors[`familyMembers.${index}.birthDay`]}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          label="地址"
+                          value={member.address}
+                          onChange={(e) => handleFamilyMemberChange(index, 'address', e.target.value)}
+                          error={Boolean(formErrors[`familyMembers.${index}.address`])}
+                          helperText={formErrors[`familyMembers.${index}.address`]}
+                        />
+                      </Grid>
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
+              </Grid>
+            ))}
+          </>
+        )}
+
         {/* 請示內容 */}
         <Grid item xs={12}>
           <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main', mt: 2 }}>
@@ -369,7 +691,10 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         <Grid item xs={12}>
           <FormControl component="fieldset" error={Boolean(formErrors.consultationTopics)}>
-            <FormLabel component="legend">請選擇諮詢主題 {!queueStatus?.simplifiedMode && '(必選)'}</FormLabel>
+            <FormLabel component="legend">
+              請選擇諮詢主題 {!isSimplifiedMode && '(必選)'}
+              {isSimplifiedMode && ' (選填)'}
+            </FormLabel>
             <FormGroup>
               <Grid container>
                 {consultationOptions.map((option) => (
