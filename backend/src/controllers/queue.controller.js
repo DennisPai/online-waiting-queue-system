@@ -235,7 +235,7 @@ exports.registerQueue = async (req, res) => {
       
       // 確保必要的資料結構存在（即使為空）
       if (!req.body.addresses) {
-        req.body.addresses = [{ address: '', addressType: 'home' }];
+        req.body.addresses = [{ address: '未填寫', addressType: 'home' }];
       }
       if (!req.body.consultationTopics) {
         req.body.consultationTopics = ['other'];
@@ -249,6 +249,31 @@ exports.registerQueue = async (req, res) => {
       if (!req.body.gender) {
         req.body.gender = 'male';
       }
+      if (!req.body.familyMembers) {
+        req.body.familyMembers = [];
+      }
+      
+      // 轉換前端的日期欄位名稱到後端期望的格式
+      if (req.body.birthYear && req.body.birthMonth && req.body.birthDay) {
+        if (req.body.calendarType === 'lunar') {
+          req.body.lunarBirthYear = parseInt(req.body.birthYear);
+          req.body.lunarBirthMonth = parseInt(req.body.birthMonth);
+          req.body.lunarBirthDay = parseInt(req.body.birthDay);
+          req.body.lunarIsLeapMonth = req.body.lunarIsLeapMonth || false;
+        } else {
+          // 預設為國曆或空白時當作國曆
+          req.body.gregorianBirthYear = parseInt(req.body.birthYear);
+          req.body.gregorianBirthMonth = parseInt(req.body.birthMonth);
+          req.body.gregorianBirthDay = parseInt(req.body.birthDay);
+        }
+      } else {
+        // 如果沒有提供日期，設置預設值
+        req.body.gregorianBirthYear = 1990;
+        req.body.gregorianBirthMonth = 1;
+        req.body.gregorianBirthDay = 1;
+      }
+      
+      console.log('簡化模式處理後的數據:', req.body);
     }
     
     // 檢查候位系統是否開放 - 這段條件暫時移除，改成允許人們隨時候位
