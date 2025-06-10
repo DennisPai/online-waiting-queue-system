@@ -707,6 +707,44 @@ exports.setMinutesPerCustomer = async (req, res) => {
   }
 };
 
+// 設定簡化模式
+exports.setSimplifiedMode = async (req, res) => {
+  try {
+    const { simplifiedMode } = req.body;
+    
+    if (typeof simplifiedMode !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'simplifiedMode 必須是布爾值'
+      });
+    }
+    
+    // 獲取系統設定
+    const settings = await SystemSetting.getSettings();
+    
+    // 更新簡化模式設定
+    settings.simplifiedMode = simplifiedMode;
+    settings.updatedBy = req.user.id;
+    
+    await settings.save();
+    
+    res.status(200).json({
+      success: true,
+      message: `簡化模式已${simplifiedMode ? '開啟' : '關閉'}`,
+      data: {
+        simplifiedMode: settings.simplifiedMode
+      }
+    });
+  } catch (error) {
+    console.error('設定簡化模式錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器內部錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};
+
 // 清除所有候位資料
 exports.clearAllQueue = async (req, res) => {
   try {

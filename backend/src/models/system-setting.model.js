@@ -23,6 +23,10 @@ const systemSettingSchema = new mongoose.Schema({
     min: 1,
     max: 120  // 最大120分鐘，防止設定過大
   },
+  simplifiedMode: {
+    type: Boolean,
+    default: false
+  },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -41,7 +45,8 @@ systemSettingSchema.statics.getSettings = async function() {
       isQueueOpen: true,
       currentQueueNumber: 0,
       maxQueueNumber: 100,
-      minutesPerCustomer: 13
+      minutesPerCustomer: 13,
+      simplifiedMode: false
     });
   }
   

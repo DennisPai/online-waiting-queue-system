@@ -1,0 +1,417 @@
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  Typography,
+  Box,
+  TextField,
+  Button,
+  Grid,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Checkbox,
+  FormGroup,
+  FormHelperText,
+  CircularProgress,
+  Card,
+  CardContent,
+  Divider,
+  IconButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Alert
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import CloseIcon from '@mui/icons-material/Close';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { registerQueue, resetRegistration, getQueueStatus } from '../redux/slices/queueSlice';
+import { showAlert } from '../redux/slices/uiSlice';
+import { 
+  gregorianToLunar, 
+  lunarToGregorian, 
+  autoFillDates, 
+  autoConvertToMinguo, 
+  convertMinguoForStorage,
+  formatMinguoYear,
+  formatMinguoDate,
+  addVirtualAge
+} from '../utils/calendarConverter';
+
+// 表單初始值
+const initialFormData = {
+  email: '',
+  name: '',
+  phone: '',
+  gender: 'male',
+  birthYear: '',
+  birthMonth: '',
+  birthDay: '',
+  calendarType: 'gregorian',
+  lunarIsLeapMonth: false,
+  addresses: [{ address: '', addressType: 'home' }],
+  familyMembers: [],
+  consultationTopics: []
+};
+
+// 諮詢主題選項
+const consultationOptions = [
+  { value: 'body', label: '身體' },
+  { value: 'fate', label: '運途' },
+  { value: 'karma', label: '因果' },
+  { value: 'family', label: '家運/祖先' },
+  { value: 'career', label: '事業' },
+  { value: 'relationship', label: '婚姻感情' },
+  { value: 'study', label: '學業' },
+  { value: 'blessing', label: '收驚/加持' },
+  { value: 'other', label: '其他' }
+];
+
+// 地址類型選項
+const addressTypeOptions = [
+  { value: 'home', label: '住家' },
+  { value: 'work', label: '工作場所' },
+  { value: 'hospital', label: '醫院' },
+  { value: 'other', label: '其他' }
+];
+
+const RegisterForm = ({ onSuccess, isDialog = false }) => {
+  const dispatch = useDispatch();
+  const { isLoading, registeredQueueNumber, waitingCount, estimatedWaitTime, estimatedEndTime, error, queueStatus } = useSelector(
+    (state) => state.queue
+  );
+  const [formData, setFormData] = useState(initialFormData);
+  const [formErrors, setFormErrors] = useState({});
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  // 組件掛載時先重置狀態並獲取系統設定
+  useEffect(() => {
+    dispatch(resetRegistration());
+    dispatch(getQueueStatus()); // 獲取系統設定，包含簡化模式
+    // 重置表單數據
+    setFormData(initialFormData);
+    setShowSuccessMessage(false);
+  }, [dispatch]);
+
+  // 如果已經登記成功
+  useEffect(() => {
+    if (registeredQueueNumber) {
+      setShowSuccessMessage(true);
+      if (onSuccess) {
+        setTimeout(() => {
+          onSuccess();
+        }, 2000); // 2秒後自動關閉
+      }
+    }
+  }, [registeredQueueNumber, onSuccess]);
+
+  // 處理表單錯誤
+  useEffect(() => {
+    if (error) {
+      dispatch(showAlert({
+        message: error,
+        severity: 'error'
+      }));
+    }
+  }, [error, dispatch]);
+
+  const validateForm = () => {
+    const errors = {};
+    
+    // 檢查是否為簡化模式
+    const isSimplifiedMode = queueStatus?.simplifiedMode || false;
+    
+    if (isSimplifiedMode) {
+      // 簡化模式：只需要姓名
+      if (!formData.name) {
+        errors.name = '請輸入姓名';
+      }
+      console.log('簡化模式驗證：只檢查姓名');
+    } else {
+      // 完整驗證模式
+      // 基本資料驗證
+      if (!formData.email) errors.email = '請輸入電子郵件';
+      else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = '請輸入有效的電子郵件';
+      
+      if (!formData.name) errors.name = '請輸入姓名';
+      if (!formData.phone) errors.phone = '請輸入聯絡手機';
+      else if (!/^[\d-+()]{8,}$/.test(formData.phone)) errors.phone = '請輸入有效的聯絡手機';
+
+      // 出生日期驗證
+      if (!formData.birthYear) errors.birthYear = '請輸入出生年';
+      else if (isNaN(formData.birthYear)) {
+        errors.birthYear = '請輸入有效的出生年';
+      } else {
+        const year = parseInt(formData.birthYear);
+        const currentYear = new Date().getFullYear();
+        if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
+          errors.birthYear = '請輸入有效的出生年（民國1-150年或西元1900年後）';
+        }
+      }
+      
+      if (!formData.birthMonth) errors.birthMonth = '請輸入出生月';
+      else if (isNaN(formData.birthMonth) || formData.birthMonth < 1 || formData.birthMonth > 12) {
+        errors.birthMonth = '請輸入1-12之間的數字';
+      }
+      
+      if (!formData.birthDay) errors.birthDay = '請輸入出生日';
+      else if (isNaN(formData.birthDay) || formData.birthDay < 1 || formData.birthDay > 31) {
+        errors.birthDay = '請輸入1-31之間的數字';
+      }
+
+      // 地址驗證
+      formData.addresses.forEach((addr, index) => {
+        if (!addr.address) {
+          errors[`addresses.${index}.address`] = '請輸入地址';
+        }
+      });
+
+      // 家人驗證
+      formData.familyMembers.forEach((member, index) => {
+        if (!member.name) {
+          errors[`familyMembers.${index}.name`] = '請輸入家人姓名';
+        }
+        if (!member.birthYear) {
+          errors[`familyMembers.${index}.birthYear`] = '請輸入出生年';
+        } else if (isNaN(member.birthYear)) {
+          errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年';
+        } else {
+          const year = parseInt(member.birthYear);
+          const currentYear = new Date().getFullYear();
+          if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
+            errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年（民國1-150年或西元1900年後）';
+          }
+        }
+        if (!member.birthMonth) {
+          errors[`familyMembers.${index}.birthMonth`] = '請輸入出生月';
+        }
+        if (!member.birthDay) {
+          errors[`familyMembers.${index}.birthDay`] = '請輸入出生日';
+        }
+        if (!member.address) {
+          errors[`familyMembers.${index}.address`] = '請輸入地址';
+        }
+      });
+
+      // 請示內容驗證
+      if (formData.consultationTopics.length === 0) {
+        errors.consultationTopics = '請至少選擇一個請示內容';
+      }
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    if (type === 'checkbox') {
+      const updatedTopics = checked
+        ? [...formData.consultationTopics, value]
+        : formData.consultationTopics.filter((topic) => topic !== value);
+      
+      setFormData({ ...formData, consultationTopics: updatedTopics });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+    
+    // 清除該欄位的錯誤
+    if (formErrors[name]) {
+      setFormErrors({ ...formErrors, [name]: null });
+    }
+  };
+
+  const handleSubmit = () => {
+    if (validateForm()) {
+      dispatch(registerQueue(formData));
+    }
+  };
+
+  // 顯示成功訊息
+  if (showSuccessMessage) {
+    return (
+      <Box sx={{ mt: 2, mb: 5 }}>
+        <Card>
+          <CardContent>
+            <Typography variant="h5" component="div" align="center" gutterBottom color="success.main">
+              候位登記成功！
+            </Typography>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" color="text.secondary">
+                候位號碼：
+              </Typography>
+              <Typography variant="h3" color="primary" sx={{ ml: 2 }}>
+                {registeredQueueNumber}
+              </Typography>
+            </Box>
+            
+            <Divider sx={{ my: 2 }} />
+            
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">
+                  目前等待組數
+                </Typography>
+                <Typography variant="h6">
+                  {waitingCount} 組
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">
+                  預估結束時間
+                </Typography>
+                <Typography variant="h6">
+                  {estimatedEndTime ? 
+                    new Date(estimatedEndTime).toLocaleTimeString('zh-TW', { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: true
+                    }) : 
+                    '無法計算'}
+                </Typography>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ mt: isDialog ? 0 : 2 }}>
+      {/* 簡化模式提示 */}
+      {queueStatus?.simplifiedMode && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="body2">
+            <strong>簡化模式已開啟</strong><br />
+            目前只需要填寫「姓名」即可完成登記，其他欄位為選填。
+          </Typography>
+        </Alert>
+      )}
+      
+      <Grid container spacing={3}>
+        {/* 基本資料 */}
+        <Grid item xs={12}>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+            基本資料
+          </Typography>
+        </Grid>
+        
+        <Grid item xs={12} sm={6}>
+          <TextField
+            required
+            fullWidth
+            id="name"
+            name="name"
+            label="姓名"
+            value={formData.name}
+            onChange={handleChange}
+            error={Boolean(formErrors.name)}
+            helperText={formErrors.name}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <TextField
+            required={!queueStatus?.simplifiedMode}
+            fullWidth
+            id="phone"
+            name="phone"
+            label="聯絡手機"
+            value={formData.phone}
+            onChange={handleChange}
+            error={Boolean(formErrors.phone)}
+            helperText={formErrors.phone}
+          />
+        </Grid>
+
+        <Grid item xs={12}>
+          <TextField
+            required={!queueStatus?.simplifiedMode}
+            fullWidth
+            id="email"
+            name="email"
+            label="電子郵件"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            error={Boolean(formErrors.email)}
+            helperText={formErrors.email}
+          />
+        </Grid>
+
+        <Grid item xs={12}>
+          <FormControl component="fieldset">
+            <FormLabel component="legend">性別</FormLabel>
+            <RadioGroup
+              row
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+            >
+              <FormControlLabel value="male" control={<Radio />} label="男" />
+              <FormControlLabel value="female" control={<Radio />} label="女" />
+            </RadioGroup>
+          </FormControl>
+        </Grid>
+
+        {/* 請示內容 */}
+        <Grid item xs={12}>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main', mt: 2 }}>
+            請示內容
+          </Typography>
+        </Grid>
+
+        <Grid item xs={12}>
+          <FormControl component="fieldset" error={Boolean(formErrors.consultationTopics)}>
+            <FormLabel component="legend">請選擇諮詢主題 {!queueStatus?.simplifiedMode && '(必選)'}</FormLabel>
+            <FormGroup>
+              <Grid container>
+                {consultationOptions.map((option) => (
+                  <Grid item xs={6} sm={4} md={3} key={option.value}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.consultationTopics.includes(option.value)}
+                          onChange={handleChange}
+                          name="consultationTopics"
+                          value={option.value}
+                        />
+                      }
+                      label={option.label}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </FormGroup>
+            {formErrors.consultationTopics && (
+              <FormHelperText>{formErrors.consultationTopics}</FormHelperText>
+            )}
+          </FormControl>
+        </Grid>
+
+        {/* 提交按鈕 */}
+        <Grid item xs={12}>
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleSubmit}
+              disabled={isLoading}
+              sx={{ minWidth: 200 }}
+            >
+              {isLoading ? <CircularProgress size={24} /> : '提交登記'}
+            </Button>
+          </Box>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
+
+export default RegisterForm; 

@@ -22,7 +22,8 @@ import {
   setNextSessionDate,
   getQueueStatus,
   setMaxQueueNumber,
-  setMinutesPerCustomer
+  setMinutesPerCustomer,
+  setSimplifiedMode
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
 
@@ -33,6 +34,7 @@ const AdminSettingsPage = () => {
   const [nextSessionDateString, setNextSessionDateString] = useState('');
   const [maxQueueNumber, setMaxQueueNumberLocal] = useState(100);
   const [minutesPerCustomer, setMinutesPerCustomerLocal] = useState(13);
+  const [simplifiedMode, setSimplifiedModeLocal] = useState(false);
 
   // 安全的日期格式化函數
   const formatDateForInput = (dateString) => {
@@ -108,6 +110,10 @@ const AdminSettingsPage = () => {
         
         if (result.minutesPerCustomer) {
           setMinutesPerCustomerLocal(result.minutesPerCustomer);
+        }
+        
+        if (typeof result.simplifiedMode !== 'undefined') {
+          setSimplifiedModeLocal(result.simplifiedMode);
         }
       })
       .catch((error) => {
@@ -312,6 +318,31 @@ const AdminSettingsPage = () => {
       });
   };
 
+  // 處理簡化模式開關
+  const handleToggleSimplifiedMode = () => {
+    const newMode = !simplifiedMode;
+    
+    dispatch(setSimplifiedMode(newMode))
+      .unwrap()
+      .then(() => {
+        setSimplifiedModeLocal(newMode);
+        dispatch(
+          showAlert({
+            message: newMode ? '簡化模式已開啟' : '簡化模式已關閉',
+            severity: 'success'
+          })
+        );
+      })
+      .catch((error) => {
+        dispatch(
+          showAlert({
+            message: error,
+            severity: 'error'
+          })
+        );
+      });
+  };
+
   return (
     <Container maxWidth="lg">
       <Typography variant="h4" component="h1" gutterBottom>
@@ -460,6 +491,45 @@ const AdminSettingsPage = () => {
               <Box sx={{ mt: 2 }}>
                 <Alert severity="info">
                   目前每位客戶預估處理時間設定為：{minutesPerCustomer} 分鐘
+                </Alert>
+              </Box>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                簡化模式設置
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={simplifiedMode}
+                      onChange={handleToggleSimplifiedMode}
+                      color="primary"
+                    />
+                  }
+                  label={simplifiedMode ? '簡化模式已開啟' : '簡化模式已關閉'}
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Alert severity={simplifiedMode ? 'warning' : 'info'}>
+                  {simplifiedMode
+                    ? '簡化模式已開啟：登記資料時允許資料不齊全，表單驗證已被關閉'
+                    : '簡化模式已關閉：登記資料時需要填寫完整資料，表單驗證正常運作'}
+                </Alert>
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Alert severity="info">
+                  <Typography variant="body2" component="div">
+                    <strong>簡化模式說明：</strong>
+                    <ul style={{ marginTop: '8px', marginBottom: 0 }}>
+                      <li>開啟時：僅需要填寫客戶姓名，其他欄位可以留空</li>
+                      <li>關閉時：需要填寫完整的客戶資料，包含電話、電子郵件、地址、出生日期等</li>
+                      <li>適用於快速登記或緊急情況使用</li>
+                    </ul>
+                  </Typography>
                 </Alert>
               </Box>
             </Paper>

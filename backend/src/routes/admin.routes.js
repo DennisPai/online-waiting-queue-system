@@ -104,6 +104,16 @@ router.put(
   adminController.setMinutesPerCustomer
 );
 
+// 設定簡化模式
+router.put(
+  '/settings/simplifiedMode',
+  [
+    body('simplifiedMode').isBoolean().withMessage('simplifiedMode 必須是布爾值')
+  ],
+  validateRequest,
+  adminController.setSimplifiedMode
+);
+
 // 清除所有候位資料
 router.delete('/queue/clear-all', adminController.clearAllQueue);
 

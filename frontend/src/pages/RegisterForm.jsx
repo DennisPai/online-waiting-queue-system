@@ -21,13 +21,14 @@ import {
   IconButton,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Alert
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { registerQueue, resetRegistration } from '../redux/slices/queueSlice';
+import { registerQueue, resetRegistration, getQueueStatus } from '../redux/slices/queueSlice';
 import { showAlert } from '../redux/slices/uiSlice';
 import { 
   gregorianToLunar, 
@@ -79,16 +80,17 @@ const addressTypeOptions = [
 
 const RegisterForm = ({ onSuccess, isDialog = false }) => {
   const dispatch = useDispatch();
-  const { isLoading, registeredQueueNumber, waitingCount, estimatedWaitTime, estimatedEndTime, error } = useSelector(
+  const { isLoading, registeredQueueNumber, waitingCount, estimatedWaitTime, estimatedEndTime, error, queueStatus } = useSelector(
     (state) => state.queue
   );
   const [formData, setFormData] = useState(initialFormData);
   const [formErrors, setFormErrors] = useState({});
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
-  // 組件掛載時先重置狀態
+  // 組件掛載時先重置狀態並獲取系統設定
   useEffect(() => {
     dispatch(resetRegistration());
+    dispatch(getQueueStatus()); // 獲取系統設定，包含簡化模式
     // 重置表單數據
     setFormData(initialFormData);
     setShowSuccessMessage(false);
@@ -318,73 +320,85 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
   const validateForm = () => {
     const errors = {};
     
-    // 基本資料驗證
-    if (!formData.email) errors.email = '請輸入電子郵件';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = '請輸入有效的電子郵件';
+    // 檢查是否為簡化模式
+    const isSimplifiedMode = queueStatus?.simplifiedMode || false;
     
-    if (!formData.name) errors.name = '請輸入姓名';
-    if (!formData.phone) errors.phone = '請輸入聯絡手機';
-    else if (!/^[\d-+()]{8,}$/.test(formData.phone)) errors.phone = '請輸入有效的聯絡手機';
-
-    // 出生日期驗證
-    if (!formData.birthYear) errors.birthYear = '請輸入出生年';
-    else if (isNaN(formData.birthYear)) {
-      errors.birthYear = '請輸入有效的出生年';
+    if (isSimplifiedMode) {
+      // 簡化模式：只需要姓名
+      if (!formData.name) {
+        errors.name = '請輸入姓名';
+      }
+      console.log('簡化模式驗證：只檢查姓名');
     } else {
-      const year = parseInt(formData.birthYear);
-      const currentYear = new Date().getFullYear();
-      if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
-        errors.birthYear = '請輸入有效的出生年（民國1-150年或西元1900年後）';
-      }
-    }
-    
-    if (!formData.birthMonth) errors.birthMonth = '請輸入出生月';
-    else if (isNaN(formData.birthMonth) || formData.birthMonth < 1 || formData.birthMonth > 12) {
-      errors.birthMonth = '請輸入1-12之間的數字';
-    }
-    
-    if (!formData.birthDay) errors.birthDay = '請輸入出生日';
-    else if (isNaN(formData.birthDay) || formData.birthDay < 1 || formData.birthDay > 31) {
-      errors.birthDay = '請輸入1-31之間的數字';
-    }
+      // 完整驗證模式
+      // 基本資料驗證
+      if (!formData.email) errors.email = '請輸入電子郵件';
+      else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = '請輸入有效的電子郵件';
+      
+      if (!formData.name) errors.name = '請輸入姓名';
+      if (!formData.phone) errors.phone = '請輸入聯絡手機';
+      else if (!/^[\d-+()]{8,}$/.test(formData.phone)) errors.phone = '請輸入有效的聯絡手機';
 
-    // 地址驗證
-    formData.addresses.forEach((addr, index) => {
-      if (!addr.address) {
-        errors[`addresses.${index}.address`] = '請輸入地址';
-      }
-    });
-
-    // 家人驗證
-    formData.familyMembers.forEach((member, index) => {
-      if (!member.name) {
-        errors[`familyMembers.${index}.name`] = '請輸入家人姓名';
-      }
-      if (!member.birthYear) {
-        errors[`familyMembers.${index}.birthYear`] = '請輸入出生年';
-      } else if (isNaN(member.birthYear)) {
-        errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年';
+      // 出生日期驗證
+      if (!formData.birthYear) errors.birthYear = '請輸入出生年';
+      else if (isNaN(formData.birthYear)) {
+        errors.birthYear = '請輸入有效的出生年';
       } else {
-        const year = parseInt(member.birthYear);
+        const year = parseInt(formData.birthYear);
         const currentYear = new Date().getFullYear();
         if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
-          errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年（民國1-150年或西元1900年後）';
+          errors.birthYear = '請輸入有效的出生年（民國1-150年或西元1900年後）';
         }
       }
-      if (!member.birthMonth) {
-        errors[`familyMembers.${index}.birthMonth`] = '請輸入出生月';
+      
+      if (!formData.birthMonth) errors.birthMonth = '請輸入出生月';
+      else if (isNaN(formData.birthMonth) || formData.birthMonth < 1 || formData.birthMonth > 12) {
+        errors.birthMonth = '請輸入1-12之間的數字';
       }
-      if (!member.birthDay) {
-        errors[`familyMembers.${index}.birthDay`] = '請輸入出生日';
+      
+      if (!formData.birthDay) errors.birthDay = '請輸入出生日';
+      else if (isNaN(formData.birthDay) || formData.birthDay < 1 || formData.birthDay > 31) {
+        errors.birthDay = '請輸入1-31之間的數字';
       }
-      if (!member.address) {
-        errors[`familyMembers.${index}.address`] = '請輸入地址';
-      }
-    });
 
-    // 請示內容驗證
-    if (formData.consultationTopics.length === 0) {
-      errors.consultationTopics = '請至少選擇一個請示內容';
+      // 地址驗證
+      formData.addresses.forEach((addr, index) => {
+        if (!addr.address) {
+          errors[`addresses.${index}.address`] = '請輸入地址';
+        }
+      });
+
+      // 家人驗證
+      formData.familyMembers.forEach((member, index) => {
+        if (!member.name) {
+          errors[`familyMembers.${index}.name`] = '請輸入家人姓名';
+        }
+        if (!member.birthYear) {
+          errors[`familyMembers.${index}.birthYear`] = '請輸入出生年';
+        } else if (isNaN(member.birthYear)) {
+          errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年';
+        } else {
+          const year = parseInt(member.birthYear);
+          const currentYear = new Date().getFullYear();
+          if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
+            errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年（民國1-150年或西元1900年後）';
+          }
+        }
+        if (!member.birthMonth) {
+          errors[`familyMembers.${index}.birthMonth`] = '請輸入出生月';
+        }
+        if (!member.birthDay) {
+          errors[`familyMembers.${index}.birthDay`] = '請輸入出生日';
+        }
+        if (!member.address) {
+          errors[`familyMembers.${index}.address`] = '請輸入地址';
+        }
+      });
+
+      // 請示內容驗證
+      if (formData.consultationTopics.length === 0) {
+        errors.consultationTopics = '請至少選擇一個請示內容';
+      }
     }
     
     setFormErrors(errors);
@@ -534,6 +548,20 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
   return (
     <Box sx={{ mt: isDialog ? 0 : 2 }}>
+      {/* 簡化模式提示 */}
+      {queueStatus?.simplifiedMode && (
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                <strong>簡化模式已開啟</strong><br />
+                目前只需要填寫「姓名」即可完成登記，其他欄位為選填。
+              </Typography>
+            </Alert>
+          </Grid>
+        </Grid>
+      )}
+      
       <Grid container spacing={3}>
         {/* 基本資料 */}
         <Grid item xs={12}>
@@ -544,7 +572,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
         
         <Grid item xs={12} sm={6}>
           <TextField
-            required
+            required={!queueStatus?.simplifiedMode}
             fullWidth
             id="name"
             name="name"
@@ -558,7 +586,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         <Grid item xs={12} sm={6}>
           <TextField
-            required
+            required={!queueStatus?.simplifiedMode}
             fullWidth
             id="phone"
             name="phone"
@@ -572,7 +600,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         <Grid item xs={12}>
           <TextField
-            required
+            required={!queueStatus?.simplifiedMode}
             fullWidth
             id="email"
             name="email"
@@ -624,7 +652,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         <Grid item xs={12} sm={4}>
           <TextField
-            required
+            required={!queueStatus?.simplifiedMode}
             fullWidth
             id="birthYear"
             name="birthYear"
@@ -640,7 +668,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         <Grid item xs={12} sm={4}>
           <TextField
-            required
+            required={!queueStatus?.simplifiedMode}
             fullWidth
             id="birthMonth"
             name="birthMonth"
@@ -656,7 +684,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         <Grid item xs={12} sm={4}>
           <TextField
-            required
+            required={!queueStatus?.simplifiedMode}
             fullWidth
             id="birthDay"
             name="birthDay"

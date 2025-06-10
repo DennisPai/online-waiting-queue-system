@@ -84,6 +84,14 @@ const systemSettingSchema = new mongoose.Schema({
   maxQueueNumber: {
     type: Number,
     default: 100
+  },
+  minutesPerCustomer: {
+    type: Number,
+    default: 13
+  },
+  simplifiedMode: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
@@ -127,7 +135,9 @@ async function createAdmin() {
         nextSessionDate: nextWeek,
         isQueueOpen: true,
         currentQueueNumber: 0,
-        maxQueueNumber: 100
+        maxQueueNumber: 100,
+        minutesPerCustomer: 13,
+        simplifiedMode: false
       });
       
       await settings.save();

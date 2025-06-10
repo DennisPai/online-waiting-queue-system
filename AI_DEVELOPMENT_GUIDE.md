@@ -8,6 +8,147 @@
 - **後端**: Node.js + Express API，運行在 http://localhost:8080  
 - **資料庫**: MongoDB，運行在 localhost:27017
 
+## ⚠️ 重要功能變更 - 候位登記功能暫時關閉
+
+### 📋 功能變更概述 (2024年12月生效)
+- **候位登記功能** 已從公開服務調整為 **僅管理員可用**
+- 一般訪客無法直接在前台進行候位登記
+- 管理員需登入後台使用「登記候位」浮動視窗功能
+- **所有功能架構完整保留**，便於日後快速重新開放
+
+### 🔧 核心技術實施
+
+#### 1. 前端認證條件限制
+```javascript
+// ⚠️ 重要檔案: frontend/src/pages/HomePage.jsx
+// 首頁候位登記卡片須包含認證條件
+{isAuthenticated && (
+  <Grid item xs={12} sm={6} md={4}>
+    <Card onClick={() => navigate('/register')}>
+      {/* 我要登記候位卡片 */}
+    </Card>
+  </Grid>
+)}
+
+// ⚠️ 重要檔案: frontend/src/components/Layout.jsx  
+// 導航欄候位按鈕須包含認證條件
+{isAuthenticated && (
+  <Button component={Link} to="/register">
+    我要候位
+  </Button>
+)}
+```
+
+#### 2. 路由保護實施
+```javascript
+// ⚠️ 重要檔案: frontend/src/App.js
+// register 路由必須受 ProtectedRoute 保護
+<Route 
+  path="/register" 
+  element={
+    <ProtectedRoute>
+      <RegisterPage />
+    </ProtectedRoute>
+  } 
+/>
+```
+
+#### 3. 管理員後台登記功能
+```javascript
+// ⚠️ 重要檔案: frontend/src/pages/admin/AdminDashboardPage.jsx
+// 必須包含登記候位浮動視窗功能
+
+// 狀態管理
+const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
+
+// 登記候位按鈕
+<Button
+  variant="contained"
+  startIcon={<PersonAddIcon />}
+  onClick={() => setRegisterDialogOpen(true)}
+  sx={{ 
+    backgroundColor: '#4caf50',
+    '&:hover': { backgroundColor: '#45a049' }
+  }}
+>
+  登記候位
+</Button>
+
+// Dialog 浮動視窗
+<Dialog
+  open={registerDialogOpen}
+  onClose={() => setRegisterDialogOpen(false)}
+  maxWidth="md"
+  fullWidth
+>
+  <DialogTitle>登記候位</DialogTitle>
+  <DialogContent>
+    <RegisterForm onSuccess={handleRegisterSuccess} />
+  </DialogContent>
+</Dialog>
+
+// 成功回調處理
+const handleRegisterSuccess = () => {
+  setRegisterDialogOpen(false);
+  // 刷新候位列表
+  fetchQueueList();
+};
+```
+
+#### 4. RegisterForm 組件重用
+```javascript
+// ⚠️ 重要檔案: frontend/src/components/RegisterForm.jsx
+// 必須支援 onSuccess 回調
+
+const RegisterForm = ({ onSuccess }) => {
+  const handleSubmit = async (e) => {
+    // ... 原有提交邏輯
+    if (response.success) {
+      // 調用成功回調（如果提供）
+      if (onSuccess) {
+        onSuccess(response.data);
+      } else {
+        // 原有的頁面跳轉邏輯（公開使用時）
+        navigate('/status', { state: { queueData: response.data } });
+      }
+    }
+  };
+};
+```
+
+### 🚨 重要開發注意事項
+
+#### ⚠️ 功能限制檢查清單
+修改相關代碼時，務必確認：
+- [ ] **HomePage.jsx** 候位登記卡片包含 `{isAuthenticated && (...)}`
+- [ ] **Layout.jsx** 導航欄候位按鈕包含 `{isAuthenticated && (...)}`
+- [ ] **App.js** register 路由被 `<ProtectedRoute>` 包裝
+- [ ] **AdminDashboardPage.jsx** 包含完整的登記候位浮動視窗
+- [ ] **RegisterForm.jsx** 支援 `onSuccess` 回調參數
+- [ ] Dialog 相關 Material-UI 組件無重複導入錯誤
+
+#### 🔄 功能重新開放準備
+**當需要重新開放候位登記功能給公眾時**：
+1. 移除 HomePage.jsx 中的認證條件
+2. 移除 Layout.jsx 中的認證條件
+3. 移除 App.js 中的 ProtectedRoute 包裝
+4. 可選擇保留或移除管理員後台的登記功能
+5. 推送代碼，Zeabur 自動部署
+
+#### ⚠️ ESLint 常見錯誤
+```bash
+# 常見錯誤: Dialog 組件重複聲明
+Syntax error: Identifier 'Dialog' has already been declared
+
+# 解決方案: 檢查 AdminDashboardPage.jsx 的導入語句
+import {
+  Dialog,
+  DialogTitle, 
+  DialogContent,
+  // 確保無重複導入
+} from '@mui/material';
+```
+
 ### 🐳 Docker 建構和部署
 
 #### ⚠️ 重要：每次修改代碼後都必須使用Docker重新建構
@@ -59,7 +200,12 @@ node init-admin.js
 
 #### 前端功能
 - [ ] 首頁候位狀態顯示
-- [ ] 候位登記流程（單頁式表單，支援多地址和家人資訊）
+- [ ] **候位登記功能（管理員限定）**：
+  - [ ] 一般訪客無法看到候位登記按鈕
+  - [ ] 管理員登入後可看到首頁和導航欄的候位按鈕
+  - [ ] 管理員可正常訪問 `/register` 路由
+  - [ ] 管理員後台「登記候位」浮動視窗正常運作
+  - [ ] 登記完成後浮動視窗自動關閉並刷新列表
 - [ ] 候位狀態查詢（支持姓名或電話單一條件查詢，姓名查詢包含家人）
 - [ ] 客戶自助管理功能（查看詳細資料、取消預約、修改資料）
 - [ ] 地址管理功能（新增、編輯、刪除地址，最多3個）
@@ -75,6 +221,11 @@ node init-admin.js
 
 #### 後端管理功能
 - [ ] 管理員登入
+- [ ] **候位登記功能（後台專用）**：
+  - [ ] 「登記候位」按鈕正常顯示（綠色，PersonAddIcon）
+  - [ ] 浮動視窗正確載入 RegisterForm 組件
+  - [ ] 登記流程完整運作（基本資料、地址、家人、諮詢主題）
+  - [ ] 登記成功後視窗關閉並自動刷新候位列表
 - [ ] 候位列表管理（叫號順序欄位顯示，新增「人數」欄位）
 - [ ] 拖曳調整順序
 - [ ] 重新排序功能（按叫號順序1,2,3...排列）
@@ -124,7 +275,23 @@ cd backend
 node init-admin.js
 ```
 
-#### 管理員面板功能失效問題（最新修復）
+#### 候位登記功能相關問題（最新）
+```bash
+# 症狀: 一般用戶仍可看到候位按鈕，或管理員無法使用浮動視窗
+# 檢查清單:
+# 1. HomePage.jsx 是否包含 {isAuthenticated && (...)} 
+# 2. Layout.jsx 是否包含認證條件
+# 3. App.js 是否有 ProtectedRoute 保護
+# 4. AdminDashboardPage.jsx 是否有完整的Dialog功能
+# 5. 是否有Dialog組件重複聲明的ESLint錯誤
+
+# 解決方案: 確保最新代碼已部署
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+#### 管理員面板功能失效問題（之前修復）
 ```bash
 # 症狀: "清除候位"、"匯出資料"、"刪除客戶"功能失效
 # 已修復: API端點不匹配和Props傳遞錯誤問題

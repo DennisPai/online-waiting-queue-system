@@ -282,22 +282,30 @@ const deleteCustomer = async (queueId, token) => {
 
 // 設定每位客戶預估處理時間
 const setMinutesPerCustomer = async (minutesPerCustomer, token) => {
-  try {
-    const config = {
+  const response = await axios.put(
+    `${API_ENDPOINTS.ADMIN}/settings/minutesPerCustomer`,
+    { minutesPerCustomer },
+    {
       headers: {
         Authorization: `Bearer ${token}`
       }
-    };
-    const response = await axios.put(
-      `${API_ENDPOINTS.ADMIN}/settings/minutesPerCustomer`,
-      { minutesPerCustomer },
-      config
-    );
-    return response.data;
-  } catch (error) {
-    console.error('設定處理時間錯誤:', error);
-    throw error;
-  }
+    }
+  );
+  return response.data;
+};
+
+// 設定簡化模式
+const setSimplifiedMode = async (simplifiedMode, token) => {
+  const response = await axios.put(
+    `${API_ENDPOINTS.ADMIN}/settings/simplifiedMode`,
+    { simplifiedMode },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+  return response.data;
 };
 
 // 清空所有候位
@@ -336,6 +344,7 @@ const queueService = {
   updateQueueData,
   deleteCustomer,
   setMinutesPerCustomer,
+  setSimplifiedMode,
   clearAllQueue,
   getOrderedQueueNumbers
 };

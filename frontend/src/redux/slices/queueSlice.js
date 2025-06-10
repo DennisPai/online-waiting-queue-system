@@ -173,6 +173,20 @@ export const setMinutesPerCustomer = createAsyncThunk(
   }
 );
 
+// 設定簡化模式（管理員）
+export const setSimplifiedMode = createAsyncThunk(
+  'queue/setSimplifiedMode',
+  async (simplifiedMode, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.setSimplifiedMode(simplifiedMode, token);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '設定簡化模式失敗');
+    }
+  }
+);
+
 // 通過姓名和電話查詢候位號碼
 export const searchQueueByNameAndPhone = createAsyncThunk(
   'queue/searchByNameAndPhone',
@@ -467,6 +481,23 @@ const queueSlice = createSlice({
         };
       })
       .addCase(setMinutesPerCustomer.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // 設定簡化模式（管理員）
+      .addCase(setSimplifiedMode.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(setSimplifiedMode.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // 更新系統設定中的簡化模式
+        state.queueStatus = {
+          ...state.queueStatus,
+          simplifiedMode: action.payload.simplifiedMode
+        };
+      })
+      .addCase(setSimplifiedMode.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
