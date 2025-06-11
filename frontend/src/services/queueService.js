@@ -292,11 +292,11 @@ const setMinutesPerCustomer = async (minutesPerCustomer, token) => {
     }
   );
   return response.data;
-};
+    };
 
 // 設定簡化模式
 const setSimplifiedMode = async (simplifiedMode, token) => {
-  const response = await axios.put(
+    const response = await axios.put(
     `${API_ENDPOINTS.ADMIN}/settings/simplifiedMode`,
     { simplifiedMode },
     {
@@ -304,8 +304,8 @@ const setSimplifiedMode = async (simplifiedMode, token) => {
         Authorization: `Bearer ${token}`
       }
     }
-  );
-  return response.data;
+    );
+    return response.data;
 };
 
 // 清空所有候位

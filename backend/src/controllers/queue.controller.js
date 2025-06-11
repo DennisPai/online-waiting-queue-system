@@ -146,7 +146,7 @@ exports.getQueueStatus = async (req, res) => {
   }
 };
 
-// 登記候位
+  // 登記候位
 exports.registerQueue = async (req, res) => {
   try {
     // 輸出接收到的表單數據，用於調試
@@ -157,70 +157,70 @@ exports.registerQueue = async (req, res) => {
     
     // 檢查必要欄位 - 在簡化模式下跳過驗證
     if (!settings.simplifiedMode) {
-      const requiredFields = ['email', 'name', 'phone', 'gender', 'addresses', 'consultationTopics'];
-      for (const field of requiredFields) {
-        if (!req.body[field]) {
-          console.error(`缺少必要欄位: ${field}`);
+    const requiredFields = ['email', 'name', 'phone', 'gender', 'addresses', 'consultationTopics'];
+    for (const field of requiredFields) {
+      if (!req.body[field]) {
+        console.error(`缺少必要欄位: ${field}`);
+        return res.status(400).json({
+          success: false,
+          message: `缺少必要欄位: ${field}`
+        });
+      }
+    }
+    
+    // 驗證出生日期：必須有國曆或農曆其中一組完整的年月日
+    const hasGregorianBirth = req.body.gregorianBirthYear && req.body.gregorianBirthMonth && req.body.gregorianBirthDay;
+    const hasLunarBirth = req.body.lunarBirthYear && req.body.lunarBirthMonth && req.body.lunarBirthDay;
+    
+    if (!hasGregorianBirth && !hasLunarBirth) {
+      return res.status(400).json({
+        success: false,
+        message: '必須提供國曆或農曆出生日期'
+      });
+    }
+    
+    // 驗證地址陣列
+    if (!Array.isArray(req.body.addresses) || req.body.addresses.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '至少需要一個地址'
+      });
+    }
+    
+    // 驗證每個地址都有必要資訊
+    for (let i = 0; i < req.body.addresses.length; i++) {
+      const addr = req.body.addresses[i];
+      if (!addr.address || !addr.addressType) {
+        return res.status(400).json({
+          success: false,
+          message: `地址 ${i + 1} 資訊不完整`
+        });
+      }
+    }
+    
+    // 驗證家人資料（如果有的話）
+    if (req.body.familyMembers && Array.isArray(req.body.familyMembers)) {
+      for (let i = 0; i < req.body.familyMembers.length; i++) {
+        const member = req.body.familyMembers[i];
+        if (!member.name || !member.address || !member.addressType) {
           return res.status(400).json({
             success: false,
-            message: `缺少必要欄位: ${field}`
+            message: `家人 ${i + 1} 基本資訊不完整`
+          });
+        }
+        
+        // 驗證家人的出生日期：必須有國曆或農曆其中一組完整的年月日
+        const hasGregorianBirthMember = member.gregorianBirthYear && member.gregorianBirthMonth && member.gregorianBirthDay;
+        const hasLunarBirthMember = member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay;
+        
+        if (!hasGregorianBirthMember && !hasLunarBirthMember) {
+          return res.status(400).json({
+            success: false,
+            message: `家人 ${i + 1} 必須提供國曆或農曆出生日期`
           });
         }
       }
-      
-      // 驗證出生日期：必須有國曆或農曆其中一組完整的年月日
-      const hasGregorianBirth = req.body.gregorianBirthYear && req.body.gregorianBirthMonth && req.body.gregorianBirthDay;
-      const hasLunarBirth = req.body.lunarBirthYear && req.body.lunarBirthMonth && req.body.lunarBirthDay;
-      
-      if (!hasGregorianBirth && !hasLunarBirth) {
-        return res.status(400).json({
-          success: false,
-          message: '必須提供國曆或農曆出生日期'
-        });
-      }
-      
-      // 驗證地址陣列
-      if (!Array.isArray(req.body.addresses) || req.body.addresses.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: '至少需要一個地址'
-        });
-      }
-      
-      // 驗證每個地址都有必要資訊
-      for (let i = 0; i < req.body.addresses.length; i++) {
-        const addr = req.body.addresses[i];
-        if (!addr.address || !addr.addressType) {
-          return res.status(400).json({
-            success: false,
-            message: `地址 ${i + 1} 資訊不完整`
-          });
-        }
-      }
-      
-      // 驗證家人資料（如果有的話）
-      if (req.body.familyMembers && Array.isArray(req.body.familyMembers)) {
-        for (let i = 0; i < req.body.familyMembers.length; i++) {
-          const member = req.body.familyMembers[i];
-          if (!member.name || !member.address || !member.addressType) {
-            return res.status(400).json({
-              success: false,
-              message: `家人 ${i + 1} 基本資訊不完整`
-            });
-          }
-          
-          // 驗證家人的出生日期：必須有國曆或農曆其中一組完整的年月日
-          const hasGregorianBirthMember = member.gregorianBirthYear && member.gregorianBirthMonth && member.gregorianBirthDay;
-          const hasLunarBirthMember = member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay;
-          
-          if (!hasGregorianBirthMember && !hasLunarBirthMember) {
-            return res.status(400).json({
-              success: false,
-              message: `家人 ${i + 1} 必須提供國曆或農曆出生日期`
-            });
-          }
-        }
-      }
+    }
     } else {
       // 簡化模式下，只檢查基本必要欄位
       console.log('簡化模式已開啟，跳過詳細驗證');
@@ -235,7 +235,7 @@ exports.registerQueue = async (req, res) => {
       
       // 確保必要的資料結構存在（即使為空）
       if (!req.body.addresses) {
-        req.body.addresses = [{ address: '未填寫', addressType: 'home' }];
+        req.body.addresses = [{ address: '', addressType: 'home' }];
       }
       if (!req.body.consultationTopics) {
         req.body.consultationTopics = ['other'];
@@ -249,31 +249,13 @@ exports.registerQueue = async (req, res) => {
       if (!req.body.gender) {
         req.body.gender = 'male';
       }
-      if (!req.body.familyMembers) {
-        req.body.familyMembers = [];
-      }
       
-      // 轉換前端的日期欄位名稱到後端期望的格式
-      if (req.body.birthYear && req.body.birthMonth && req.body.birthDay) {
-        if (req.body.calendarType === 'lunar') {
-          req.body.lunarBirthYear = parseInt(req.body.birthYear);
-          req.body.lunarBirthMonth = parseInt(req.body.birthMonth);
-          req.body.lunarBirthDay = parseInt(req.body.birthDay);
-          req.body.lunarIsLeapMonth = req.body.lunarIsLeapMonth || false;
-        } else {
-          // 預設為國曆或空白時當作國曆
-          req.body.gregorianBirthYear = parseInt(req.body.birthYear);
-          req.body.gregorianBirthMonth = parseInt(req.body.birthMonth);
-          req.body.gregorianBirthDay = parseInt(req.body.birthDay);
-        }
-      } else {
-        // 如果沒有提供日期，設置預設值
-        req.body.gregorianBirthYear = 1990;
+      // 提供預設的出生日期（避免日期處理函數出錯）
+      if (!req.body.gregorianBirthYear) {
+        req.body.gregorianBirthYear = 2000; // 預設西元2000年
         req.body.gregorianBirthMonth = 1;
         req.body.gregorianBirthDay = 1;
       }
-      
-      console.log('簡化模式處理後的數據:', req.body);
     }
     
     // 檢查候位系統是否開放 - 這段條件暫時移除，改成允許人們隨時候位
@@ -308,17 +290,23 @@ exports.registerQueue = async (req, res) => {
       familyMembers: req.body.familyMembers || []
     };
 
-    // 自動填充主客戶的國曆農曆轉換
-    recordData = autoFillDates(recordData);
+    // 只在非簡化模式或有日期資料時進行日期處理
+    if (!settings.simplifiedMode || 
+        (recordData.gregorianBirthYear && recordData.gregorianBirthMonth && recordData.gregorianBirthDay) ||
+        (recordData.lunarBirthYear && recordData.lunarBirthMonth && recordData.lunarBirthDay)) {
+      
+      // 自動填充主客戶的國曆農曆轉換
+      recordData = autoFillDates(recordData);
+      
+      // 計算並添加虛歲
+      recordData = addVirtualAge(recordData);
+    }
     
     // 自動填充家人的國曆農曆轉換
     if (recordData.familyMembers && recordData.familyMembers.length > 0) {
       const familyData = autoFillFamilyMembersDates({ familyMembers: recordData.familyMembers });
       recordData.familyMembers = familyData.familyMembers;
     }
-    
-    // 計算並添加虛歲
-    recordData = addVirtualAge(recordData);
 
     console.log('準備創建的候位記錄:', recordData);
     

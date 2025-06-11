@@ -295,7 +295,73 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
   const handleSubmit = () => {
     if (validateForm()) {
-      dispatch(registerQueue(formData));
+      // 準備要送出的資料，進行欄位名稱轉換
+      const submitData = { ...formData };
+      
+      // 檢查是否為簡化模式
+      const isSimplifiedMode = queueStatus?.simplifiedMode || false;
+      
+      if (!isSimplifiedMode) {
+        // 完整模式：將前端的日期欄位轉換為後端期望的格式
+        if (formData.calendarType === 'gregorian') {
+          // 國曆
+          if (formData.birthYear) {
+            // 自動判斷並轉換年份
+            const yearResult = autoConvertToMinguo(parseInt(formData.birthYear));
+            const gregorianYear = convertMinguoForStorage(yearResult.minguoYear);
+            
+            submitData.gregorianBirthYear = gregorianYear;
+            submitData.gregorianBirthMonth = parseInt(formData.birthMonth);
+            submitData.gregorianBirthDay = parseInt(formData.birthDay);
+          }
+        } else {
+          // 農曆
+          if (formData.birthYear) {
+            const yearResult = autoConvertToMinguo(parseInt(formData.birthYear));
+            const gregorianYear = convertMinguoForStorage(yearResult.minguoYear);
+            
+            submitData.lunarBirthYear = gregorianYear;
+            submitData.lunarBirthMonth = parseInt(formData.birthMonth);
+            submitData.lunarBirthDay = parseInt(formData.birthDay);
+            submitData.lunarIsLeapMonth = formData.lunarIsLeapMonth || false;
+          }
+        }
+        
+        // 處理家人的日期轉換
+        if (submitData.familyMembers && Array.isArray(submitData.familyMembers)) {
+          submitData.familyMembers = submitData.familyMembers.map(member => {
+            const memberData = { ...member };
+            
+            if (member.calendarType === 'gregorian' && member.birthYear) {
+              const yearResult = autoConvertToMinguo(parseInt(member.birthYear));
+              const gregorianYear = convertMinguoForStorage(yearResult.minguoYear);
+              
+              memberData.gregorianBirthYear = gregorianYear;
+              memberData.gregorianBirthMonth = parseInt(member.birthMonth);
+              memberData.gregorianBirthDay = parseInt(member.birthDay);
+            } else if (member.calendarType === 'lunar' && member.birthYear) {
+              const yearResult = autoConvertToMinguo(parseInt(member.birthYear));
+              const gregorianYear = convertMinguoForStorage(yearResult.minguoYear);
+              
+              memberData.lunarBirthYear = gregorianYear;
+              memberData.lunarBirthMonth = parseInt(member.birthMonth);
+              memberData.lunarBirthDay = parseInt(member.birthDay);
+              memberData.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
+            }
+            
+            return memberData;
+          });
+        }
+      }
+      
+      // 移除前端使用的欄位名稱，避免混淆
+      delete submitData.birthYear;
+      delete submitData.birthMonth;
+      delete submitData.birthDay;
+      delete submitData.calendarType;
+      
+      console.log('準備送出的資料:', submitData);
+      dispatch(registerQueue(submitData));
     }
   };
 
