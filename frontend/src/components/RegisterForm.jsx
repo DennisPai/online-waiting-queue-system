@@ -99,6 +99,19 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
     setShowSuccessMessage(false);
   }, [dispatch]);
 
+  // 當簡化模式狀態改變時，確保表單資料結構正確
+  useEffect(() => {
+    const isSimplifiedMode = queueStatus?.simplifiedMode || false;
+    if (isSimplifiedMode) {
+      // 在簡化模式下，確保基本的資料結構
+      setFormData(prevData => ({
+        ...prevData,
+        addresses: prevData.addresses.length > 0 ? prevData.addresses : [{ address: '', addressType: 'home' }],
+        consultationTopics: prevData.consultationTopics.length > 0 ? prevData.consultationTopics : ['other']
+      }));
+    }
+  }, [queueStatus?.simplifiedMode]);
+
   // 如果已經登記成功
   useEffect(() => {
     if (registeredQueueNumber) {
@@ -354,11 +367,18 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
         }
       }
       
-      // 移除前端使用的欄位名稱，避免混淆
-      delete submitData.birthYear;
-      delete submitData.birthMonth;
-      delete submitData.birthDay;
-      delete submitData.calendarType;
+      // 移除前端使用的欄位名稱，避免混淆（只在完整模式下移除）
+      if (!isSimplifiedMode) {
+        delete submitData.birthYear;
+        delete submitData.birthMonth;
+        delete submitData.birthDay;
+        delete submitData.calendarType;
+      }
+      
+      // 確保在簡化模式下，consultationTopics 不為空
+      if (isSimplifiedMode && (!submitData.consultationTopics || submitData.consultationTopics.length === 0)) {
+        submitData.consultationTopics = ['other'];
+      }
       
       console.log('準備送出的資料:', submitData);
       dispatch(registerQueue(submitData));

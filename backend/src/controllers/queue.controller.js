@@ -234,8 +234,15 @@ exports.registerQueue = async (req, res) => {
       }
       
       // 確保必要的資料結構存在（即使為空）
-      if (!req.body.addresses) {
-        req.body.addresses = [{ address: '', addressType: 'home' }];
+      if (!req.body.addresses || req.body.addresses.length === 0) {
+        req.body.addresses = [{ address: '未提供', addressType: 'home' }];
+      } else {
+        // 確保現有地址不為空
+        req.body.addresses = req.body.addresses.map(addr => ({
+          ...addr,
+          address: addr.address || '未提供',
+          addressType: addr.addressType || 'home'
+        }));
       }
       if (!req.body.consultationTopics) {
         req.body.consultationTopics = ['other'];
@@ -289,6 +296,15 @@ exports.registerQueue = async (req, res) => {
       // 確保家人陣列存在（即使為空）
       familyMembers: req.body.familyMembers || []
     };
+
+    // 在簡化模式下，確保家人的地址不為空
+    if (settings.simplifiedMode && recordData.familyMembers.length > 0) {
+      recordData.familyMembers = recordData.familyMembers.map(member => ({
+        ...member,
+        address: member.address || '未提供',
+        addressType: member.addressType || 'home'
+      }));
+    }
 
     // 只在非簡化模式或有日期資料時進行日期處理
     if (!settings.simplifiedMode || 
