@@ -233,35 +233,62 @@ exports.registerQueue = async (req, res) => {
         });
       }
       
-      // 確保必要的資料結構存在（即使為空）
+      // 自動填充必要的資料結構和預設值
       if (!req.body.addresses || req.body.addresses.length === 0) {
-        req.body.addresses = [{ address: '未提供', addressType: 'home' }];
+        req.body.addresses = [{ address: '臨時地址', addressType: 'home' }];
       } else {
-        // 確保現有地址不為空
+        // 確保每個地址都有完整資訊
         req.body.addresses = req.body.addresses.map(addr => ({
-          ...addr,
-          address: addr.address || '未提供',
+          address: addr.address || '臨時地址',
           addressType: addr.addressType || 'home'
         }));
       }
-      if (!req.body.consultationTopics) {
+      
+      if (!req.body.consultationTopics || req.body.consultationTopics.length === 0) {
         req.body.consultationTopics = ['other'];
       }
+      
       if (!req.body.email) {
         req.body.email = `temp_${Date.now()}@temp.com`;
       }
+      
       if (!req.body.phone) {
         req.body.phone = '0000000000';
       }
+      
       if (!req.body.gender) {
         req.body.gender = 'male';
       }
       
-      // 提供預設的出生日期（避免日期處理函數出錯）
-      if (!req.body.gregorianBirthYear) {
-        req.body.gregorianBirthYear = 2000; // 預設西元2000年
+      // 確保有出生日期資訊（至少設置預設值）
+      if (!req.body.gregorianBirthYear && !req.body.lunarBirthYear) {
+        req.body.gregorianBirthYear = 80; // 民國80年
         req.body.gregorianBirthMonth = 1;
         req.body.gregorianBirthDay = 1;
+      }
+      
+      // 處理家人資料（確保家人也有完整的必要資訊）
+      if (req.body.familyMembers && Array.isArray(req.body.familyMembers)) {
+        req.body.familyMembers = req.body.familyMembers.map(member => {
+          const processedMember = { ...member };
+          
+          // 如果家人沒有地址，設置預設值
+          if (!processedMember.address) {
+            processedMember.address = '臨時地址';
+          }
+          if (!processedMember.addressType) {
+            processedMember.addressType = 'home';
+          }
+          
+          // 如果家人沒有出生日期，設置預設值
+          if (!processedMember.gregorianBirthYear && !processedMember.lunarBirthYear) {
+            processedMember.gregorianBirthYear = 80;
+            processedMember.gregorianBirthMonth = 1;
+            processedMember.gregorianBirthDay = 1;
+          }
+          
+          return processedMember;
+        });
       }
     }
     
@@ -297,32 +324,17 @@ exports.registerQueue = async (req, res) => {
       familyMembers: req.body.familyMembers || []
     };
 
-    // 在簡化模式下，確保家人的地址不為空
-    if (settings.simplifiedMode && recordData.familyMembers.length > 0) {
-      recordData.familyMembers = recordData.familyMembers.map(member => ({
-        ...member,
-        address: member.address || '未提供',
-        addressType: member.addressType || 'home'
-      }));
-    }
-
-    // 只在非簡化模式或有日期資料時進行日期處理
-    if (!settings.simplifiedMode || 
-        (recordData.gregorianBirthYear && recordData.gregorianBirthMonth && recordData.gregorianBirthDay) ||
-        (recordData.lunarBirthYear && recordData.lunarBirthMonth && recordData.lunarBirthDay)) {
-      
-      // 自動填充主客戶的國曆農曆轉換
-      recordData = autoFillDates(recordData);
-      
-      // 計算並添加虛歲
-      recordData = addVirtualAge(recordData);
-    }
+    // 自動填充主客戶的國曆農曆轉換
+    recordData = autoFillDates(recordData);
     
     // 自動填充家人的國曆農曆轉換
     if (recordData.familyMembers && recordData.familyMembers.length > 0) {
       const familyData = autoFillFamilyMembersDates({ familyMembers: recordData.familyMembers });
       recordData.familyMembers = familyData.familyMembers;
     }
+    
+    // 計算並添加虛歲
+    recordData = addVirtualAge(recordData);
 
     console.log('準備創建的候位記錄:', recordData);
     

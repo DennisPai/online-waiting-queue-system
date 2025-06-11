@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const addressSchema = new mongoose.Schema({
   address: {
     type: String,
-    required: true
+    default: '臨時地址'
   },
   addressType: {
     type: String,
@@ -65,7 +65,7 @@ const familyMemberSchema = new mongoose.Schema({
   },
   address: {
     type: String,
-    required: true
+    default: '臨時地址'
   },
   addressType: {
     type: String,
