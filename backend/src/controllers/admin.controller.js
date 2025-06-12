@@ -325,7 +325,7 @@ exports.toggleQueueStatus = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      message: `候位系統已${isOpen ? '開啟' : '關閉'}`,
+      message: `辦事服務已${isOpen ? '開始' : '停止'}`,
       data: {
         isQueueOpen: settings.isQueueOpen
       }

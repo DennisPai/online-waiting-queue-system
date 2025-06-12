@@ -67,7 +67,7 @@ exports.getQueueStatus = async (req, res) => {
     // 獲取系統設定
     const settings = await SystemSetting.getSettings();
     
-    // 若候位系統已關閉，直接返回下次辦事時間
+    // 若辦事服務已停止，返回相關資訊但仍包含publicRegistrationEnabled狀態
     if (!settings.isQueueOpen) {
       return res.status(200).json({
         success: true,
@@ -76,8 +76,11 @@ exports.getQueueStatus = async (req, res) => {
           maxQueueNumber: settings.maxQueueNumber,
           minutesPerCustomer: settings.minutesPerCustomer,
           simplifiedMode: settings.simplifiedMode,
+          publicRegistrationEnabled: settings.publicRegistrationEnabled,
           nextSessionDate: settings.nextSessionDate,
-          message: '候位系統目前已關閉'
+          currentQueueNumber: 0,
+          waitingCount: 0,
+          message: '辦事服務目前已停止'
         }
       });
     }

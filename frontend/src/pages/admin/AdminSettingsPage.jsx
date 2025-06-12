@@ -395,7 +395,7 @@ const AdminSettingsPage = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                候位系統狀態
+                辦事狀態
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <FormControlLabel
@@ -406,14 +406,26 @@ const AdminSettingsPage = () => {
                       color="primary"
                     />
                   }
-                  label={isQueueOpen ? '候位系統開啟中' : '候位系統關閉中'}
+                  label={isQueueOpen ? '開始辦事' : '停止辦事'}
                 />
               </Box>
               <Box sx={{ mt: 2 }}>
                 <Alert severity={isQueueOpen ? 'success' : 'info'}>
                   {isQueueOpen
-                    ? '目前候位系統已開啟，民眾可以線上登記候位'
-                    : '目前候位系統已關閉，民眾無法線上登記候位'}
+                    ? '目前正在進行辦事服務，候位叫號正常運作'
+                    : '目前停止辦事服務，候位叫號已暫停'}
+                </Alert>
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Alert severity="info">
+                  <Typography variant="body2" component="div">
+                    <strong>辦事狀態說明：</strong>
+                    <ul style={{ marginTop: '8px', marginBottom: 0 }}>
+                      <li>開始辦事：正在進行辦事服務，系統會顯示目前叫號和候位狀態</li>
+                      <li>停止辦事：暫停辦事服務，但民眾仍可登記候位（需開啟公開候位登記功能）</li>
+                      <li>此設定不影響候位登記功能，候位登記由「公開候位登記設置」控制</li>
+                    </ul>
+                  </Typography>
                 </Alert>
               </Box>
             </Paper>

@@ -8,21 +8,22 @@
 - **後端**: Node.js + Express API，運行在 http://localhost:8080  
 - **資料庫**: MongoDB，運行在 localhost:27017
 
-## ⚠️ 重要功能變更 - 候位登記功能暫時關閉
+## ⚠️ 重要功能變更 - 公開候位登記開關功能
 
 ### 📋 功能變更概述 (2024年12月生效)
-- **候位登記功能** 已從公開服務調整為 **僅管理員可用**
-- 一般訪客無法直接在前台進行候位登記
-- 管理員需登入後台使用「登記候位」浮動視窗功能
-- **所有功能架構完整保留**，便於日後快速重新開放
+- **公開候位登記開關功能** 已實施，管理員可透過系統設定動態控制候位登記開放狀態
+- 新增 `publicRegistrationEnabled` 系統設定欄位，預設為 `false`
+- 前端根據設定狀態和認證情況動態顯示候位登記功能
+- 管理員始終可使用後台「登記候位」浮動視窗功能
+- **所有功能架構完整保留**，提供最大的靈活性
 
 ### 🔧 核心技術實施
 
-#### 1. 前端認證條件限制
+#### 1. 前端條件判斷實施
 ```javascript
 // ⚠️ 重要檔案: frontend/src/pages/HomePage.jsx
-// 首頁候位登記卡片須包含認證條件
-{isAuthenticated && (
+// 首頁候位登記卡片須根據設定狀態和認證情況顯示
+{(queueStatus?.publicRegistrationEnabled || isAuthenticated) && (
   <Grid item xs={12} sm={6} md={4}>
     <Card onClick={() => navigate('/register')}>
       {/* 我要登記候位卡片 */}
@@ -31,29 +32,131 @@
 )}
 
 // ⚠️ 重要檔案: frontend/src/components/Layout.jsx  
-// 導航欄候位按鈕須包含認證條件
-{isAuthenticated && (
+// 導航欄候位按鈕須根據設定狀態和認證情況顯示
+{(queueStatus?.publicRegistrationEnabled || isAuthenticated) && (
   <Button component={Link} to="/register">
     我要候位
   </Button>
 )}
 ```
 
-#### 2. 路由保護實施
+#### 2. 條件路由保護實施
 ```javascript
 // ⚠️ 重要檔案: frontend/src/App.js
-// register 路由必須受 ProtectedRoute 保護
+// register 路由使用 ConditionalRegistrationRoute 條件保護
 <Route 
   path="/register" 
   element={
-    <ProtectedRoute>
+    <ConditionalRegistrationRoute>
       <RegisterPage />
-    </ProtectedRoute>
+    </ConditionalRegistrationRoute>
   } 
 />
+
+// ⚠️ 重要檔案: frontend/src/components/ConditionalRegistrationRoute.jsx
+// 新增條件路由組件
+import React from 'react';
+import { useSelector } from 'react-redux';
+import { Navigate } from 'react-router-dom';
+
+const ConditionalRegistrationRoute = ({ children }) => {
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { queueStatus } = useSelector((state) => state.queue);
+  
+  // 如果公開候位登記開啟或管理員已登入，則允許訪問
+  if (queueStatus?.publicRegistrationEnabled || isAuthenticated) {
+    return children;
+  }
+  
+  // 否則重定向到首頁
+  return <Navigate to="/" replace />;
+};
 ```
 
-#### 3. 管理員後台登記功能
+#### 3. 後端API實施
+```javascript
+// ⚠️ 重要檔案: backend/src/models/system-setting.model.js
+// 新增 publicRegistrationEnabled 欄位
+const systemSettingSchema = new mongoose.Schema({
+  // ... 其他欄位
+  publicRegistrationEnabled: {
+    type: Boolean,
+    default: false  // 預設為關閉狀態
+  }
+});
+
+// ⚠️ 重要檔案: backend/src/controllers/admin.controller.js
+// 新增設定開關的API方法
+export const setPublicRegistrationEnabled = async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ 
+        success: false, 
+        message: '無效的設定值，必須是布爾值' 
+      });
+    }
+
+    await SystemSetting.updateMany({}, 
+      { publicRegistrationEnabled: enabled }, 
+      { upsert: true }
+    );
+
+    res.json({ 
+      success: true, 
+      message: enabled ? '公開候位登記已開啟' : '公開候位登記已關閉' 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: '設定公開候位登記狀態失敗' 
+    });
+  }
+};
+
+// ⚠️ 重要檔案: backend/src/controllers/queue.controller.js
+// 在狀態API中返回開關狀態
+export const getQueueStatus = async (req, res) => {
+  try {
+    // ... 其他邏輯
+    const systemSettings = await SystemSetting.findOne();
+    
+    res.json({
+      // ... 其他狀態資料
+      publicRegistrationEnabled: systemSettings?.publicRegistrationEnabled || false
+    });
+  } catch (error) {
+    // ... 錯誤處理
+  }
+};
+```
+
+#### 4. 前端Redux狀態管理
+```javascript
+// ⚠️ 重要檔案: frontend/src/redux/slices/queueSlice.js
+// 新增開關設定的async thunk
+export const setPublicRegistrationEnabled = createAsyncThunk(
+  'queue/setPublicRegistrationEnabled',
+  async (enabled, { rejectWithValue }) => {
+    try {
+      const response = await queueService.setPublicRegistrationEnabled(enabled);
+      return { publicRegistrationEnabled: enabled };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '設定失敗');
+    }
+  }
+);
+
+// 在 extraReducers 中處理
+.addCase(setPublicRegistrationEnabled.fulfilled, (state, action) => {
+  if (state.queueStatus) {
+    state.queueStatus.publicRegistrationEnabled = action.payload.publicRegistrationEnabled;
+  }
+})
+```
+
+#### 5. 管理員後台登記功能
 ```javascript
 // ⚠️ 重要檔案: frontend/src/pages/admin/AdminDashboardPage.jsx
 // 必須包含登記候位浮動視窗功能
@@ -118,11 +221,19 @@ const RegisterForm = ({ onSuccess }) => {
 
 ### 🚨 重要開發注意事項
 
-#### ⚠️ 功能限制檢查清單
+#### ⚠️ 公開候位登記開關功能檢查清單
 修改相關代碼時，務必確認：
-- [ ] **HomePage.jsx** 候位登記卡片包含 `{isAuthenticated && (...)}`
-- [ ] **Layout.jsx** 導航欄候位按鈕包含 `{isAuthenticated && (...)}`
-- [ ] **App.js** register 路由被 `<ProtectedRoute>` 包裝
+- [ ] **backend/src/models/system-setting.model.js** 包含 `publicRegistrationEnabled: Boolean` 欄位
+- [ ] **backend/src/controllers/admin.controller.js** 包含 `setPublicRegistrationEnabled` 函數
+- [ ] **backend/src/routes/admin.routes.js** 包含開關設定路由
+- [ ] **backend/src/controllers/queue.controller.js** 在狀態API中返回開關狀態
+- [ ] **frontend/src/components/ConditionalRegistrationRoute.jsx** 條件路由組件正確實施
+- [ ] **HomePage.jsx** 候位登記卡片包含 `{(queueStatus?.publicRegistrationEnabled || isAuthenticated) && (...)}`
+- [ ] **Layout.jsx** 導航欄候位按鈕包含 `{(queueStatus?.publicRegistrationEnabled || isAuthenticated) && (...)}`
+- [ ] **App.js** register 路由使用 `<ConditionalRegistrationRoute>` 包裝
+- [ ] **AdminSettingsPage.jsx** 包含「公開候位登記設置」開關UI
+- [ ] **queueSlice.js** 包含 `setPublicRegistrationEnabled` async thunk
+- [ ] **queueService.js** 包含開關設定API服務函數
 - [ ] **AdminDashboardPage.jsx** 包含完整的登記候位浮動視窗
 - [ ] **RegisterForm.jsx** 支援 `onSuccess` 回調參數
 - [ ] Dialog 相關 Material-UI 組件無重複導入錯誤
@@ -139,13 +250,15 @@ const RegisterForm = ({ onSuccess }) => {
 - [ ] **RegisterForm.jsx** 實現條件式驗證邏輯
 - [ ] 自動填入機制正常運作（email、phone、address等預設值）
 
-#### 🔄 功能重新開放準備
-**當需要重新開放候位登記功能給公眾時**：
-1. 移除 HomePage.jsx 中的認證條件
-2. 移除 Layout.jsx 中的認證條件
-3. 移除 App.js 中的 ProtectedRoute 包裝
-4. 可選擇保留或移除管理員後台的登記功能
-5. 推送代碼，Zeabur 自動部署
+#### 🔄 開關功能操作指南
+**管理員透過系統設定控制候位登記開放狀態**：
+1. 登入管理後台 → 系統設定頁面
+2. 找到「公開候位登記設置」區塊
+3. 使用開關控制候位登記功能：
+   - **開啟時**：一般民眾可在首頁直接候位登記
+   - **關閉時**：僅管理員可透過後台候位登記
+4. 設定變更即時生效，無需重新部署
+5. 管理員始終保有後台登記功能權限
 
 #### ⚠️ ESLint 常見錯誤
 ```bash
