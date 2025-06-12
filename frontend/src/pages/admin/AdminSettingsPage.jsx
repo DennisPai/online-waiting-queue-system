@@ -23,7 +23,8 @@ import {
   getQueueStatus,
   setMaxQueueNumber,
   setMinutesPerCustomer,
-  setSimplifiedMode
+  setSimplifiedMode,
+  setPublicRegistrationEnabled
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
 
@@ -35,6 +36,7 @@ const AdminSettingsPage = () => {
   const [maxQueueNumber, setMaxQueueNumberLocal] = useState(100);
   const [minutesPerCustomer, setMinutesPerCustomerLocal] = useState(13);
   const [simplifiedMode, setSimplifiedModeLocal] = useState(false);
+  const [publicRegistrationEnabled, setPublicRegistrationEnabledLocal] = useState(false);
 
   // 安全的日期格式化函數
   const formatDateForInput = (dateString) => {
@@ -114,6 +116,10 @@ const AdminSettingsPage = () => {
         
         if (typeof result.simplifiedMode !== 'undefined') {
           setSimplifiedModeLocal(result.simplifiedMode);
+        }
+        
+        if (typeof result.publicRegistrationEnabled !== 'undefined') {
+          setPublicRegistrationEnabledLocal(result.publicRegistrationEnabled);
         }
       })
       .catch((error) => {
@@ -343,6 +349,31 @@ const AdminSettingsPage = () => {
       });
   };
 
+  // 處理公開候位登記功能開關
+  const handleTogglePublicRegistration = () => {
+    const newStatus = !publicRegistrationEnabled;
+    
+    dispatch(setPublicRegistrationEnabled(newStatus))
+      .unwrap()
+      .then(() => {
+        setPublicRegistrationEnabledLocal(newStatus);
+        dispatch(
+          showAlert({
+            message: newStatus ? '公開候位登記功能已開啟' : '公開候位登記功能已關閉',
+            severity: 'success'
+          })
+        );
+      })
+      .catch((error) => {
+        dispatch(
+          showAlert({
+            message: error,
+            severity: 'error'
+          })
+        );
+      });
+  };
+
   return (
     <Container maxWidth="lg">
       <Typography variant="h4" component="h1" gutterBottom>
@@ -530,6 +561,33 @@ const AdminSettingsPage = () => {
                       <li>適用於快速登記或緊急情況使用</li>
                     </ul>
                   </Typography>
+                </Alert>
+              </Box>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                公開候位登記功能設置
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={publicRegistrationEnabled}
+                      onChange={handleTogglePublicRegistration}
+                      color="primary"
+                    />
+                  }
+                  label={publicRegistrationEnabled ? '公開候位登記功能已開啟' : '公開候位登記功能已關閉'}
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Alert severity={publicRegistrationEnabled ? 'warning' : 'info'}>
+                  {publicRegistrationEnabled
+                    ? '公開候位登記功能已開啟：民眾可以線上登記候位'
+                    : '公開候位登記功能已關閉：民眾無法線上登記候位'}
                 </Alert>
               </Box>
             </Paper>

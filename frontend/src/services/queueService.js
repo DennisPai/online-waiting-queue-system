@@ -308,6 +308,26 @@ const setSimplifiedMode = async (simplifiedMode, token) => {
     return response.data;
 };
 
+// 設定公開候位登記功能開關
+const setPublicRegistrationEnabled = async (publicRegistrationEnabled, token) => {
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.put(
+      `${API_ENDPOINTS.ADMIN}/settings/publicRegistration`,
+      { publicRegistrationEnabled },
+      config
+    );
+    return response.data;
+  } catch (error) {
+    console.error('設定公開候位登記功能錯誤:', error);
+    throw error;
+  }
+};
+
 // 清空所有候位
 const clearAllQueue = async (token) => {
   try {
@@ -345,6 +365,7 @@ const queueService = {
   deleteCustomer,
   setMinutesPerCustomer,
   setSimplifiedMode,
+  setPublicRegistrationEnabled,
   clearAllQueue,
   getOrderedQueueNumbers
 };

@@ -127,6 +127,18 @@ const RegisterForm = ({ onSuccess }) => {
 - [ ] **RegisterForm.jsx** 支援 `onSuccess` 回調參數
 - [ ] Dialog 相關 Material-UI 組件無重複導入錯誤
 
+#### 🔄 簡化模式功能檢查清單 (2024年最新功能)
+開發和修改簡化模式相關功能時，務必確認：
+- [ ] **system-setting.model.js** 包含 `simplifiedMode: Boolean` 欄位
+- [ ] **admin.controller.js** 包含 `setSimplifiedMode` 函數
+- [ ] **admin.routes.js** 包含 `PUT /admin/settings/simplifiedMode` 路由
+- [ ] **queue.controller.js** 的 `registerQueue` 函數根據簡化模式調整驗證邏輯
+- [ ] **queueService.js** 包含 `setSimplifiedMode` API服務函數  
+- [ ] **queueSlice.js** 包含簡化模式相關的async thunk和reducer
+- [ ] **AdminSettingsPage.jsx** 包含簡化模式切換開關界面
+- [ ] **RegisterForm.jsx** 實現條件式驗證邏輯
+- [ ] 自動填入機制正常運作（email、phone、address等預設值）
+
 #### 🔄 功能重新開放準備
 **當需要重新開放候位登記功能給公眾時**：
 1. 移除 HomePage.jsx 中的認證條件
@@ -541,6 +553,13 @@ docker-compose up -d
   - [ ] 後端API是否返回新的欄位格式（gregorianBirthYear等）
   - [ ] 前端顯示邏輯是否同時顯示國曆和農曆
   - [ ] `getQueueByNameAndPhone` API返回的欄位是否正確
+- [ ] **簡化模式功能檢查**（2024年最新功能）：
+  - [ ] 系統設定模型是否包含 `simplifiedMode` 欄位
+  - [ ] 簡化模式API端點是否正確實現（`PUT /admin/settings/simplifiedMode`）
+  - [ ] 候位登記邏輯是否根據簡化模式調整驗證
+  - [ ] 前端切換界面是否正常運作和顯示狀態
+  - [ ] 自動填入機制是否正確補齊預設值
+  - [ ] 條件式表單驗證是否正確實現
 - [ ] **管理員面板功能檢查**：
   - [ ] API端點是否匹配（清除候位、刪除客戶）
   - [ ] 組件Props是否正確傳遞（特別是ExportDialog的customers prop）

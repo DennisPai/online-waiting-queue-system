@@ -9,6 +9,7 @@ const initialState = {
   estimatedWaitTime: 0,
   estimatedEndTime: null,
   isQueueOpen: true,
+  publicRegistrationEnabled: false, // 新增：公開候位登記功能是否啟用
   nextSessionDate: null,
   queueList: [],
   pagination: {
@@ -187,6 +188,20 @@ export const setSimplifiedMode = createAsyncThunk(
   }
 );
 
+// 設定公開候位登記功能開關（管理員）
+export const setPublicRegistrationEnabled = createAsyncThunk(
+  'queue/setPublicRegistrationEnabled',
+  async (publicRegistrationEnabled, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.setPublicRegistrationEnabled(publicRegistrationEnabled, token);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '設定公開候位登記功能失敗');
+    }
+  }
+);
+
 // 通過姓名和電話查詢候位號碼
 export const searchQueueByNameAndPhone = createAsyncThunk(
   'queue/searchByNameAndPhone',
@@ -301,6 +316,7 @@ const queueSlice = createSlice({
         state.isLoading = false;
         state.queueStatus = action.payload;
         state.isQueueOpen = action.payload.isOpen;
+        state.publicRegistrationEnabled = action.payload.publicRegistrationEnabled;
         
         if (action.payload.isOpen) {
           state.currentQueue = action.payload.currentQueueNumber;
@@ -599,6 +615,25 @@ const queueSlice = createSlice({
         };
       })
       .addCase(clearAllQueue.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // 設定公開候位登記功能開關（管理員）
+      .addCase(setPublicRegistrationEnabled.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(setPublicRegistrationEnabled.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // 更新公開候位登記功能狀態
+        state.publicRegistrationEnabled = action.payload.publicRegistrationEnabled;
+        // 同時更新queueStatus中的狀態
+        state.queueStatus = {
+          ...state.queueStatus,
+          publicRegistrationEnabled: action.payload.publicRegistrationEnabled
+        };
+      })
+      .addCase(setPublicRegistrationEnabled.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });

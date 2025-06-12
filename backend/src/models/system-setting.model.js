@@ -27,6 +27,10 @@ const systemSettingSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  publicRegistrationEnabled: {
+    type: Boolean,
+    default: false  // 預設為false，即候位功能暫時關閉
+  },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -46,7 +50,8 @@ systemSettingSchema.statics.getSettings = async function() {
       currentQueueNumber: 0,
       maxQueueNumber: 100,
       minutesPerCustomer: 13,
-      simplifiedMode: false
+      simplifiedMode: false,
+      publicRegistrationEnabled: false
     });
   }
   

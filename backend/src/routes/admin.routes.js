@@ -114,6 +114,16 @@ router.put(
   adminController.setSimplifiedMode
 );
 
+// 設定公開候位登記功能開關
+router.put(
+  '/settings/publicRegistration',
+  [
+    body('publicRegistrationEnabled').isBoolean().withMessage('publicRegistrationEnabled 必須是布爾值')
+  ],
+  validateRequest,
+  adminController.setPublicRegistrationEnabled
+);
+
 // 清除所有候位資料
 router.delete('/queue/clear-all', adminController.clearAllQueue);
 
