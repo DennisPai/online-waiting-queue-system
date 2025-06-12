@@ -12,7 +12,6 @@ import {
   CardContent,
   CardActions,
   Divider,
-  Alert,
   useTheme,
   useMediaQuery
 } from '@mui/material';
@@ -35,11 +34,8 @@ const HomePage = () => {
   const dispatch = useDispatch();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { queueStatus, isLoading, currentQueue, isQueueOpen, publicRegistrationEnabled } = useSelector((state) => state.queue);
+  const { queueStatus, isLoading, currentQueue, isQueueOpen } = useSelector((state) => state.queue);
   const { isAuthenticated } = useSelector((state) => state.auth);
-
-  // 決定是否顯示候位登記功能
-  const showRegistration = isAuthenticated || publicRegistrationEnabled;
 
   useEffect(() => {
     // 獲取基本候位狀態
@@ -137,8 +133,8 @@ const HomePage = () => {
           <QueueStatusDisplay queueStatus={queueStatus} isLoading={isLoading} />
         </Grid>
 
-        {/* 根據管理員登入狀態或公開登記功能開關決定是否顯示候位登記功能 */}
-        {showRegistration ? (
+        {/* 當公開候位登記開啟時或管理員登入時才顯示候位登記功能 */}
+        {(queueStatus?.publicRegistrationEnabled || isAuthenticated) && (
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
@@ -163,17 +159,9 @@ const HomePage = () => {
               </CardActions>
             </Card>
           </Grid>
-        ) : (
-          <Grid item xs={12}>
-            <Alert severity="info" sx={{ mb: 2 }}>
-              <Typography variant="body1">
-                候位登記功能目前暫時關閉，如需候位請洽現場服務人員。造成不便敬請見諒。
-              </Typography>
-            </Alert>
-          </Grid>
         )}
 
-        <Grid item xs={12} md={showRegistration ? 6 : 12}>
+        <Grid item xs={12} md={(queueStatus?.publicRegistrationEnabled || isAuthenticated) ? 6 : 12}>
           <Card>
             <CardContent>
               <Typography variant="h4" component="div" gutterBottom sx={{ fontSize: { xs: '1.4rem', md: '1.6rem' } }}>

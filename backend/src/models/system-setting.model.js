@@ -29,7 +29,7 @@ const systemSettingSchema = new mongoose.Schema({
   },
   publicRegistrationEnabled: {
     type: Boolean,
-    default: false  // 預設為false，即候位功能暫時關閉
+    default: false  // 預設為false，即預設關閉公開候位登記
   },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,

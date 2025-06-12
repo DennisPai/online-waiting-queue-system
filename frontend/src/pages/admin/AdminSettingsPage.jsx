@@ -349,8 +349,8 @@ const AdminSettingsPage = () => {
       });
   };
 
-  // 處理公開候位登記功能開關
-  const handleTogglePublicRegistration = () => {
+  // 處理公開候位登記開關
+  const handleTogglePublicRegistrationEnabled = () => {
     const newStatus = !publicRegistrationEnabled;
     
     dispatch(setPublicRegistrationEnabled(newStatus))
@@ -359,7 +359,7 @@ const AdminSettingsPage = () => {
         setPublicRegistrationEnabledLocal(newStatus);
         dispatch(
           showAlert({
-            message: newStatus ? '公開候位登記功能已開啟' : '公開候位登記功能已關閉',
+            message: newStatus ? '公開候位登記已開啟' : '公開候位登記已關閉',
             severity: 'success'
           })
         );
@@ -569,25 +569,37 @@ const AdminSettingsPage = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                公開候位登記功能設置
+                公開候位登記設置
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <FormControlLabel
                   control={
                     <Switch
                       checked={publicRegistrationEnabled}
-                      onChange={handleTogglePublicRegistration}
+                      onChange={handleTogglePublicRegistrationEnabled}
                       color="primary"
                     />
                   }
-                  label={publicRegistrationEnabled ? '公開候位登記功能已開啟' : '公開候位登記功能已關閉'}
+                  label={publicRegistrationEnabled ? '公開候位登記已開啟' : '公開候位登記已關閉'}
                 />
               </Box>
               <Box sx={{ mt: 2 }}>
-                <Alert severity={publicRegistrationEnabled ? 'warning' : 'info'}>
+                <Alert severity={publicRegistrationEnabled ? 'success' : 'warning'}>
                   {publicRegistrationEnabled
-                    ? '公開候位登記功能已開啟：民眾可以線上登記候位'
-                    : '公開候位登記功能已關閉：民眾無法線上登記候位'}
+                    ? '公開候位登記已開啟：一般民眾可以在首頁直接進行候位登記'
+                    : '公開候位登記已關閉：只有管理員登入後才能進行候位登記'}
+                </Alert>
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Alert severity="info">
+                  <Typography variant="body2" component="div">
+                    <strong>公開候位登記說明：</strong>
+                    <ul style={{ marginTop: '8px', marginBottom: 0 }}>
+                      <li>開啟時：首頁顯示「我要候位」按鈕，民眾可直接登記</li>
+                      <li>關閉時：首頁隱藏「我要候位」按鈕，僅管理員可登記</li>
+                      <li>適用於需要控制候位開放時間或特殊情況</li>
+                    </ul>
+                  </Typography>
                 </Alert>
               </Box>
             </Paper>

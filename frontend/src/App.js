@@ -14,6 +14,7 @@ import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 
 // 匯入元件
 import ProtectedRoute from './components/ProtectedRoute';
+import ConditionalRegistrationRoute from './components/ConditionalRegistrationRoute';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 
@@ -54,9 +55,9 @@ function App() {
             <Route 
               path="register" 
               element={
-                <ProtectedRoute>
+                <ConditionalRegistrationRoute>
                   <RegisterResetWrapper />
-                </ProtectedRoute>
+                </ConditionalRegistrationRoute>
               } 
             />
             <Route path="status/:queueNumber" element={<StatusResetWrapper />} />

@@ -745,6 +745,44 @@ exports.setSimplifiedMode = async (req, res) => {
   }
 };
 
+// 設定公開候位登記功能
+exports.setPublicRegistrationEnabled = async (req, res) => {
+  try {
+    const { publicRegistrationEnabled } = req.body;
+    
+    if (typeof publicRegistrationEnabled !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'publicRegistrationEnabled 必須是布爾值'
+      });
+    }
+    
+    // 獲取系統設定
+    const settings = await SystemSetting.getSettings();
+    
+    // 更新公開候位登記設定
+    settings.publicRegistrationEnabled = publicRegistrationEnabled;
+    settings.updatedBy = req.user.id;
+    
+    await settings.save();
+    
+    res.status(200).json({
+      success: true,
+      message: `公開候位登記功能已${publicRegistrationEnabled ? '開啟' : '關閉'}`,
+      data: {
+        publicRegistrationEnabled: settings.publicRegistrationEnabled
+      }
+    });
+  } catch (error) {
+    console.error('設定公開候位登記功能錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器內部錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};
+
 // 清除所有候位資料
 exports.clearAllQueue = async (req, res) => {
   try {
@@ -780,44 +818,6 @@ exports.clearAllQueue = async (req, res) => {
     });
   } catch (error) {
     console.error('清除所有候位資料錯誤:', error);
-    res.status(500).json({
-      success: false,
-      message: '伺服器內部錯誤',
-      error: process.env.NODE_ENV === 'development' ? error.message : {}
-    });
-  }
-};
-
-// 設定公開候位登記功能開關
-exports.setPublicRegistrationEnabled = async (req, res) => {
-  try {
-    const { publicRegistrationEnabled } = req.body;
-    
-    if (typeof publicRegistrationEnabled !== 'boolean') {
-      return res.status(400).json({
-        success: false,
-        message: 'publicRegistrationEnabled 必須是布爾值'
-      });
-    }
-    
-    // 獲取系統設定
-    const settings = await SystemSetting.getSettings();
-    
-    // 更新公開候位登記功能設定
-    settings.publicRegistrationEnabled = publicRegistrationEnabled;
-    settings.updatedBy = req.user.id;
-    
-    await settings.save();
-    
-    res.status(200).json({
-      success: true,
-      message: `公開候位登記功能已${publicRegistrationEnabled ? '開啟' : '關閉'}`,
-      data: {
-        publicRegistrationEnabled: settings.publicRegistrationEnabled
-      }
-    });
-  } catch (error) {
-    console.error('設定公開候位登記功能錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',

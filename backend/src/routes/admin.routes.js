@@ -114,9 +114,9 @@ router.put(
   adminController.setSimplifiedMode
 );
 
-// 設定公開候位登記功能開關
+// 設定公開候位登記功能
 router.put(
-  '/settings/publicRegistration',
+  '/settings/publicRegistrationEnabled',
   [
     body('publicRegistrationEnabled').isBoolean().withMessage('publicRegistrationEnabled 必須是布爾值')
   ],

@@ -36,6 +36,7 @@ const Layout = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const { alert } = useSelector((state) => state.ui);
+  const { queueStatus } = useSelector((state) => state.queue);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -80,8 +81,8 @@ const Layout = () => {
                 <FontSizeSelector variant="buttons" showLabel={false} />
               </Box>
               
-              {/* 只有管理員登入時才顯示我要候位按鈕 */}
-              {isAuthenticated && (
+              {/* 當公開候位登記開啟時或管理員登入時才顯示我要候位按鈕 */}
+              {(queueStatus?.publicRegistrationEnabled || isAuthenticated) && (
                 <Button
                   color="inherit"
                   component={RouterLink}
@@ -162,8 +163,8 @@ const Layout = () => {
                   <HomeIcon sx={{ mr: 1 }} />
                   首頁
                 </MenuItem>
-                {/* 只有管理員登入時才顯示我要候位選項 */}
-                {isAuthenticated && (
+                {/* 當公開候位登記開啟時或管理員登入時才顯示我要候位選項 */}
+                {(queueStatus?.publicRegistrationEnabled || isAuthenticated) && (
                   <MenuItem 
                     component={RouterLink} 
                     to="/register" 

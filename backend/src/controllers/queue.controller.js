@@ -76,7 +76,6 @@ exports.getQueueStatus = async (req, res) => {
           maxQueueNumber: settings.maxQueueNumber,
           minutesPerCustomer: settings.minutesPerCustomer,
           simplifiedMode: settings.simplifiedMode,
-          publicRegistrationEnabled: settings.publicRegistrationEnabled,
           nextSessionDate: settings.nextSessionDate,
           message: '候位系統目前已關閉'
         }
