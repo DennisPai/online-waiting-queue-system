@@ -493,6 +493,7 @@ const AdminDashboardPage = () => {
         ...editedData,
         familyMembers: [...editedData.familyMembers, {
           name: '',
+          gender: 'male',
           // 國曆農曆出生日期欄位
           gregorianBirthYear: '',
           gregorianBirthMonth: '',
@@ -661,7 +662,10 @@ const AdminDashboardPage = () => {
       // 添加虛歲顯示
       const ageInfo = member.virtualAge ? ` (虛歲${member.virtualAge}歲)` : '';
       
-      return `${index + 1}. ${member.name} - ${birthInfo}${ageInfo} - ${member.address} (${formatAddressType(member.addressType)})`;
+      // 添加性別顯示
+      const genderInfo = member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : '未設定';
+      
+      return `${index + 1}. ${member.name} (${genderInfo}) - ${birthInfo}${ageInfo} - ${member.address} (${formatAddressType(member.addressType)})`;
     }).join('\n');
   };
 
@@ -1759,7 +1763,7 @@ const AdminDashboardPage = () => {
                             </IconButton>
                           </Box>
                           <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} sm={4}>
                               <TextField
                                 fullWidth
                                 label="姓名"
@@ -1768,6 +1772,19 @@ const AdminDashboardPage = () => {
                                 margin="dense"
                                 size="small"
                               />
+                            </Grid>
+                            <Grid item xs={12} sm={2}>
+                              <FormControl component="fieldset" margin="dense" size="small">
+                                <FormLabel component="legend">性別</FormLabel>
+                                <RadioGroup
+                                  row
+                                  value={member.gender || 'male'}
+                                  onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
+                                >
+                                  <FormControlLabel value="male" control={<Radio size="small" />} label="男" />
+                                  <FormControlLabel value="female" control={<Radio size="small" />} label="女" />
+                                </RadioGroup>
+                              </FormControl>
                             </Grid>
                             <Grid item xs={12}>
                               <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>出生日期</Typography>

@@ -206,10 +206,10 @@ exports.registerQueue = async (req, res) => {
     if (req.body.familyMembers && Array.isArray(req.body.familyMembers)) {
       for (let i = 0; i < req.body.familyMembers.length; i++) {
         const member = req.body.familyMembers[i];
-        if (!member.name || !member.address || !member.addressType) {
+        if (!member.name || !member.gender || !member.address || !member.addressType) {
           return res.status(400).json({
             success: false,
-            message: `家人 ${i + 1} 基本資訊不完整`
+            message: `家人 ${i + 1} 基本資訊不完整（需要姓名、性別、地址和地址類型）`
           });
         }
         
@@ -279,6 +279,11 @@ exports.registerQueue = async (req, res) => {
       if (req.body.familyMembers && Array.isArray(req.body.familyMembers)) {
         req.body.familyMembers = req.body.familyMembers.map(member => {
           const processedMember = { ...member };
+          
+          // 如果家人沒有性別，設置預設值
+          if (!processedMember.gender) {
+            processedMember.gender = 'male';
+          }
           
           // 如果家人沒有地址，設置預設值
           if (!processedMember.address) {

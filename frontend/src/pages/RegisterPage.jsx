@@ -308,6 +308,7 @@ const RegisterPage = () => {
         ...formData,
         familyMembers: [...formData.familyMembers, {
           name: '',
+          gender: 'male',
           birthYear: '',
           birthMonth: '',
           birthDay: '',
@@ -373,6 +374,9 @@ const RegisterPage = () => {
     formData.familyMembers.forEach((member, index) => {
       if (!member.name) {
         errors[`familyMembers.${index}.name`] = '請輸入家人姓名';
+      }
+      if (!member.gender) {
+        errors[`familyMembers.${index}.gender`] = '請選擇性別';
       }
       if (!member.birthYear) {
         errors[`familyMembers.${index}.birthYear`] = '請輸入出生年';
@@ -889,7 +893,23 @@ const RegisterPage = () => {
                         helperText={formErrors[`familyMembers.${index}.name`]}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={12} sm={3}>
+                      <FormControl component="fieldset" required error={Boolean(formErrors[`familyMembers.${index}.gender`])}>
+                        <FormLabel component="legend">性別</FormLabel>
+                        <RadioGroup
+                          row
+                          value={member.gender}
+                          onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
+                        >
+                          <FormControlLabel value="male" control={<Radio />} label="男" />
+                          <FormControlLabel value="female" control={<Radio />} label="女" />
+                        </RadioGroup>
+                        {formErrors[`familyMembers.${index}.gender`] && (
+                          <FormHelperText>{formErrors[`familyMembers.${index}.gender`]}</FormHelperText>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
                       <FormControl component="fieldset">
                         <FormLabel component="legend">出生日期類型</FormLabel>
                         <RadioGroup

@@ -307,6 +307,7 @@ const StatusPage = () => {
           ...editData.familyMembers,
           {
             name: '',
+            gender: 'male',
             // 國曆農曆出生日期欄位
             gregorianBirthYear: '',
             gregorianBirthMonth: '',
@@ -1028,6 +1029,9 @@ const StatusPage = () => {
                             姓名：{member.name}
                           </Typography>
                           <Typography variant="body2">
+                            性別：{member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : '未設定'}
+                          </Typography>
+                          <Typography variant="body2">
                             生日：{(() => {
                               // 顯示國曆或農曆出生日期（使用民國年）
                               if (member.gregorianBirthYear && member.gregorianBirthMonth && member.gregorianBirthDay) {
@@ -1077,6 +1081,19 @@ const StatusPage = () => {
                                   value={member.name || ''}
                                   onChange={(e) => handleFamilyMemberChange(index, 'name', e.target.value)}
                                 />
+                              </Grid>
+                              <Grid item xs={12} sm={6}>
+                                <FormControl component="fieldset">
+                                  <FormLabel component="legend">性別</FormLabel>
+                                  <RadioGroup
+                                    row
+                                    value={member.gender || 'male'}
+                                    onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
+                                  >
+                                    <FormControlLabel value="male" control={<Radio />} label="男" />
+                                    <FormControlLabel value="female" control={<Radio />} label="女" />
+                                  </RadioGroup>
+                                </FormControl>
                               </Grid>
                               <Grid item xs={12}>
                                 <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>出生日期設定</Typography>
