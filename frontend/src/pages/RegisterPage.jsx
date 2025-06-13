@@ -308,7 +308,6 @@ const RegisterPage = () => {
         ...formData,
         familyMembers: [...formData.familyMembers, {
           name: '',
-          gender: 'male',
           birthYear: '',
           birthMonth: '',
           birthDay: '',
@@ -402,8 +401,9 @@ const RegisterPage = () => {
       errors.consultationTopics = '請至少選擇一個請示內容';
     }
 
-    // 其他詳細內容驗證
-    if (formData.consultationTopics.includes('other') && !formData.otherDetails.trim()) {
+    // 其他詳細內容驗證 - 只在標準模式下檢查
+    const isSimplifiedMode = queueStatus?.simplifiedMode || false;
+    if (!isSimplifiedMode && formData.consultationTopics.includes('other') && !formData.otherDetails.trim()) {
       errors.otherDetails = '選擇「其他」時，請詳細說明您的問題';
     }
     
@@ -879,7 +879,7 @@ const RegisterPage = () => {
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={6}>
                       <TextField
                         required
                         fullWidth
@@ -889,19 +889,6 @@ const RegisterPage = () => {
                         error={Boolean(formErrors[`familyMembers.${index}.name`])}
                         helperText={formErrors[`familyMembers.${index}.name`]}
                       />
-                    </Grid>
-                    <Grid item xs={12} sm={2}>
-                      <FormControl fullWidth>
-                        <InputLabel>性別</InputLabel>
-                        <Select
-                          value={member.gender || 'male'}
-                          onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
-                          label="性別"
-                        >
-                          <MenuItem value="male">男</MenuItem>
-                          <MenuItem value="female">女</MenuItem>
-                        </Select>
-                      </FormControl>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <FormControl component="fieldset">

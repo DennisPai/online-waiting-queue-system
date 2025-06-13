@@ -305,20 +305,19 @@ const StatusPage = () => {
         ...editData,
         familyMembers: [
           ...editData.familyMembers,
-                  {
-          name: '',
-          gender: 'male',
-          // 國曆農曆出生日期欄位
-          gregorianBirthYear: '',
-          gregorianBirthMonth: '',
-          gregorianBirthDay: '',
-          lunarBirthYear: '',
-          lunarBirthMonth: '',
-          lunarBirthDay: '',
-          lunarIsLeapMonth: false,
-          address: '',
-          addressType: 'home'
-        }
+          {
+            name: '',
+            // 國曆農曆出生日期欄位
+            gregorianBirthYear: '',
+            gregorianBirthMonth: '',
+            gregorianBirthDay: '',
+            lunarBirthYear: '',
+            lunarBirthMonth: '',
+            lunarBirthDay: '',
+            lunarIsLeapMonth: false,
+            address: '',
+            addressType: 'home'
+          }
         ]
       });
     }
@@ -1029,9 +1028,6 @@ const StatusPage = () => {
                             姓名：{member.name}
                           </Typography>
                           <Typography variant="body2">
-                            性別：{member.gender === 'male' ? '男' : '女'}
-                          </Typography>
-                          <Typography variant="body2">
                             生日：{(() => {
                               // 顯示國曆或農曆出生日期（使用民國年）
                               if (member.gregorianBirthYear && member.gregorianBirthMonth && member.gregorianBirthDay) {
@@ -1074,26 +1070,13 @@ const StatusPage = () => {
                               </IconButton>
                             </Box>
                             <Grid container spacing={2}>
-                              <Grid item xs={12} sm={4}>
+                              <Grid item xs={12} sm={6}>
                                 <TextField
                                   fullWidth
                                   label="姓名"
                                   value={member.name || ''}
                                   onChange={(e) => handleFamilyMemberChange(index, 'name', e.target.value)}
                                 />
-                              </Grid>
-                              <Grid item xs={12} sm={2}>
-                                <FormControl fullWidth>
-                                  <InputLabel>性別</InputLabel>
-                                  <Select
-                                    value={member.gender || 'male'}
-                                    onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
-                                    label="性別"
-                                  >
-                                    <MenuItem value="male">男</MenuItem>
-                                    <MenuItem value="female">女</MenuItem>
-                                  </Select>
-                                </FormControl>
                               </Grid>
                               <Grid item xs={12}>
                                 <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>出生日期設定</Typography>

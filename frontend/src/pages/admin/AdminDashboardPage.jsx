@@ -491,9 +491,8 @@ const AdminDashboardPage = () => {
     if (editedData.familyMembers && editedData.familyMembers.length < 5) {
       setEditedData({
         ...editedData,
-        familyMembers: [...editedData.familyMembers,         {
+        familyMembers: [...editedData.familyMembers, {
           name: '',
-          gender: 'male',
           // 國曆農曆出生日期欄位
           gregorianBirthYear: '',
           gregorianBirthMonth: '',
@@ -662,9 +661,7 @@ const AdminDashboardPage = () => {
       // 添加虛歲顯示
       const ageInfo = member.virtualAge ? ` (虛歲${member.virtualAge}歲)` : '';
       
-      const genderInfo = member.gender ? ` - ${member.gender === 'male' ? '男' : '女'}` : '';
-      
-      return `${index + 1}. ${member.name}${genderInfo} - ${birthInfo}${ageInfo} - ${member.address} (${formatAddressType(member.addressType)})`;
+      return `${index + 1}. ${member.name} - ${birthInfo}${ageInfo} - ${member.address} (${formatAddressType(member.addressType)})`;
     }).join('\n');
   };
 
@@ -1762,7 +1759,7 @@ const AdminDashboardPage = () => {
                             </IconButton>
                           </Box>
                           <Grid container spacing={2}>
-                            <Grid item xs={12} sm={4}>
+                            <Grid item xs={12} sm={6}>
                               <TextField
                                 fullWidth
                                 label="姓名"
@@ -1771,19 +1768,6 @@ const AdminDashboardPage = () => {
                                 margin="dense"
                                 size="small"
                               />
-                            </Grid>
-                            <Grid item xs={12} sm={2}>
-                              <FormControl fullWidth margin="dense" size="small">
-                                <InputLabel>性別</InputLabel>
-                                <Select
-                                  value={member.gender || 'male'}
-                                  onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
-                                  label="性別"
-                                >
-                                  <MenuItem value="male">男</MenuItem>
-                                  <MenuItem value="female">女</MenuItem>
-                                </Select>
-                              </FormControl>
                             </Grid>
                             <Grid item xs={12}>
                               <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>出生日期</Typography>
