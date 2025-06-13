@@ -451,11 +451,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         // 處理家人資料的日期轉換
         const convertedFamilyMembers = formData.familyMembers.map(member => {
-          const processedMember = { 
-            ...member,
-            // 確保有性別資訊
-            gender: member.gender || 'male'
-          };
+          const processedMember = { ...member };
           
           if (member.birthYear) {
             const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear, 10));
@@ -887,8 +883,8 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                       <InputLabel>性別</InputLabel>
                       <Select
                         value={member.gender || 'male'}
-                        label="性別"
                         onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
+                        label="性別"
                       >
                         <MenuItem value="male">男</MenuItem>
                         <MenuItem value="female">女</MenuItem>

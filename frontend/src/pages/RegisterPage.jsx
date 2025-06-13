@@ -460,8 +460,6 @@ const RegisterPage = () => {
           
           return autoFillDates({
             ...member,
-            // 確保有性別資訊
-            gender: member.gender || 'male',
             gregorianBirthYear: member.calendarType === 'gregorian' ? memberGregorianBirthYear : null,
             gregorianBirthMonth: member.calendarType === 'gregorian' ? parseInt(member.birthMonth, 10) : null,
             gregorianBirthDay: member.calendarType === 'gregorian' ? parseInt(member.birthDay, 10) : null,
@@ -897,8 +895,8 @@ const RegisterPage = () => {
                         <InputLabel>性別</InputLabel>
                         <Select
                           value={member.gender || 'male'}
-                          label="性別"
                           onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
+                          label="性別"
                         >
                           <MenuItem value="male">男</MenuItem>
                           <MenuItem value="female">女</MenuItem>

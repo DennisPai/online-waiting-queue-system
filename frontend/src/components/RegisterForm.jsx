@@ -362,11 +362,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
       // 處理家人數據的日期欄位
       if (submitData.familyMembers && submitData.familyMembers.length > 0) {
         submitData.familyMembers = submitData.familyMembers.map(member => {
-          const processedMember = { 
-            ...member,
-            // 確保有性別資訊
-            gender: member.gender || 'male'
-          };
+          const processedMember = { ...member };
           
           if (member.calendarType === 'gregorian') {
             processedMember.gregorianBirthYear = member.birthYear ? parseInt(member.birthYear) : null;
@@ -724,8 +720,8 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                           <InputLabel>性別</InputLabel>
                           <Select
                             value={member.gender || 'male'}
-                            label="性別"
                             onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
+                            label="性別"
                           >
                             <MenuItem value="male">男</MenuItem>
                             <MenuItem value="female">女</MenuItem>

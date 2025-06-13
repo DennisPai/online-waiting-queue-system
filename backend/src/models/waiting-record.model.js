@@ -20,10 +20,12 @@ const familyMemberSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  // 新增性別欄位
   gender: {
     type: String,
     enum: ['male', 'female'],
-    required: true
+    required: true,
+    default: 'male'
   },
   // 國曆出生日期
   gregorianBirthYear: {

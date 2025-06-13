@@ -491,7 +491,7 @@ const AdminDashboardPage = () => {
     if (editedData.familyMembers && editedData.familyMembers.length < 5) {
       setEditedData({
         ...editedData,
-        familyMembers: [...editedData.familyMembers, {
+        familyMembers: [...editedData.familyMembers,         {
           name: '',
           gender: 'male',
           // 國曆農曆出生日期欄位
@@ -662,8 +662,9 @@ const AdminDashboardPage = () => {
       // 添加虛歲顯示
       const ageInfo = member.virtualAge ? ` (虛歲${member.virtualAge}歲)` : '';
       
-      const genderText = member.gender === 'male' ? '男' : '女';
-      return `${index + 1}. ${member.name}(${genderText}) - ${birthInfo}${ageInfo} - ${member.address} (${formatAddressType(member.addressType)})`;
+      const genderInfo = member.gender ? ` - ${member.gender === 'male' ? '男' : '女'}` : '';
+      
+      return `${index + 1}. ${member.name}${genderInfo} - ${birthInfo}${ageInfo} - ${member.address} (${formatAddressType(member.addressType)})`;
     }).join('\n');
   };
 
@@ -1776,8 +1777,8 @@ const AdminDashboardPage = () => {
                                 <InputLabel>性別</InputLabel>
                                 <Select
                                   value={member.gender || 'male'}
-                                  label="性別"
                                   onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
+                                  label="性別"
                                 >
                                   <MenuItem value="male">男</MenuItem>
                                   <MenuItem value="female">女</MenuItem>
