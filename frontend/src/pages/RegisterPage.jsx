@@ -401,9 +401,8 @@ const RegisterPage = () => {
       errors.consultationTopics = '請至少選擇一個請示內容';
     }
 
-    // 其他詳細內容驗證 - 只在標準模式下檢查
-    const isSimplifiedMode = queueStatus?.simplifiedMode || false;
-    if (!isSimplifiedMode && formData.consultationTopics.includes('other') && !formData.otherDetails.trim()) {
+    // 其他詳細內容驗證
+    if (formData.consultationTopics.includes('other') && !formData.otherDetails.trim()) {
       errors.otherDetails = '選擇「其他」時，請詳細說明您的問題';
     }
     

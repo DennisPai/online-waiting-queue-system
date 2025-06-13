@@ -250,10 +250,6 @@ exports.registerQueue = async (req, res) => {
       
       if (!req.body.consultationTopics || req.body.consultationTopics.length === 0) {
         req.body.consultationTopics = ['other'];
-        // 簡化模式下如果自動設為 'other'，提供預設說明
-        if (!req.body.otherDetails) {
-          req.body.otherDetails = '簡化模式快速登記';
-        }
       }
       
       if (!req.body.email) {
