@@ -329,6 +329,10 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
         }
         if (!submitData.consultationTopics || submitData.consultationTopics.length === 0) {
           submitData.consultationTopics = ['other'];
+          // 在簡化模式下，若預設選擇"其他"，需要提供預設的詳細內容
+          if (!submitData.otherDetails) {
+            submitData.otherDetails = '簡化模式快速登記';
+          }
         }
         
         // 確保地址陣列中的每個地址都有內容
