@@ -854,7 +854,7 @@ exports.updateQueueByCustomer = async (req, res) => {
       'name', 'phone', 'email', 'gender',
       'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
-      'addresses', 'familyMembers', 'consultationTopics'
+      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails'
     ];
     
     // 更新資料

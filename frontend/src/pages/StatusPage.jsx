@@ -350,7 +350,7 @@ const StatusPage = () => {
   };
 
   // 格式化諮詢主題顯示
-  const formatConsultationTopics = (topics) => {
+  const formatConsultationTopics = (topics, otherDetails = '') => {
     const topicMap = {
       'body': '身體',
       'fate': '運途', 
@@ -363,7 +363,19 @@ const StatusPage = () => {
       'other': '其他'
     };
     
-    return topics?.map(topic => topicMap[topic] || topic).join('、') || '無';
+    if (!topics || topics.length === 0) return '無';
+    
+    const formattedTopics = topics.map(topic => topicMap[topic] || topic);
+    
+    // 如果包含"其他"且有詳細內容，顯示詳細內容
+    if (topics.includes('other') && otherDetails) {
+      const otherIndex = formattedTopics.indexOf('其他');
+      if (otherIndex !== -1) {
+        formattedTopics[otherIndex] = `其他(${otherDetails})`;
+      }
+    }
+    
+    return formattedTopics.join('、');
   };
 
   // 根據不同狀態顯示對應顏色和圖標
@@ -862,7 +874,7 @@ const StatusPage = () => {
                 <Divider sx={{ mb: 2 }} />
                 {detailsDialog.mode === 'view' ? (
                   <Typography variant="body1">
-                    {formatConsultationTopics(detailsDialog.record.consultationTopics)}
+                    {formatConsultationTopics(detailsDialog.record.consultationTopics, detailsDialog.record.otherDetails)}
                   </Typography>
                 ) : (
                   <FormGroup row>
@@ -895,6 +907,23 @@ const StatusPage = () => {
                   </FormGroup>
                 )}
               </Grid>
+
+              {/* 其他詳細內容 - 只在編輯模式且選擇了"其他"時顯示 */}
+              {detailsDialog.mode === 'edit' && editData.consultationTopics && editData.consultationTopics.includes('other') && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="其他詳細內容"
+                    multiline
+                    rows={3}
+                    value={editData.otherDetails || ''}
+                    onChange={(e) => setEditData({ ...editData, otherDetails: e.target.value })}
+                    placeholder="請詳細描述其他問題..."
+                    inputProps={{ maxLength: 500 }}
+                    helperText="最多500字"
+                  />
+                </Grid>
+              )}
 
               {/* 地址資訊 */}
               <Grid item xs={12}>

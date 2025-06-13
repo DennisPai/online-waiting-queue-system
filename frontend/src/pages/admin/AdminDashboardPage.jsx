@@ -588,7 +588,7 @@ const AdminDashboardPage = () => {
   };
 
   // 顯示諮詢主題
-  const formatConsultationTopics = (topics) => {
+  const formatConsultationTopics = (topics, otherDetails = '') => {
     if (!topics || topics.length === 0) return '無';
     
     const topicMap = {
@@ -603,7 +603,17 @@ const AdminDashboardPage = () => {
       'other': '其他'
     };
     
-    return topics.map(topic => topicMap[topic] || topic).join('、');
+    const formattedTopics = topics.map(topic => topicMap[topic] || topic);
+    
+    // 如果包含"其他"且有詳細內容，顯示詳細內容
+    if (topics.includes('other') && otherDetails) {
+      const otherIndex = formattedTopics.indexOf('其他');
+      if (otherIndex !== -1) {
+        formattedTopics[otherIndex] = `其他(${otherDetails})`;
+      }
+    }
+    
+    return formattedTopics.join('、');
   };
 
   // 顯示地址類型
@@ -1022,7 +1032,7 @@ const AdminDashboardPage = () => {
         }
         return formatAddressType(row.addressType);
       case 'consultationTopics':
-        return formatConsultationTopics(row.consultationTopics).substring(0, 15) + '...';
+        return formatConsultationTopics(row.consultationTopics, row.otherDetails).substring(0, 15) + '...';
       case 'createdAt':
         return format(new Date(row.createdAt), 'yyyy/MM/dd HH:mm', { locale: zhTW });
       case 'actions':
@@ -1900,7 +1910,7 @@ const AdminDashboardPage = () => {
                 <Grid item xs={12}>
                   <Typography variant="body2" color="text.secondary">諮詢主題</Typography>
                   {!editMode ? (
-                    <Typography variant="body1">{formatConsultationTopics(selectedRecord.consultationTopics)}</Typography>
+                    <Typography variant="body1">{formatConsultationTopics(selectedRecord.consultationTopics, selectedRecord.otherDetails)}</Typography>
                   ) : (
                     <FormGroup row>
                       <FormControlLabel
@@ -1987,6 +1997,23 @@ const AdminDashboardPage = () => {
                     </FormGroup>
                   )}
                 </Grid>
+
+                {/* 其他詳細內容 - 只在編輯模式且選擇了"其他"時顯示 */}
+                {editMode && editedData.consultationTopics.includes('other') && (
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="其他詳細內容"
+                      multiline
+                      rows={3}
+                      value={editedData.otherDetails || ''}
+                      onChange={(e) => setEditedData({ ...editedData, otherDetails: e.target.value })}
+                      placeholder="請詳細描述其他問題..."
+                      inputProps={{ maxLength: 500 }}
+                      helperText="最多500字"
+                    />
+                  </Grid>
+                )}
 
                 <Grid item xs={12}>
                   <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2 }}>候位狀態</Typography>

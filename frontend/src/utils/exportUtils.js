@@ -32,7 +32,7 @@ export const formatCustomerDataForExport = (customers) => {
         : '',
       '虛歲': customer.virtualAge ? `${customer.virtualAge} 歲` : '',
       '諮詢主題': Array.isArray(customer.consultationTopics) 
-        ? customer.consultationTopics.map(topic => formatConsultationTopic(topic)).join(', ')
+        ? customer.consultationTopics.map(topic => formatConsultationTopic(topic, customer.otherDetails)).join(', ')
         : '',
       '總人數': 1 + (customer.familyMembers ? customer.familyMembers.length : 0),
       '登記時間': customer.createdAt ? new Date(customer.createdAt).toLocaleString('zh-TW') : '',
@@ -142,7 +142,7 @@ const formatAddressType = (type) => {
 };
 
 // 格式化諮詢主題
-const formatConsultationTopic = (topic) => {
+const formatConsultationTopic = (topic, otherDetails = '') => {
   const topicMap = {
     body: '身體',
     fate: '運途',
@@ -154,7 +154,15 @@ const formatConsultationTopic = (topic) => {
     blessing: '收驚/加持',
     other: '其他'
   };
-  return topicMap[topic] || topic;
+  
+  const formattedTopic = topicMap[topic] || topic;
+  
+  // 如果是"其他"且有詳細內容，添加詳細內容
+  if (topic === 'other' && otherDetails) {
+    return `${formattedTopic}(${otherDetails})`;
+  }
+  
+  return formattedTopic;
 };
 
 // 格式化狀態

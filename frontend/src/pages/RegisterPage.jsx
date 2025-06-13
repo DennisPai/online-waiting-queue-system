@@ -56,7 +56,8 @@ const initialFormData = {
   lunarIsLeapMonth: false,
   addresses: [{ address: '', addressType: 'home' }],
   familyMembers: [],
-  consultationTopics: []
+  consultationTopics: [],
+  otherDetails: ''
 };
 
 // 諮詢主題選項
@@ -174,7 +175,14 @@ const RegisterPage = () => {
         ? [...formData.consultationTopics, value]
         : formData.consultationTopics.filter((topic) => topic !== value);
       
-      setFormData({ ...formData, consultationTopics: updatedTopics });
+      let newFormData = { ...formData, consultationTopics: updatedTopics };
+      
+      // 如果取消勾選"其他"，清空其他詳細內容
+      if (!checked && value === 'other') {
+        newFormData.otherDetails = '';
+      }
+      
+      setFormData(newFormData);
     } else {
       let newFormData = { ...formData, [name]: value };
       
@@ -391,6 +399,11 @@ const RegisterPage = () => {
     // 請示內容驗證
     if (formData.consultationTopics.length === 0) {
       errors.consultationTopics = '請至少選擇一個請示內容';
+    }
+
+    // 其他詳細內容驗證
+    if (formData.consultationTopics.includes('other') && !formData.otherDetails.trim()) {
+      errors.otherDetails = '選擇「其他」時，請詳細說明您的問題';
     }
     
     setFormErrors(errors);
@@ -1044,6 +1057,24 @@ const RegisterPage = () => {
               )}
             </FormControl>
           </Grid>
+
+          {/* 其他詳細內容欄位 - 只在勾選"其他"時顯示 */}
+          {formData.consultationTopics.includes('other') && (
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="請詳細說明其他問題"
+                multiline
+                rows={3}
+                value={formData.otherDetails}
+                onChange={(e) => setFormData({ ...formData, otherDetails: e.target.value })}
+                error={Boolean(formErrors.otherDetails)}
+                helperText={formErrors.otherDetails || '請詳細說明您要諮詢的其他問題（最多500字）'}
+                placeholder="請詳細描述您的問題..."
+                inputProps={{ maxLength: 500 }}
+              />
+            </Grid>
+          )}
 
           {/* 提交按鈕 */}
           <Grid item xs={12}>

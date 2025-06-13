@@ -187,6 +187,13 @@ const waitingRecordSchema = new mongoose.Schema({
       message: '至少需要選擇一個諮詢主題'
     }
   },
+  // 其他詳細內容欄位
+  otherDetails: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 500
+  },
   completedAt: {
     type: Date,
     default: null
