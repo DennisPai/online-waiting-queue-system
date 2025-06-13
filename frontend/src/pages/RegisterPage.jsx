@@ -308,6 +308,7 @@ const RegisterPage = () => {
         ...formData,
         familyMembers: [...formData.familyMembers, {
           name: '',
+          gender: 'male',
           birthYear: '',
           birthMonth: '',
           birthDay: '',
@@ -459,6 +460,8 @@ const RegisterPage = () => {
           
           return autoFillDates({
             ...member,
+            // 確保有性別資訊
+            gender: member.gender || 'male',
             gregorianBirthYear: member.calendarType === 'gregorian' ? memberGregorianBirthYear : null,
             gregorianBirthMonth: member.calendarType === 'gregorian' ? parseInt(member.birthMonth, 10) : null,
             gregorianBirthDay: member.calendarType === 'gregorian' ? parseInt(member.birthDay, 10) : null,
@@ -878,7 +881,7 @@ const RegisterPage = () => {
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={12} sm={4}>
                       <TextField
                         required
                         fullWidth
@@ -888,6 +891,19 @@ const RegisterPage = () => {
                         error={Boolean(formErrors[`familyMembers.${index}.name`])}
                         helperText={formErrors[`familyMembers.${index}.name`]}
                       />
+                    </Grid>
+                    <Grid item xs={12} sm={2}>
+                      <FormControl fullWidth>
+                        <InputLabel>性別</InputLabel>
+                        <Select
+                          value={member.gender || 'male'}
+                          label="性別"
+                          onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
+                        >
+                          <MenuItem value="male">男</MenuItem>
+                          <MenuItem value="female">女</MenuItem>
+                        </Select>
+                      </FormControl>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <FormControl component="fieldset">

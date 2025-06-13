@@ -307,6 +307,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
         ...formData,
         familyMembers: [...formData.familyMembers, {
           name: '',
+          gender: 'male',
           birthYear: '',
           birthMonth: '',
           birthDay: '',
@@ -450,7 +451,11 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         // 處理家人資料的日期轉換
         const convertedFamilyMembers = formData.familyMembers.map(member => {
-          const processedMember = { ...member };
+          const processedMember = { 
+            ...member,
+            // 確保有性別資訊
+            gender: member.gender || 'male'
+          };
           
           if (member.birthYear) {
             const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear, 10));
@@ -866,7 +871,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={4}>
                     <TextField
                       required
                       fullWidth
@@ -876,6 +881,19 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                       error={Boolean(formErrors[`familyMembers.${index}.name`])}
                       helperText={formErrors[`familyMembers.${index}.name`]}
                     />
+                  </Grid>
+                  <Grid item xs={12} sm={2}>
+                    <FormControl fullWidth>
+                      <InputLabel>性別</InputLabel>
+                      <Select
+                        value={member.gender || 'male'}
+                        label="性別"
+                        onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
+                      >
+                        <MenuItem value="male">男</MenuItem>
+                        <MenuItem value="female">女</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Grid>
                   
                   <Grid item xs={12}>

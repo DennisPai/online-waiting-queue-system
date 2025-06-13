@@ -61,10 +61,11 @@ export const formatCustomerDataForExport = (customers) => {
       baseCustomerData['地址3類型'] = '';
     }
 
-    // 如果沒有家庭成員，只添加主客戶資料
+          // 如果沒有家庭成員，只添加主客戶資料
     if (!customer.familyMembers || customer.familyMembers.length === 0) {
       baseCustomerData['成員類型'] = '主客戶';
       baseCustomerData['家人姓名'] = '';
+      baseCustomerData['家人性別'] = '';
       baseCustomerData['家人國曆出生年'] = '';
       baseCustomerData['家人國曆出生月'] = '';
       baseCustomerData['家人國曆出生日'] = '';
@@ -84,6 +85,7 @@ export const formatCustomerDataForExport = (customers) => {
         ...baseCustomerData,
         '成員類型': '主客戶',
         '家人姓名': '',
+        '家人性別': '',
         '家人國曆出生年': '',
         '家人國曆出生月': '',
         '家人國曆出生日': '',
@@ -105,6 +107,7 @@ export const formatCustomerDataForExport = (customers) => {
           ...baseCustomerData,
           '成員類型': `家庭成員${memberIndex + 1}`,
           '家人姓名': member.name || '',
+          '家人性別': member.gender === 'male' ? '男' : '女',
           '家人國曆出生年': member.gregorianBirthYear || '',
           '家人國曆出生月': member.gregorianBirthMonth || '',
           '家人國曆出生日': member.gregorianBirthDay || '',
