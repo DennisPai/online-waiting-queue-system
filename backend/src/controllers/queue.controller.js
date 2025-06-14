@@ -853,7 +853,7 @@ exports.updateQueueByCustomer = async (req, res) => {
     let processedUpdateData = { ...updateData };
     const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
     
-    // 處理國曆出生年 - 直接對gregorianBirthYear進行年份判斷
+    // 處理國曆出生年 - 使用與登記候位相同的邏輯
     if (processedUpdateData.gregorianBirthYear !== undefined && processedUpdateData.gregorianBirthYear !== null) {
       // 自動判斷年份是民國還是西元，並轉換為西元年用於儲存
       const { minguoYear } = autoConvertToMinguo(parseInt(processedUpdateData.gregorianBirthYear));
@@ -865,24 +865,16 @@ exports.updateQueueByCustomer = async (req, res) => {
       console.log(`客戶自助編輯 - 國曆處理: 輸入年份 ${updateData.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
     }
     
-    // 處理農曆出生年 - 注意：lunarBirthYear字段在系統中始終存儲西元年
-    // 只有當輸入值看起來像民國年時才需要轉換，否則直接使用
+    // 處理農曆出生年 - 使用與國曆相同的邏輯
     if (processedUpdateData.lunarBirthYear !== undefined && processedUpdateData.lunarBirthYear !== null) {
-      const inputYear = parseInt(processedUpdateData.lunarBirthYear);
+      // 自動判斷年份是民國還是西元，並轉換為西元年用於儲存
+      const { minguoYear } = autoConvertToMinguo(parseInt(processedUpdateData.lunarBirthYear));
+      const gregorianYear = convertMinguoForStorage(minguoYear);
       
-      // 只有當年份小於等於1911時，才認為是民國年需要轉換
-      if (inputYear <= 1911) {
-        const { minguoYear } = autoConvertToMinguo(inputYear);
-        const gregorianYear = convertMinguoForStorage(minguoYear);
-        
-        processedUpdateData.lunarBirthYear = gregorianYear;
-        
-        console.log(`客戶自助編輯 - 農曆處理: 輸入年份 ${updateData.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
-      } else {
-        // 年份大於1911，認為已經是西元年，直接使用
-        processedUpdateData.lunarBirthYear = inputYear;
-        console.log(`客戶自助編輯 - 農曆處理: 輸入年份 ${updateData.lunarBirthYear} 已是西元年，直接使用`);
-      }
+      // 更新為正確的西元年
+      processedUpdateData.lunarBirthYear = gregorianYear;
+      
+      console.log(`客戶自助編輯 - 農曆處理: 輸入年份 ${updateData.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
     }
     
     // 處理家人資料的年份轉換
@@ -900,21 +892,14 @@ exports.updateQueueByCustomer = async (req, res) => {
           console.log(`客戶自助編輯家人 - 國曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
         }
         
-        // 處理家人的農曆出生年 - 使用相同的邏輯
+        // 處理家人的農曆出生年 - 使用與國曆相同的邏輯
         if (processedMember.lunarBirthYear !== undefined && processedMember.lunarBirthYear !== null) {
-          const inputYear = parseInt(processedMember.lunarBirthYear);
+          const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear));
+          const gregorianYear = convertMinguoForStorage(minguoYear);
           
-          if (inputYear <= 1911) {
-            const { minguoYear } = autoConvertToMinguo(inputYear);
-            const gregorianYear = convertMinguoForStorage(minguoYear);
-            
-            processedMember.lunarBirthYear = gregorianYear;
-            
-            console.log(`客戶自助編輯家人 - 農曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
-          } else {
-            processedMember.lunarBirthYear = inputYear;
-            console.log(`客戶自助編輯家人 - 農曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.lunarBirthYear} 已是西元年，直接使用`);
-          }
+          processedMember.lunarBirthYear = gregorianYear;
+          
+          console.log(`客戶自助編輯家人 - 農曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
         }
         
         return processedMember;
