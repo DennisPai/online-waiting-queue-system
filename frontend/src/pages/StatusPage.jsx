@@ -211,9 +211,10 @@ const StatusPage = () => {
       // 在保存前進行日期自動轉換
       let processedData = autoFillDates(editData);
       
-      // 處理家人資料的日期轉換
+      // 處理家人資料的日期轉換 - 修正調用方式
       if (processedData.familyMembers && processedData.familyMembers.length > 0) {
-        processedData.familyMembers = autoFillFamilyMembersDates(processedData.familyMembers);
+        const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.familyMembers });
+        processedData.familyMembers = familyData.familyMembers;
       }
       
       const response = await fetch('/api/queue/update', {
@@ -244,8 +245,9 @@ const StatusPage = () => {
         }));
       }
     } catch (error) {
+      console.error('修改資料時發生錯誤:', error);
       dispatch(showAlert({
-        message: '修改資料時發生錯誤',
+        message: '儲存修改發生錯誤',
         severity: 'error'
       }));
     }
