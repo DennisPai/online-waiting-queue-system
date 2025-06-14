@@ -59,7 +59,10 @@ import {
   formatMinguoYear, 
   formatMinguoDate,
   autoConvertToMinguo,
-  convertMinguoForStorage
+  convertMinguoForStorage,
+  addVirtualAge,
+  gregorianToLunar,
+  lunarToGregorian
 } from '../utils/calendarConverter';
 
 const StatusPage = () => {
