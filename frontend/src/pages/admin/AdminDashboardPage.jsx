@@ -541,14 +541,61 @@ const AdminDashboardPage = () => {
   // 保存編輯的資料
   const handleSaveData = () => {
     if (selectedRecord && editMode) {
-      // 在保存前進行日期自動轉換
-      let processedData = autoFillDates(editedData);
+      // 步驟1：年份判斷和轉換（仿效登記候位邏輯）
+      let processedData = { ...editedData };
+
+      // 處理主客戶的國曆出生年 - 如果有輸入值
+      if (processedData.gregorianBirthYear && processedData.gregorianBirthYear.toString().trim() !== '') {
+        const { minguoYear } = autoConvertToMinguo(parseInt(processedData.gregorianBirthYear));
+        const gregorianYear = convertMinguoForStorage(minguoYear);
+        processedData.gregorianBirthYear = gregorianYear;
+        console.log(`管理員編輯 - 國曆處理: 輸入年份 ${editedData.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
+      }
+
+      // 處理主客戶的農曆出生年 - 如果有輸入值
+      if (processedData.lunarBirthYear && processedData.lunarBirthYear.toString().trim() !== '') {
+        const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear));
+        const gregorianYear = convertMinguoForStorage(minguoYear);
+        processedData.lunarBirthYear = gregorianYear;
+        console.log(`管理員編輯 - 農曆處理: 輸入年份 ${editedData.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
+      }
+
+      // 處理家人資料的年份判斷
+      if (processedData.familyMembers && processedData.familyMembers.length > 0) {
+        processedData.familyMembers = processedData.familyMembers.map(member => {
+          const processedMember = { ...member };
+          
+          // 處理家人的國曆出生年
+          if (processedMember.gregorianBirthYear && processedMember.gregorianBirthYear.toString().trim() !== '') {
+            const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.gregorianBirthYear));
+            const gregorianYear = convertMinguoForStorage(minguoYear);
+            processedMember.gregorianBirthYear = gregorianYear;
+            console.log(`管理員編輯家人 - 國曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
+          }
+          
+          // 處理家人的農曆出生年
+          if (processedMember.lunarBirthYear && processedMember.lunarBirthYear.toString().trim() !== '') {
+            const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear));
+            const gregorianYear = convertMinguoForStorage(minguoYear);
+            processedMember.lunarBirthYear = gregorianYear;
+            console.log(`管理員編輯家人 - 農曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
+          }
+          
+          return processedMember;
+        });
+      }
+
+      // 步驟2：進行國曆農曆互轉（此時年份已經是正確的西元年）
+      processedData = autoFillDates(processedData);
       
       // 處理家人資料的日期轉換
       if (processedData.familyMembers && processedData.familyMembers.length > 0) {
         const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.familyMembers });
         processedData.familyMembers = familyData.familyMembers;
       }
+
+      // 步驟3：計算虛歲
+      processedData = addVirtualAge(processedData);
       
       dispatch(updateQueueData({
         queueId: selectedRecord._id,
