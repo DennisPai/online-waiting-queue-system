@@ -124,10 +124,14 @@ function autoFillDates(data) {
         result.gregorianBirthDay
       );
       
-      result.lunarBirthYear = lunarDate.year;
+      // 重要修正：lunarBirthYear應該存儲對應的西元年，而不是農曆年
+      // 因為在系統架構中，lunarBirthYear字段存儲的是西元年格式
+      result.lunarBirthYear = result.gregorianBirthYear; // 使用相同的西元年
       result.lunarBirthMonth = lunarDate.month;
       result.lunarBirthDay = lunarDate.day;
       result.lunarIsLeapMonth = lunarDate.isLeapMonth;
+      
+      console.log(`國曆轉農曆: 國曆${result.gregorianBirthYear}/${result.gregorianBirthMonth}/${result.gregorianBirthDay} -> 農曆${result.lunarBirthYear}(西元年)/${lunarDate.month}/${lunarDate.day}${lunarDate.isLeapMonth ? '(閏)' : ''}`);
     }
     
     // 檢查是否有完整的農曆生日且缺少國曆生日
@@ -144,6 +148,8 @@ function autoFillDates(data) {
       result.gregorianBirthYear = gregorianDate.year;
       result.gregorianBirthMonth = gregorianDate.month;
       result.gregorianBirthDay = gregorianDate.day;
+      
+      console.log(`農曆轉國曆: 農曆${result.lunarBirthYear}(西元年)/${result.lunarBirthMonth}/${result.lunarBirthDay}${result.lunarIsLeapMonth ? '(閏)' : ''} -> 國曆${gregorianDate.year}/${gregorianDate.month}/${gregorianDate.day}`);
     }
     
     return result;
