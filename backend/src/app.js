@@ -57,13 +57,6 @@ app.get('/', (req, res) => {
 });
 
 // API路由
-app.use((req, res, next) => {
-  console.log(`=== 收到請求 ===`);
-  console.log(`${req.method} ${req.originalUrl}`);
-  console.log('Headers:', req.headers);
-  next();
-});
-
 app.use('/api/auth', authRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/admin', adminRoutes);

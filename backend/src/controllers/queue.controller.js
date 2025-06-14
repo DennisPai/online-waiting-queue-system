@@ -812,15 +812,9 @@ exports.cancelQueueByCustomer = async (req, res) => {
 // 客戶修改資料
 exports.updateQueueByCustomer = async (req, res) => {
   try {
-    console.log('=== 客戶修改資料 API 開始 ===');
-    console.log('請求方法:', req.method);
-    console.log('請求路徑:', req.originalUrl);
-    console.log('請求體:', JSON.stringify(req.body, null, 2));
-    
     const { queueNumber, name, phone, ...updateData } = req.body;
     
     if (!queueNumber || !name || !phone) {
-      console.log('缺少必要參數:', { queueNumber, name, phone });
       return res.status(400).json({
         success: false,
         message: '請提供候位號碼、原始姓名和電話進行驗證'
