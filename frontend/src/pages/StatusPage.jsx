@@ -209,85 +209,13 @@ const StatusPage = () => {
 
   const handleSaveData = async () => {
     try {
-      // 轉換主客戶的資料格式，如果需要的話
-      let processedData = { ...editData };
-      
-      // 檢查主客戶是否有分離格式的出生日期資料需要轉換
-      if (processedData.gregorianBirthYear && processedData.gregorianBirthMonth && processedData.gregorianBirthDay) {
-        // 注意：gregorianBirthYear 在編輯模式中可能是民國年形式，需要判斷轉換
-        const { minguoYear } = autoConvertToMinguo(parseInt(processedData.gregorianBirthYear));
-        const gregorianYear = convertMinguoForStorage(minguoYear);
-        
-        processedData.birthYear = gregorianYear; // 使用轉換後的西元年
-        processedData.birthMonth = processedData.gregorianBirthMonth;
-        processedData.birthDay = processedData.gregorianBirthDay;
-        processedData.calendarType = 'gregorian';
-      } else if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
-        // 農曆年份也可能是民國年形式，需要判斷轉換
-        const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear));
-        const gregorianYear = convertMinguoForStorage(minguoYear);
-        
-        processedData.birthYear = gregorianYear; // 使用轉換後的西元年
-        processedData.birthMonth = processedData.lunarBirthMonth;
-        processedData.birthDay = processedData.lunarBirthDay;
-        processedData.calendarType = 'lunar';
-      }
-      
-      // 處理家人資料的格式轉換
-      if (processedData.familyMembers && processedData.familyMembers.length > 0) {
-        processedData.familyMembers = processedData.familyMembers.map(member => {
-          const convertedMember = { ...member };
-          
-          // 檢查家人是否有分離格式的出生日期資料需要轉換
-          if (member.gregorianBirthYear && member.gregorianBirthMonth && member.gregorianBirthDay) {
-            // 優先使用國曆資料，注意年份可能是民國年形式
-            const { minguoYear } = autoConvertToMinguo(parseInt(member.gregorianBirthYear));
-            const gregorianYear = convertMinguoForStorage(minguoYear);
-            
-            convertedMember.birthYear = gregorianYear; // 使用轉換後的西元年
-            convertedMember.birthMonth = member.gregorianBirthMonth;
-            convertedMember.birthDay = member.gregorianBirthDay;
-            convertedMember.calendarType = 'gregorian';
-          } else if (member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay) {
-            // 如果只有農曆資料，使用農曆，注意年份可能是民國年形式
-            const { minguoYear } = autoConvertToMinguo(parseInt(member.lunarBirthYear));
-            const gregorianYear = convertMinguoForStorage(minguoYear);
-            
-            convertedMember.birthYear = gregorianYear; // 使用轉換後的西元年
-            convertedMember.birthMonth = member.lunarBirthMonth;
-            convertedMember.birthDay = member.lunarBirthDay;
-            convertedMember.calendarType = 'lunar';
-            convertedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
-          }
-          
-          return convertedMember;
-        });
-      }
-      
-      // 在保存前進行日期自動轉換，這會處理 birthYear 格式並進行西元/民國年轉換
-      processedData = autoFillDates(processedData);
+      // 在保存前進行日期自動轉換
+      let processedData = autoFillDates(editData);
       
       // 處理家人資料的日期轉換 - 修正調用方式
       if (processedData.familyMembers && processedData.familyMembers.length > 0) {
         const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.familyMembers });
         processedData.familyMembers = familyData.familyMembers;
-      }
-      
-      // 清理臨時欄位
-      delete processedData.birthYear;
-      delete processedData.birthMonth;
-      delete processedData.birthDay;
-      delete processedData.calendarType;
-      
-      if (processedData.familyMembers) {
-        processedData.familyMembers = processedData.familyMembers.map(member => {
-          const cleanedMember = { ...member };
-          delete cleanedMember.birthYear;
-          delete cleanedMember.birthMonth;
-          delete cleanedMember.birthDay;
-          delete cleanedMember.calendarType;
-          return cleanedMember;
-        });
       }
       
       const response = await fetch(`${API_ENDPOINTS.QUEUE}/update`, {

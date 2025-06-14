@@ -533,51 +533,14 @@ exports.updateQueueData = async (req, res) => {
       });
     }
     
-    // 處理可能的臨時格式轉換（從編輯界面傳來的 birthYear 格式）
-    if (updateData.birthYear && updateData.birthMonth && updateData.birthDay && updateData.calendarType) {
-      // birthYear 在這裡應該是已經轉換過的西元年
-      if (updateData.calendarType === 'gregorian') {
-        updateData.gregorianBirthYear = parseInt(updateData.birthYear);
-        updateData.gregorianBirthMonth = parseInt(updateData.birthMonth);
-        updateData.gregorianBirthDay = parseInt(updateData.birthDay);
-      } else if (updateData.calendarType === 'lunar') {
-        updateData.lunarBirthYear = parseInt(updateData.birthYear);
-        updateData.lunarBirthMonth = parseInt(updateData.birthMonth);
-        updateData.lunarBirthDay = parseInt(updateData.birthDay);
-        updateData.lunarIsLeapMonth = updateData.lunarIsLeapMonth || false;
-      }
-    }
-    
-    // 處理家人資料的可能臨時格式轉換
-    if (updateData.familyMembers && Array.isArray(updateData.familyMembers)) {
-      updateData.familyMembers = updateData.familyMembers.map(member => {
-        const processedMember = { ...member };
-        
-        if (member.birthYear && member.birthMonth && member.birthDay && member.calendarType) {
-          // birthYear 在這裡應該是已經轉換過的西元年
-          if (member.calendarType === 'gregorian') {
-            processedMember.gregorianBirthYear = parseInt(member.birthYear);
-            processedMember.gregorianBirthMonth = parseInt(member.birthMonth);
-            processedMember.gregorianBirthDay = parseInt(member.birthDay);
-          } else if (member.calendarType === 'lunar') {
-            processedMember.lunarBirthYear = parseInt(member.birthYear);
-            processedMember.lunarBirthMonth = parseInt(member.birthMonth);
-            processedMember.lunarBirthDay = parseInt(member.birthDay);
-            processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
-          }
-        }
-        
-        return processedMember;
-      });
-    }
-    
-    // 在保存前進行日期自動轉換
-    updateData = autoFillDates(updateData);
+    // 新增：編輯資料時的日期轉換邏輯，將gregorianBirthYear/lunarBirthYear轉換成登記候位格式進行處理
+    updateData = processEditDataWithRegistrationLogic(updateData);
     
     // 處理家人資料的日期轉換
     if (updateData.familyMembers && updateData.familyMembers.length > 0) {
-      const familyData = autoFillFamilyMembersDates({ familyMembers: updateData.familyMembers });
-      updateData.familyMembers = familyData.familyMembers;
+      updateData.familyMembers = updateData.familyMembers.map(member => 
+        processEditDataWithRegistrationLogic(member)
+      );
     }
 
     // 計算虛歲
@@ -613,6 +576,120 @@ exports.updateQueueData = async (req, res) => {
     });
   }
 };
+
+/**
+ * 處理編輯資料時的日期轉換邏輯
+ * 將編輯模式的分離欄位轉換成登記候位格式，進行處理後再轉換回分離格式
+ * @param {object} data - 編輯的資料
+ * @returns {object} - 處理後的資料
+ */
+function processEditDataWithRegistrationLogic(data) {
+  try {
+    const result = { ...data };
+    
+    // 檢查是否有國曆或農曆資料需要處理
+    const hasGregorian = result.gregorianBirthYear && result.gregorianBirthMonth && result.gregorianBirthDay;
+    const hasLunar = result.lunarBirthYear && result.lunarBirthMonth && result.lunarBirthDay;
+    
+    // 如果同時有國曆和農曆資料，優先處理國曆（按照使用者要求）
+    if (hasGregorian) {
+      console.log('處理國曆出生日期轉換:', result.gregorianBirthYear, result.gregorianBirthMonth, result.gregorianBirthDay);
+      
+      // 將國曆資料轉換成登記候位格式
+      const tempData = {
+        birthYear: result.gregorianBirthYear,
+        birthMonth: result.gregorianBirthMonth,
+        birthDay: result.gregorianBirthDay,
+        calendarType: 'gregorian'
+      };
+      
+      // 使用登記候位的轉換邏輯進行處理
+      const processedData = processRegistrationDateLogic(tempData);
+      
+      // 將轉換結果填回分離格式
+      result.gregorianBirthYear = processedData.gregorianBirthYear;
+      result.gregorianBirthMonth = processedData.gregorianBirthMonth;
+      result.gregorianBirthDay = processedData.gregorianBirthDay;
+      result.lunarBirthYear = processedData.lunarBirthYear;
+      result.lunarBirthMonth = processedData.lunarBirthMonth;
+      result.lunarBirthDay = processedData.lunarBirthDay;
+      result.lunarIsLeapMonth = processedData.lunarIsLeapMonth;
+      
+    } else if (hasLunar) {
+      console.log('處理農曆出生日期轉換:', result.lunarBirthYear, result.lunarBirthMonth, result.lunarBirthDay);
+      
+      // 將農曆資料轉換成登記候位格式
+      const tempData = {
+        birthYear: result.lunarBirthYear,
+        birthMonth: result.lunarBirthMonth,
+        birthDay: result.lunarBirthDay,
+        calendarType: 'lunar',
+        lunarIsLeapMonth: result.lunarIsLeapMonth || false
+      };
+      
+      // 使用登記候位的轉換邏輯進行處理
+      const processedData = processRegistrationDateLogic(tempData);
+      
+      // 將轉換結果填回分離格式
+      result.gregorianBirthYear = processedData.gregorianBirthYear;
+      result.gregorianBirthMonth = processedData.gregorianBirthMonth;
+      result.gregorianBirthDay = processedData.gregorianBirthDay;
+      result.lunarBirthYear = processedData.lunarBirthYear;
+      result.lunarBirthMonth = processedData.lunarBirthMonth;
+      result.lunarBirthDay = processedData.lunarBirthDay;
+      result.lunarIsLeapMonth = processedData.lunarIsLeapMonth;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('編輯資料日期轉換錯誤:', error);
+    return data;
+  }
+}
+
+/**
+ * 模擬登記候位時的日期處理邏輯
+ * @param {object} data - 包含birthYear, birthMonth, birthDay, calendarType的資料
+ * @returns {object} - 處理後的分離格式資料
+ */
+function processRegistrationDateLogic(data) {
+  try {
+    const { birthYear, birthMonth, birthDay, calendarType, lunarIsLeapMonth } = data;
+    
+    // 自動判斷年份是民國還是西元，並轉換為民國年
+    const { minguoYear } = autoConvertToMinguo(parseInt(birthYear, 10));
+    const gregorianYear = convertMinguoForStorage(minguoYear);
+    
+    let result = {};
+    
+    if (calendarType === 'gregorian') {
+      // 處理國曆
+      result.gregorianBirthYear = gregorianYear;
+      result.gregorianBirthMonth = parseInt(birthMonth, 10);
+      result.gregorianBirthDay = parseInt(birthDay, 10);
+      
+      // 自動轉換農曆
+      const processedData = autoFillDates(result);
+      return processedData;
+      
+    } else if (calendarType === 'lunar') {
+      // 處理農曆
+      result.lunarBirthYear = gregorianYear;
+      result.lunarBirthMonth = parseInt(birthMonth, 10);
+      result.lunarBirthDay = parseInt(birthDay, 10);
+      result.lunarIsLeapMonth = lunarIsLeapMonth || false;
+      
+      // 自動轉換國曆
+      const processedData = autoFillDates(result);
+      return processedData;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('登記候位邏輯處理錯誤:', error);
+    throw error;
+  }
+}
 
 // 獲取按排序順序的候位號碼
 exports.getOrderedQueueNumbers = async (req, res) => {
