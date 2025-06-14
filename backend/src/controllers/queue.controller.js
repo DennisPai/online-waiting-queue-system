@@ -849,13 +849,12 @@ exports.updateQueueByCustomer = async (req, res) => {
       });
     }
     
-    // 仿效登記候位的年份處理邏輯
+    // 步驟1: 仿效登記候位 - 先進行年份判斷和轉換
     let processedUpdateData = { ...updateData };
+    const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
     
     // 處理國曆出生年 - 直接對gregorianBirthYear進行年份判斷
     if (processedUpdateData.gregorianBirthYear !== undefined && processedUpdateData.gregorianBirthYear !== null) {
-      const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
-      
       // 自動判斷年份是民國還是西元，並轉換為西元年用於儲存
       const { minguoYear } = autoConvertToMinguo(parseInt(processedUpdateData.gregorianBirthYear));
       const gregorianYear = convertMinguoForStorage(minguoYear);
@@ -868,8 +867,6 @@ exports.updateQueueByCustomer = async (req, res) => {
     
     // 處理農曆出生年 - 直接對lunarBirthYear進行年份判斷
     if (processedUpdateData.lunarBirthYear !== undefined && processedUpdateData.lunarBirthYear !== null) {
-      const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
-      
       // 自動判斷年份是民國還是西元，並轉換為西元年用於儲存
       const { minguoYear } = autoConvertToMinguo(parseInt(processedUpdateData.lunarBirthYear));
       const gregorianYear = convertMinguoForStorage(minguoYear);
@@ -882,8 +879,6 @@ exports.updateQueueByCustomer = async (req, res) => {
     
     // 處理家人資料的年份轉換
     if (processedUpdateData.familyMembers && processedUpdateData.familyMembers.length > 0) {
-      const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
-      
       processedUpdateData.familyMembers = processedUpdateData.familyMembers.map(member => {
         const processedMember = { ...member };
         
@@ -911,7 +906,7 @@ exports.updateQueueByCustomer = async (req, res) => {
       });
     }
 
-    // 在處理完年份後，進行日期自動轉換（國曆<->農曆互轉）
+    // 步驟2: 進行國曆農曆互轉（此時年份已經是正確的西元年）
     processedUpdateData = autoFillDates(processedUpdateData);
     
     // 處理家人資料的日期轉換
@@ -920,7 +915,7 @@ exports.updateQueueByCustomer = async (req, res) => {
       processedUpdateData.familyMembers = familyData.familyMembers;
     }
 
-    // 計算虛歲
+    // 步驟3: 最後計算虛歲（基於已轉換的農曆年）
     processedUpdateData = addVirtualAge(processedUpdateData);
     
     // 允許修改的欄位

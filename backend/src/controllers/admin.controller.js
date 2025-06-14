@@ -533,13 +533,12 @@ exports.updateQueueData = async (req, res) => {
       });
     }
 
-    // 仿效登記候位的年份處理邏輯
+    // 步驟1: 仿效登記候位 - 先進行年份判斷和轉換
     let processedData = { ...updateData };
+    const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
     
     // 處理國曆出生年 - 直接對gregorianBirthYear進行年份判斷
     if (processedData.gregorianBirthYear !== undefined && processedData.gregorianBirthYear !== null) {
-      const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
-      
       // 自動判斷年份是民國還是西元，並轉換為西元年用於儲存
       const { minguoYear } = autoConvertToMinguo(parseInt(processedData.gregorianBirthYear));
       const gregorianYear = convertMinguoForStorage(minguoYear);
@@ -552,8 +551,6 @@ exports.updateQueueData = async (req, res) => {
     
     // 處理農曆出生年 - 直接對lunarBirthYear進行年份判斷
     if (processedData.lunarBirthYear !== undefined && processedData.lunarBirthYear !== null) {
-      const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
-      
       // 自動判斷年份是民國還是西元，並轉換為西元年用於儲存
       const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear));
       const gregorianYear = convertMinguoForStorage(minguoYear);
@@ -566,8 +563,6 @@ exports.updateQueueData = async (req, res) => {
     
     // 處理家人資料的年份轉換
     if (processedData.familyMembers && processedData.familyMembers.length > 0) {
-      const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
-      
       processedData.familyMembers = processedData.familyMembers.map(member => {
         const processedMember = { ...member };
         
@@ -595,7 +590,7 @@ exports.updateQueueData = async (req, res) => {
       });
     }
 
-    // 在處理完年份後，進行日期自動轉換（國曆<->農曆互轉）
+    // 步驟2: 進行國曆農曆互轉（此時年份已經是正確的西元年）
     processedData = autoFillDates(processedData);
     
     // 處理家人資料的日期轉換
@@ -604,7 +599,7 @@ exports.updateQueueData = async (req, res) => {
       processedData.familyMembers = familyData.familyMembers;
     }
 
-    // 計算虛歲
+    // 步驟3: 最後計算虛歲（基於已轉換的農曆年）
     processedData = addVirtualAge(processedData);
 
     // 更新允許的欄位
