@@ -849,8 +849,47 @@ exports.updateQueueByCustomer = async (req, res) => {
       });
     }
     
+    // 處理更新資料的副本
+    let processedUpdateData = { ...updateData };
+    
+    // 處理可能的臨時格式轉換（從編輯界面傳來的 birthYear 格式）
+    if (processedUpdateData.birthYear && processedUpdateData.birthMonth && processedUpdateData.birthDay && processedUpdateData.calendarType) {
+      if (processedUpdateData.calendarType === 'gregorian') {
+        processedUpdateData.gregorianBirthYear = parseInt(processedUpdateData.birthYear);
+        processedUpdateData.gregorianBirthMonth = parseInt(processedUpdateData.birthMonth);
+        processedUpdateData.gregorianBirthDay = parseInt(processedUpdateData.birthDay);
+      } else if (processedUpdateData.calendarType === 'lunar') {
+        processedUpdateData.lunarBirthYear = parseInt(processedUpdateData.birthYear);
+        processedUpdateData.lunarBirthMonth = parseInt(processedUpdateData.birthMonth);
+        processedUpdateData.lunarBirthDay = parseInt(processedUpdateData.birthDay);
+        processedUpdateData.lunarIsLeapMonth = processedUpdateData.lunarIsLeapMonth || false;
+      }
+    }
+    
+    // 處理家人資料的可能臨時格式轉換
+    if (processedUpdateData.familyMembers && Array.isArray(processedUpdateData.familyMembers)) {
+      processedUpdateData.familyMembers = processedUpdateData.familyMembers.map(member => {
+        const processedMember = { ...member };
+        
+        if (member.birthYear && member.birthMonth && member.birthDay && member.calendarType) {
+          if (member.calendarType === 'gregorian') {
+            processedMember.gregorianBirthYear = parseInt(member.birthYear);
+            processedMember.gregorianBirthMonth = parseInt(member.birthMonth);
+            processedMember.gregorianBirthDay = parseInt(member.birthDay);
+          } else if (member.calendarType === 'lunar') {
+            processedMember.lunarBirthYear = parseInt(member.birthYear);
+            processedMember.lunarBirthMonth = parseInt(member.birthMonth);
+            processedMember.lunarBirthDay = parseInt(member.birthDay);
+            processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
+          }
+        }
+        
+        return processedMember;
+      });
+    }
+    
     // 在保存前進行日期自動轉換
-    let processedUpdateData = autoFillDates(updateData);
+    processedUpdateData = autoFillDates(processedUpdateData);
     
     // 處理家人資料的日期轉換
     if (processedUpdateData.familyMembers && processedUpdateData.familyMembers.length > 0) {
@@ -865,23 +904,35 @@ exports.updateQueueByCustomer = async (req, res) => {
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
       'addresses', 'familyMembers', 'consultationTopics', 'otherDetails'
     ];
-    
-    // 更新資料
+
+    // 更新允許的欄位
     allowedFields.forEach(field => {
       if (processedUpdateData[field] !== undefined) {
         record[field] = processedUpdateData[field];
       }
     });
     
+    // 計算虛歲
+    const recordWithAge = addVirtualAge(record.toObject());
+    if (recordWithAge.virtualAge) {
+      record.virtualAge = recordWithAge.virtualAge;
+    }
+    
+    // 如果有家人資料，也更新家人的虛歲
+    if (recordWithAge.familyMembers) {
+      record.familyMembers = recordWithAge.familyMembers;
+    }
+
+    record.updatedAt = new Date();
     await record.save();
     
     res.status(200).json({
       success: true,
-      message: '資料修改成功',
+      message: '候位資料修改成功',
       data: record
     });
   } catch (error) {
-    console.error('修改資料錯誤:', error);
+    console.error('客戶修改資料錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',

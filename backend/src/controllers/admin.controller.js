@@ -533,10 +533,46 @@ exports.updateQueueData = async (req, res) => {
       });
     }
     
+    // 處理可能的臨時格式轉換（從編輯界面傳來的 birthYear 格式）
+    if (updateData.birthYear && updateData.birthMonth && updateData.birthDay && updateData.calendarType) {
+      if (updateData.calendarType === 'gregorian') {
+        updateData.gregorianBirthYear = parseInt(updateData.birthYear);
+        updateData.gregorianBirthMonth = parseInt(updateData.birthMonth);
+        updateData.gregorianBirthDay = parseInt(updateData.birthDay);
+      } else if (updateData.calendarType === 'lunar') {
+        updateData.lunarBirthYear = parseInt(updateData.birthYear);
+        updateData.lunarBirthMonth = parseInt(updateData.birthMonth);
+        updateData.lunarBirthDay = parseInt(updateData.birthDay);
+        updateData.lunarIsLeapMonth = updateData.lunarIsLeapMonth || false;
+      }
+    }
+    
+    // 處理家人資料的可能臨時格式轉換
+    if (updateData.familyMembers && Array.isArray(updateData.familyMembers)) {
+      updateData.familyMembers = updateData.familyMembers.map(member => {
+        const processedMember = { ...member };
+        
+        if (member.birthYear && member.birthMonth && member.birthDay && member.calendarType) {
+          if (member.calendarType === 'gregorian') {
+            processedMember.gregorianBirthYear = parseInt(member.birthYear);
+            processedMember.gregorianBirthMonth = parseInt(member.birthMonth);
+            processedMember.gregorianBirthDay = parseInt(member.birthDay);
+          } else if (member.calendarType === 'lunar') {
+            processedMember.lunarBirthYear = parseInt(member.birthYear);
+            processedMember.lunarBirthMonth = parseInt(member.birthMonth);
+            processedMember.lunarBirthDay = parseInt(member.birthDay);
+            processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
+          }
+        }
+        
+        return processedMember;
+      });
+    }
+    
     // 在保存前進行日期自動轉換
     updateData = autoFillDates(updateData);
     
-        // 處理家人資料的日期轉換
+    // 處理家人資料的日期轉換
     if (updateData.familyMembers && updateData.familyMembers.length > 0) {
       const familyData = autoFillFamilyMembersDates({ familyMembers: updateData.familyMembers });
       updateData.familyMembers = familyData.familyMembers;

@@ -209,13 +209,71 @@ const StatusPage = () => {
 
   const handleSaveData = async () => {
     try {
-      // 在保存前進行日期自動轉換
-      let processedData = autoFillDates(editData);
+      // 轉換主客戶的資料格式，如果需要的話
+      let processedData = { ...editData };
+      
+      // 檢查主客戶是否有分離格式的出生日期資料需要轉換
+      if (processedData.gregorianBirthYear && processedData.gregorianBirthMonth && processedData.gregorianBirthDay) {
+        processedData.birthYear = processedData.gregorianBirthYear;
+        processedData.birthMonth = processedData.gregorianBirthMonth;
+        processedData.birthDay = processedData.gregorianBirthDay;
+        processedData.calendarType = 'gregorian';
+      } else if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
+        processedData.birthYear = processedData.lunarBirthYear;
+        processedData.birthMonth = processedData.lunarBirthMonth;
+        processedData.birthDay = processedData.lunarBirthDay;
+        processedData.calendarType = 'lunar';
+      }
+      
+      // 處理家人資料的格式轉換
+      if (processedData.familyMembers && processedData.familyMembers.length > 0) {
+        processedData.familyMembers = processedData.familyMembers.map(member => {
+          const convertedMember = { ...member };
+          
+          // 檢查家人是否有分離格式的出生日期資料需要轉換
+          if (member.gregorianBirthYear && member.gregorianBirthMonth && member.gregorianBirthDay) {
+            // 優先使用國曆資料
+            convertedMember.birthYear = member.gregorianBirthYear;
+            convertedMember.birthMonth = member.gregorianBirthMonth;
+            convertedMember.birthDay = member.gregorianBirthDay;
+            convertedMember.calendarType = 'gregorian';
+          } else if (member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay) {
+            // 如果只有農曆資料，使用農曆
+            convertedMember.birthYear = member.lunarBirthYear;
+            convertedMember.birthMonth = member.lunarBirthMonth;
+            convertedMember.birthDay = member.lunarBirthDay;
+            convertedMember.calendarType = 'lunar';
+            convertedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
+          }
+          
+          return convertedMember;
+        });
+      }
+      
+      // 在保存前進行日期自動轉換，這會處理 birthYear 格式並進行西元/民國年轉換
+      processedData = autoFillDates(processedData);
       
       // 處理家人資料的日期轉換 - 修正調用方式
       if (processedData.familyMembers && processedData.familyMembers.length > 0) {
         const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.familyMembers });
         processedData.familyMembers = familyData.familyMembers;
+      }
+      
+      // 清理臨時欄位
+      delete processedData.birthYear;
+      delete processedData.birthMonth;
+      delete processedData.birthDay;
+      delete processedData.calendarType;
+      
+      if (processedData.familyMembers) {
+        processedData.familyMembers = processedData.familyMembers.map(member => {
+          const cleanedMember = { ...member };
+          delete cleanedMember.birthYear;
+          delete cleanedMember.birthMonth;
+          delete cleanedMember.birthDay;
+          delete cleanedMember.calendarType;
+          return cleanedMember;
+        });
       }
       
       const response = await fetch(`${API_ENDPOINTS.QUEUE}/update`, {
@@ -291,22 +349,12 @@ const StatusPage = () => {
   // 處理家庭成員變更
   const handleFamilyMemberChange = (index, field, value) => {
     const newFamilyMembers = [...editData.familyMembers];
-    let updatedMember = {
+    newFamilyMembers[index] = {
       ...newFamilyMembers[index],
       [field]: value
     };
 
-    // 當修改年份欄位時，檢查是否需要自動轉換西元年到民國年
-    if ((field === 'gregorianBirthYear' || field === 'lunarBirthYear') && value) {
-      const inputYear = parseInt(value);
-      if (!isNaN(inputYear) && inputYear > 1911) {
-        // 偵測到西元年，自動轉換為民國年
-        const { minguoYear } = autoConvertToMinguo(inputYear);
-        updatedMember[field] = minguoYear.toString();
-      }
-    }
 
-    newFamilyMembers[index] = updatedMember;
 
     setEditData({
       ...editData,
