@@ -536,8 +536,8 @@ exports.updateQueueData = async (req, res) => {
     // 仿效登記候位的年份處理邏輯
     let processedData = { ...updateData };
     
-    // 處理國曆出生年月日 - 若gregorianBirthYear有值，當作國曆處理
-    if (processedData.gregorianBirthYear && processedData.gregorianBirthMonth && processedData.gregorianBirthDay) {
+    // 處理國曆出生年 - 直接對gregorianBirthYear進行年份判斷
+    if (processedData.gregorianBirthYear !== undefined && processedData.gregorianBirthYear !== null) {
       const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
       
       // 自動判斷年份是民國還是西元，並轉換為西元年用於儲存
@@ -546,14 +546,12 @@ exports.updateQueueData = async (req, res) => {
       
       // 更新為正確的西元年
       processedData.gregorianBirthYear = gregorianYear;
-      processedData.gregorianBirthMonth = parseInt(processedData.gregorianBirthMonth);
-      processedData.gregorianBirthDay = parseInt(processedData.gregorianBirthDay);
       
       console.log(`編輯客戶資料 - 國曆處理: 輸入年份 ${updateData.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
     }
     
-    // 處理農曆出生年月日 - 若gregorianBirthYear無值但lunarBirthYear有值，當作農曆處理
-    if (!processedData.gregorianBirthYear && processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
+    // 處理農曆出生年 - 直接對lunarBirthYear進行年份判斷
+    if (processedData.lunarBirthYear !== undefined && processedData.lunarBirthYear !== null) {
       const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
       
       // 自動判斷年份是民國還是西元，並轉換為西元年用於儲存
@@ -562,9 +560,6 @@ exports.updateQueueData = async (req, res) => {
       
       // 更新為正確的西元年
       processedData.lunarBirthYear = gregorianYear;
-      processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth);
-      processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay);
-      processedData.lunarIsLeapMonth = Boolean(processedData.lunarIsLeapMonth);
       
       console.log(`編輯客戶資料 - 農曆處理: 輸入年份 ${updateData.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
     }
@@ -576,29 +571,24 @@ exports.updateQueueData = async (req, res) => {
       processedData.familyMembers = processedData.familyMembers.map(member => {
         const processedMember = { ...member };
         
-        // 處理家人的國曆出生年月日
-        if (processedMember.gregorianBirthYear && processedMember.gregorianBirthMonth && processedMember.gregorianBirthDay) {
+        // 處理家人的國曆出生年
+        if (processedMember.gregorianBirthYear !== undefined && processedMember.gregorianBirthYear !== null) {
           const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.gregorianBirthYear));
           const gregorianYear = convertMinguoForStorage(minguoYear);
           
           processedMember.gregorianBirthYear = gregorianYear;
-          processedMember.gregorianBirthMonth = parseInt(processedMember.gregorianBirthMonth);
-          processedMember.gregorianBirthDay = parseInt(processedMember.gregorianBirthDay);
           
-          console.log(`編輯家人資料 - 國曆處理: ${member.name} 輸入年份 ${member.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
+          console.log(`編輯家人資料 - 國曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
         }
         
-        // 處理家人的農曆出生年月日
-        if (!processedMember.gregorianBirthYear && processedMember.lunarBirthYear && processedMember.lunarBirthMonth && processedMember.lunarBirthDay) {
+        // 處理家人的農曆出生年
+        if (processedMember.lunarBirthYear !== undefined && processedMember.lunarBirthYear !== null) {
           const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear));
           const gregorianYear = convertMinguoForStorage(minguoYear);
           
           processedMember.lunarBirthYear = gregorianYear;
-          processedMember.lunarBirthMonth = parseInt(processedMember.lunarBirthMonth);
-          processedMember.lunarBirthDay = parseInt(processedMember.lunarBirthDay);
-          processedMember.lunarIsLeapMonth = Boolean(processedMember.lunarIsLeapMonth);
           
-          console.log(`編輯家人資料 - 農曆處理: ${member.name} 輸入年份 ${member.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
+          console.log(`編輯家人資料 - 農曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
         }
         
         return processedMember;
