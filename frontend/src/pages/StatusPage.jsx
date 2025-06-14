@@ -52,6 +52,7 @@ import {
 } from '../redux/slices/queueSlice';
 import { showAlert } from '../redux/slices/uiSlice';
 import socketService from '../services/socketService';
+import { API_ENDPOINTS } from '../config/api';
 import { 
   autoFillDates, 
   autoFillFamilyMembersDates, 
@@ -166,7 +167,7 @@ const StatusPage = () => {
 
   const confirmCancelQueue = async (record) => {
     try {
-      const response = await fetch('/api/queue/cancel', {
+      const response = await fetch(`${API_ENDPOINTS.QUEUE}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -217,7 +218,7 @@ const StatusPage = () => {
         processedData.familyMembers = familyData.familyMembers;
       }
       
-      const response = await fetch('/api/queue/update', {
+      const response = await fetch(`${API_ENDPOINTS.QUEUE}/update`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
