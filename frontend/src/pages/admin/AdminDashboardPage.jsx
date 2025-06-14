@@ -85,7 +85,8 @@ import {
   autoFillFamilyMembersDates, 
   formatMinguoYear, 
   formatMinguoDate,
-  calculateVirtualAge 
+  calculateVirtualAge,
+  autoConvertToMinguo
 } from '../../utils/calendarConverter';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import RegisterForm from '../RegisterForm';
@@ -478,10 +479,22 @@ const AdminDashboardPage = () => {
   // 處理家庭成員變更
   const handleFamilyMemberChange = (index, field, value) => {
     const newFamilyMembers = [...editedData.familyMembers];
-    newFamilyMembers[index] = {
+    let updatedMember = {
       ...newFamilyMembers[index],
       [field]: value
     };
+
+    // 當修改年份欄位時，檢查是否需要自動轉換西元年到民國年
+    if ((field === 'gregorianBirthYear' || field === 'lunarBirthYear') && value) {
+      const inputYear = parseInt(value);
+      if (!isNaN(inputYear) && inputYear > 1911) {
+        // 偵測到西元年，自動轉換為民國年
+        const { minguoYear } = autoConvertToMinguo(inputYear);
+        updatedMember[field] = minguoYear.toString();
+      }
+    }
+
+    newFamilyMembers[index] = updatedMember;
 
     setEditedData({
       ...editedData,
