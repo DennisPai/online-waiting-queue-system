@@ -14,7 +14,7 @@ function processEditModeDataConversion(updateData) {
   try {
     // 處理主客戶的出生年判斷和轉換
     if (result.gregorianBirthYear && result.gregorianBirthMonth && result.gregorianBirthDay) {
-      // 如果有國曆資料，優先使用國曆進行轉換
+      // 處理國曆資料：先判斷是民國還是西元，再轉換為西元年
       const { minguoYear } = autoConvertToMinguo(parseInt(result.gregorianBirthYear));
       const gregorianYear = convertMinguoForStorage(minguoYear);
       
@@ -24,12 +24,14 @@ function processEditModeDataConversion(updateData) {
       result.gregorianBirthDay = parseInt(result.gregorianBirthDay);
       
       console.log(`主客戶國曆年份轉換: 輸入年份 ${updateData.gregorianBirthYear} -> 民國年 ${minguoYear} -> 西元年 ${gregorianYear}`);
-    } else if (result.lunarBirthYear && result.lunarBirthMonth && result.lunarBirthDay) {
-      // 如果只有農曆資料，使用農曆進行轉換
+    }
+    
+    if (result.lunarBirthYear && result.lunarBirthMonth && result.lunarBirthDay) {
+      // 處理農曆資料：先判斷是民國還是西元，再轉換為西元年（用於農曆庫處理）
       const { minguoYear } = autoConvertToMinguo(parseInt(result.lunarBirthYear));
       const gregorianYear = convertMinguoForStorage(minguoYear);
       
-      // 更新為正確轉換後的西元年
+      // 更新為正確轉換後的西元年（這個西元年是用於農曆轉國曆的）
       result.lunarBirthYear = gregorianYear;
       result.lunarBirthMonth = parseInt(result.lunarBirthMonth);
       result.lunarBirthDay = parseInt(result.lunarBirthDay);
@@ -44,7 +46,7 @@ function processEditModeDataConversion(updateData) {
         const processedMember = { ...member };
         
         if (member.gregorianBirthYear && member.gregorianBirthMonth && member.gregorianBirthDay) {
-          // 處理家人的國曆資料
+          // 處理家人的國曆資料：先判斷是民國還是西元，再轉換為西元年
           const { minguoYear } = autoConvertToMinguo(parseInt(member.gregorianBirthYear));
           const gregorianYear = convertMinguoForStorage(minguoYear);
           
@@ -53,8 +55,10 @@ function processEditModeDataConversion(updateData) {
           processedMember.gregorianBirthDay = parseInt(member.gregorianBirthDay);
           
           console.log(`家人${index + 1}國曆年份轉換: 輸入年份 ${member.gregorianBirthYear} -> 民國年 ${minguoYear} -> 西元年 ${gregorianYear}`);
-        } else if (member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay) {
-          // 處理家人的農曆資料
+        }
+        
+        if (member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay) {
+          // 處理家人的農曆資料：先判斷是民國還是西元，再轉換為西元年（用於農曆庫處理）
           const { minguoYear } = autoConvertToMinguo(parseInt(member.lunarBirthYear));
           const gregorianYear = convertMinguoForStorage(minguoYear);
           
