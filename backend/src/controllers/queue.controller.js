@@ -854,6 +854,7 @@ exports.updateQueueByCustomer = async (req, res) => {
     
     // 處理可能的臨時格式轉換（從編輯界面傳來的 birthYear 格式）
     if (processedUpdateData.birthYear && processedUpdateData.birthMonth && processedUpdateData.birthDay && processedUpdateData.calendarType) {
+      // birthYear 在這裡應該是已經轉換過的西元年
       if (processedUpdateData.calendarType === 'gregorian') {
         processedUpdateData.gregorianBirthYear = parseInt(processedUpdateData.birthYear);
         processedUpdateData.gregorianBirthMonth = parseInt(processedUpdateData.birthMonth);
@@ -872,6 +873,7 @@ exports.updateQueueByCustomer = async (req, res) => {
         const processedMember = { ...member };
         
         if (member.birthYear && member.birthMonth && member.birthDay && member.calendarType) {
+          // birthYear 在這裡應該是已經轉換過的西元年
           if (member.calendarType === 'gregorian') {
             processedMember.gregorianBirthYear = parseInt(member.birthYear);
             processedMember.gregorianBirthMonth = parseInt(member.birthMonth);
