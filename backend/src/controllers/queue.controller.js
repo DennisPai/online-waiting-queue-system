@@ -853,21 +853,34 @@ exports.updateQueueByCustomer = async (req, res) => {
     let processedUpdateData = { ...updateData };
     const { autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
     
-    // 判斷用戶的編輯意圖：
-    // 1. 如果只有gregorianBirthYear字段被更新，按國曆處理
-    // 2. 如果只有lunarBirthYear字段被更新，按農曆處理
-    // 3. 如果兩個都更新，優先以gregorianBirthYear為準（國曆優先）
+    // 更精確的編輯意圖判斷：
+    // 檢查用戶實際要更新的字段，而非所有非空字段
+    // 如果用戶只想更新國曆，農曆相關字段應該不包含在updateData中或為空
+    // 如果用戶只想更新農曆，國曆相關字段應該不包含在updateData中或為空
     
-    const gregorianChanged = processedUpdateData.gregorianBirthYear !== undefined && 
-                            processedUpdateData.gregorianBirthYear !== null && 
-                            processedUpdateData.gregorianBirthYear !== '';
-    const lunarChanged = processedUpdateData.lunarBirthYear !== undefined && 
-                        processedUpdateData.lunarBirthYear !== null && 
-                        processedUpdateData.lunarBirthYear !== '';
+    console.log('客戶自助編輯接收到的數據:', updateData);
     
-    if (gregorianChanged && lunarChanged) {
-      // 兩個都有值：優先處理國曆，清空農曆讓系統自動轉換
-      console.log('客戶自助編輯 - 檢測到國曆和農曆都有輸入，以國曆為準');
+    // 檢查是否有國曆相關的完整輸入（年月日都有）
+    const hasGregorianInput = updateData.gregorianBirthYear !== undefined && 
+                             updateData.gregorianBirthYear !== null && 
+                             updateData.gregorianBirthYear !== '' &&
+                             updateData.gregorianBirthMonth !== undefined && 
+                             updateData.gregorianBirthMonth !== null && 
+                             updateData.gregorianBirthMonth !== '';
+    
+    // 檢查是否有農曆相關的完整輸入（年月日都有）
+    const hasLunarInput = updateData.lunarBirthYear !== undefined && 
+                         updateData.lunarBirthYear !== null && 
+                         updateData.lunarBirthYear !== '' &&
+                         updateData.lunarBirthMonth !== undefined && 
+                         updateData.lunarBirthMonth !== null && 
+                         updateData.lunarBirthMonth !== '';
+    
+    console.log(`客戶自助編輯意圖判斷: 國曆輸入=${hasGregorianInput}, 農曆輸入=${hasLunarInput}`);
+    
+    if (hasGregorianInput && hasLunarInput) {
+      // 兩個都有完整輸入：優先處理國曆
+      console.log('客戶自助編輯 - 檢測到國曆和農曆都有完整輸入，以國曆為準');
       
       const { minguoYear } = autoConvertToMinguo(parseInt(processedUpdateData.gregorianBirthYear));
       const gregorianYear = convertMinguoForStorage(minguoYear);
@@ -881,27 +894,25 @@ exports.updateQueueByCustomer = async (req, res) => {
       
       console.log(`客戶自助編輯 - 國曆優先處理: 輸入年份 ${updateData.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
       
-    } else if (gregorianChanged) {
-      // 只有國曆：按國曆處理
-      console.log('客戶自助編輯 - 檢測到只有國曆輸入');
+    } else if (hasGregorianInput) {
+      // 只有國曆完整輸入：按國曆處理
+      console.log('客戶自助編輯 - 檢測到只有國曆完整輸入');
       
       const { minguoYear } = autoConvertToMinguo(parseInt(processedUpdateData.gregorianBirthYear));
       const gregorianYear = convertMinguoForStorage(minguoYear);
       
       processedUpdateData.gregorianBirthYear = gregorianYear;
-      // 保留原有農曆資料或清空以便自動轉換
-      if (!processedUpdateData.lunarBirthYear) {
-        processedUpdateData.lunarBirthYear = null;
-        processedUpdateData.lunarBirthMonth = null;
-        processedUpdateData.lunarBirthDay = null;
-        processedUpdateData.lunarIsLeapMonth = false;
-      }
+      // 清空農曆字段讓autoFillDates自動轉換
+      processedUpdateData.lunarBirthYear = null;
+      processedUpdateData.lunarBirthMonth = null;
+      processedUpdateData.lunarBirthDay = null;
+      processedUpdateData.lunarIsLeapMonth = false;
       
       console.log(`客戶自助編輯 - 國曆處理: 輸入年份 ${updateData.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
       
-    } else if (lunarChanged) {
-      // 只有農曆：按農曆處理
-      console.log('客戶自助編輯 - 檢測到只有農曆輸入');
+    } else if (hasLunarInput) {
+      // 只有農曆完整輸入：按農曆處理
+      console.log('客戶自助編輯 - 檢測到只有農曆完整輸入');
       
       const { minguoYear } = autoConvertToMinguo(parseInt(processedUpdateData.lunarBirthYear));
       const gregorianYear = convertMinguoForStorage(minguoYear);
@@ -913,6 +924,9 @@ exports.updateQueueByCustomer = async (req, res) => {
       processedUpdateData.gregorianBirthDay = null;
       
       console.log(`客戶自助編輯 - 農曆處理: 輸入年份 ${updateData.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
+      
+    } else {
+      console.log('客戶自助編輯 - 沒有檢測到完整的日期輸入，跳過年份處理');
     }
     
     // 處理家人資料的年份轉換
@@ -920,15 +934,23 @@ exports.updateQueueByCustomer = async (req, res) => {
       processedUpdateData.familyMembers = processedUpdateData.familyMembers.map(member => {
         const processedMember = { ...member };
         
-        // 對每個家人也應用相同的邏輯
-        const memberGregorianChanged = processedMember.gregorianBirthYear !== undefined && 
-                                     processedMember.gregorianBirthYear !== null && 
-                                     processedMember.gregorianBirthYear !== '';
-        const memberLunarChanged = processedMember.lunarBirthYear !== undefined && 
-                                 processedMember.lunarBirthYear !== null && 
-                                 processedMember.lunarBirthYear !== '';
+        // 對每個家人也應用相同的邏輯：檢查完整的日期輸入
+        const memberHasGregorianInput = member.gregorianBirthYear !== undefined && 
+                                       member.gregorianBirthYear !== null && 
+                                       member.gregorianBirthYear !== '' &&
+                                       member.gregorianBirthMonth !== undefined && 
+                                       member.gregorianBirthMonth !== null && 
+                                       member.gregorianBirthMonth !== '';
+        const memberHasLunarInput = member.lunarBirthYear !== undefined && 
+                                   member.lunarBirthYear !== null && 
+                                   member.lunarBirthYear !== '' &&
+                                   member.lunarBirthMonth !== undefined && 
+                                   member.lunarBirthMonth !== null && 
+                                   member.lunarBirthMonth !== '';
         
-        if (memberGregorianChanged && memberLunarChanged) {
+        console.log(`客戶自助編輯家人${member.name || '未命名家人'}編輯意圖: 國曆輸入=${memberHasGregorianInput}, 農曆輸入=${memberHasLunarInput}`);
+        
+        if (memberHasGregorianInput && memberHasLunarInput) {
           // 國曆優先
           const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.gregorianBirthYear));
           const gregorianYear = convertMinguoForStorage(minguoYear);
@@ -941,17 +963,21 @@ exports.updateQueueByCustomer = async (req, res) => {
           
           console.log(`客戶自助編輯家人 - 國曆優先: ${member.name || '未命名家人'} 輸入年份 ${member.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
           
-        } else if (memberGregorianChanged) {
-          // 只有國曆
+        } else if (memberHasGregorianInput) {
+          // 只有國曆完整輸入
           const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.gregorianBirthYear));
           const gregorianYear = convertMinguoForStorage(minguoYear);
           
           processedMember.gregorianBirthYear = gregorianYear;
+          processedMember.lunarBirthYear = null;
+          processedMember.lunarBirthMonth = null;
+          processedMember.lunarBirthDay = null;
+          processedMember.lunarIsLeapMonth = false;
           
           console.log(`客戶自助編輯家人 - 國曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
           
-        } else if (memberLunarChanged) {
-          // 只有農曆
+        } else if (memberHasLunarInput) {
+          // 只有農曆完整輸入
           const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear));
           const gregorianYear = convertMinguoForStorage(minguoYear);
           
@@ -961,6 +987,8 @@ exports.updateQueueByCustomer = async (req, res) => {
           processedMember.gregorianBirthDay = null;
           
           console.log(`客戶自助編輯家人 - 農曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
+        } else {
+          console.log(`客戶自助編輯家人${member.name || '未命名家人'} - 沒有檢測到完整的日期輸入，跳過年份處理`);
         }
         
         return processedMember;
