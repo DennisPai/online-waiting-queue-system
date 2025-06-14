@@ -515,7 +515,9 @@ const AdminDashboardPage = () => {
           
           if (!isNaN(gregorianYear) && !isNaN(month) && !isNaN(day)) {
             const lunarDate = gregorianToLunar(gregorianYear, month, day);
-            updatedMember.lunarBirthYear = (lunarDate.year - 1911).toString();
+            // lunarDate.year是西元年，需要轉換為民國年儲存
+            const lunarMinguoYear = lunarDate.year - 1911;
+            updatedMember.lunarBirthYear = lunarMinguoYear.toString();
             updatedMember.lunarBirthMonth = lunarDate.month.toString();
             updatedMember.lunarBirthDay = lunarDate.day.toString();
             updatedMember.lunarIsLeapMonth = lunarDate.isLeapMonth;
@@ -535,7 +537,9 @@ const AdminDashboardPage = () => {
           
           if (!isNaN(lunarYear) && !isNaN(month) && !isNaN(day)) {
             const gregorianDate = lunarToGregorian(lunarYear, month, day, isLeapMonth);
-            updatedMember.gregorianBirthYear = (gregorianDate.year - 1911).toString();
+            // gregorianDate.year是西元年，需要轉換為民國年儲存
+            const gregorianMinguoYear = gregorianDate.year - 1911;
+            updatedMember.gregorianBirthYear = gregorianMinguoYear.toString();
             updatedMember.gregorianBirthMonth = gregorianDate.month.toString();
             updatedMember.gregorianBirthDay = gregorianDate.day.toString();
           }
