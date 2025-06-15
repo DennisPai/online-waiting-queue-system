@@ -261,12 +261,27 @@ const StatusPage = () => {
         // 只有農曆有變化
         if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
           // 農曆年份也使用民國年輸入，完全仿效登記功能的處理方式
-          const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
+          console.log('=== 農曆年份處理調試 ===');
+          console.log('原始輸入:', processedData.lunarBirthYear, typeof processedData.lunarBirthYear);
+          
+          const inputYear = parseInt(processedData.lunarBirthYear, 10);
+          console.log('轉換為數字:', inputYear);
+          
+          const { minguoYear } = autoConvertToMinguo(inputYear);
+          console.log('判斷為民國年:', minguoYear);
+          
           const gregorianFormatLunarYear = convertMinguoForStorage(minguoYear);
+          console.log('轉換為西元年:', gregorianFormatLunarYear);
           
           processedData.lunarBirthYear = gregorianFormatLunarYear;
           processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
           processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
+          
+          console.log('最終傳給autoFillDates的農曆數據:', {
+            lunarBirthYear: processedData.lunarBirthYear,
+            lunarBirthMonth: processedData.lunarBirthMonth,
+            lunarBirthDay: processedData.lunarBirthDay
+          });
           
           // 清空國曆資料，讓autoFillDates重新轉換
           processedData.gregorianBirthYear = null;
@@ -331,12 +346,27 @@ const StatusPage = () => {
             // 只有農曆有變化
             if (processedMember.lunarBirthYear && processedMember.lunarBirthMonth && processedMember.lunarBirthDay) {
               // 農曆年份也使用民國年輸入，完全仿效登記功能的處理方式
-              const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear, 10));
+              console.log('=== 家人農曆年份處理調試 ===');
+              console.log('原始輸入:', processedMember.lunarBirthYear, typeof processedMember.lunarBirthYear);
+              
+              const inputYear = parseInt(processedMember.lunarBirthYear, 10);
+              console.log('轉換為數字:', inputYear);
+              
+              const { minguoYear } = autoConvertToMinguo(inputYear);
+              console.log('判斷為民國年:', minguoYear);
+              
               const gregorianFormatLunarYear = convertMinguoForStorage(minguoYear);
+              console.log('轉換為西元年:', gregorianFormatLunarYear);
               
               processedMember.lunarBirthYear = gregorianFormatLunarYear;
               processedMember.lunarBirthMonth = parseInt(processedMember.lunarBirthMonth, 10);
               processedMember.lunarBirthDay = parseInt(processedMember.lunarBirthDay, 10);
+              
+              console.log('最終家人農曆數據:', {
+                lunarBirthYear: processedMember.lunarBirthYear,
+                lunarBirthMonth: processedMember.lunarBirthMonth,
+                lunarBirthDay: processedMember.lunarBirthDay
+              });
               
               // 清空國曆資料，讓autoFillDates重新轉換
               processedMember.gregorianBirthYear = null;
