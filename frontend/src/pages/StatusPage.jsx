@@ -258,15 +258,27 @@ const StatusPage = () => {
           processedData.lunarIsLeapMonth = false;
         }
       } else if (hasLunarChanged) {
-        // 只有農曆有變化
+        // 只有農曆有變化 - 完全仿效登記候位的處理方式
         if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
-          // 對農曆年進行民國/西元判斷，然後轉換為西元年給autoFillDates處理
-          const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
-          const gregorianYear = convertMinguoForStorage(minguoYear);
+          console.log('=== 農曆處理調試 ===');
+          console.log('原始農曆年:', processedData.lunarBirthYear);
           
-          processedData.lunarBirthYear = gregorianYear; // 轉換為西元年給autoFillDates使用
+          const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
+          console.log('判斷後的民國年:', minguoYear);
+          
+          const gregorianYear = convertMinguoForStorage(minguoYear);
+          console.log('轉換為西元年:', gregorianYear);
+          
+          // 仿效RegisterPage的邏輯：農曆模式下，lunarBirthYear使用轉換後的西元年
+          processedData.lunarBirthYear = gregorianYear;
           processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
           processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
+          
+          console.log('準備傳給autoFillDates的農曆數據:', {
+            lunarBirthYear: processedData.lunarBirthYear,
+            lunarBirthMonth: processedData.lunarBirthMonth,
+            lunarBirthDay: processedData.lunarBirthDay
+          });
           
           // 清空國曆資料，讓autoFillDates重新轉換
           processedData.gregorianBirthYear = null;
@@ -330,11 +342,10 @@ const StatusPage = () => {
           } else if (hasMemberLunarChanged) {
             // 只有農曆有變化
             if (processedMember.lunarBirthYear && processedMember.lunarBirthMonth && processedMember.lunarBirthDay) {
-              // 對農曆年進行民國/西元判斷，然後轉換為西元年給autoFillDates處理
               const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear, 10));
               const gregorianYear = convertMinguoForStorage(minguoYear);
               
-              processedMember.lunarBirthYear = gregorianYear; // 轉換為西元年給autoFillDates使用
+              processedMember.lunarBirthYear = gregorianYear;
               processedMember.lunarBirthMonth = parseInt(processedMember.lunarBirthMonth, 10);
               processedMember.lunarBirthDay = parseInt(processedMember.lunarBirthDay, 10);
               

@@ -134,6 +134,14 @@ export function autoFillDates(data) {
     if (result.lunarBirthYear && result.lunarBirthMonth && result.lunarBirthDay &&
         (!result.gregorianBirthYear || !result.gregorianBirthMonth || !result.gregorianBirthDay)) {
       
+      console.log('=== autoFillDates 農曆轉國曆調試 ===');
+      console.log('輸入的農曆數據:', {
+        lunarBirthYear: result.lunarBirthYear,
+        lunarBirthMonth: result.lunarBirthMonth,
+        lunarBirthDay: result.lunarBirthDay,
+        lunarIsLeapMonth: result.lunarIsLeapMonth
+      });
+      
       const gregorianDate = lunarToGregorian(
         result.lunarBirthYear,
         result.lunarBirthMonth,
@@ -141,9 +149,20 @@ export function autoFillDates(data) {
         result.lunarIsLeapMonth || false
       );
       
+      console.log('轉換得到的國曆數據:', gregorianDate);
+      
       result.gregorianBirthYear = gregorianDate.year;
       result.gregorianBirthMonth = gregorianDate.month;
       result.gregorianBirthDay = gregorianDate.day;
+      
+      console.log('最終結果:', {
+        gregorianBirthYear: result.gregorianBirthYear,
+        gregorianBirthMonth: result.gregorianBirthMonth,
+        gregorianBirthDay: result.gregorianBirthDay,
+        lunarBirthYear: result.lunarBirthYear,
+        lunarBirthMonth: result.lunarBirthMonth,
+        lunarBirthDay: result.lunarBirthDay
+      });
     }
     
     return result;
