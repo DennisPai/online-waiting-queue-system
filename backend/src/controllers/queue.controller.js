@@ -849,8 +849,8 @@ exports.updateQueueByCustomer = async (req, res) => {
       });
     }
     
-    // 前端已完成所有年份判斷和日期轉換處理，後端直接使用
-    let processedUpdateData = { ...updateData };
+    // 前端已經完成所有年份判斷、日期轉換和虛歲計算，後端直接使用
+    let processedUpdateData = updateData;
     
     // 允許修改的欄位
     const allowedFields = [
