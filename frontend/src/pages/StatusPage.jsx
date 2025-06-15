@@ -260,25 +260,15 @@ const StatusPage = () => {
       } else if (hasLunarChanged) {
         // 只有農曆有變化 - 完全仿效登記候位的處理方式
         if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
-          console.log('=== 農曆處理調試 ===');
-          console.log('原始農曆年:', processedData.lunarBirthYear);
-          
           const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
-          console.log('判斷後的民國年:', minguoYear);
-          
           const gregorianYear = convertMinguoForStorage(minguoYear);
-          console.log('轉換為西元年:', gregorianYear);
           
           // 仿效RegisterPage的邏輯：農曆模式下，lunarBirthYear使用轉換後的西元年
           processedData.lunarBirthYear = gregorianYear;
           processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
           processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
-          
-          console.log('準備傳給autoFillDates的農曆數據:', {
-            lunarBirthYear: processedData.lunarBirthYear,
-            lunarBirthMonth: processedData.lunarBirthMonth,
-            lunarBirthDay: processedData.lunarBirthDay
-          });
+          // 確保lunarIsLeapMonth有正確的值
+          processedData.lunarIsLeapMonth = processedData.lunarIsLeapMonth || false;
           
           // 清空國曆資料，讓autoFillDates重新轉換
           processedData.gregorianBirthYear = null;

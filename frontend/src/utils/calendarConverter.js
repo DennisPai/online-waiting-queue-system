@@ -87,31 +87,20 @@ export function gregorianToLunar(year, month, day) {
  */
 export function lunarToGregorian(year, month, day, isLeapMonth = false) {
   try {
-    console.log('=== lunarToGregorian 調試 ===');
-    console.log('輸入參數:', { year, month, day, isLeapMonth });
-    
     // 創建農曆日期對象，閏月月份用負數表示
     const lunarMonth = isLeapMonth ? -month : month;
-    console.log('準備創建 Lunar 對象:', { year, lunarMonth, day });
-    
     const lunar = Lunar.fromYmd(year, lunarMonth, day);
-    console.log('成功創建 Lunar 對象:', lunar);
     
     // 轉換為國曆
     const solar = lunar.getSolar();
-    console.log('轉換得到的 Solar 對象:', solar);
     
-    const result = {
+    return {
       year: solar.getYear(),
       month: solar.getMonth(),
       day: solar.getDay()
     };
-    
-    console.log('最終返回結果:', result);
-    return result;
   } catch (error) {
     console.error('農曆轉國曆錯誤:', error);
-    console.error('輸入參數:', { year, month, day, isLeapMonth });
     throw new Error('農曆日期轉換失敗');
   }
 }
@@ -145,14 +134,6 @@ export function autoFillDates(data) {
     if (result.lunarBirthYear && result.lunarBirthMonth && result.lunarBirthDay &&
         (!result.gregorianBirthYear || !result.gregorianBirthMonth || !result.gregorianBirthDay)) {
       
-      console.log('=== autoFillDates 農曆轉國曆調試 ===');
-      console.log('輸入的農曆數據:', {
-        lunarBirthYear: result.lunarBirthYear,
-        lunarBirthMonth: result.lunarBirthMonth,
-        lunarBirthDay: result.lunarBirthDay,
-        lunarIsLeapMonth: result.lunarIsLeapMonth
-      });
-      
       const gregorianDate = lunarToGregorian(
         result.lunarBirthYear,
         result.lunarBirthMonth,
@@ -160,20 +141,9 @@ export function autoFillDates(data) {
         result.lunarIsLeapMonth || false
       );
       
-      console.log('轉換得到的國曆數據:', gregorianDate);
-      
       result.gregorianBirthYear = gregorianDate.year;
       result.gregorianBirthMonth = gregorianDate.month;
       result.gregorianBirthDay = gregorianDate.day;
-      
-      console.log('最終結果:', {
-        gregorianBirthYear: result.gregorianBirthYear,
-        gregorianBirthMonth: result.gregorianBirthMonth,
-        gregorianBirthDay: result.gregorianBirthDay,
-        lunarBirthYear: result.lunarBirthYear,
-        lunarBirthMonth: result.lunarBirthMonth,
-        lunarBirthDay: result.lunarBirthDay
-      });
     }
     
     return result;

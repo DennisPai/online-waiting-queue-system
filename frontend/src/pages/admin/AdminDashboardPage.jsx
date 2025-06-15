@@ -594,24 +594,14 @@ const AdminDashboardPage = () => {
       } else if (hasLunarChanged) {
         // 只有農曆有變化
         if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
-          console.log('=== AdminDashboard 主客戶農曆處理調試 ===');
-          console.log('原始農曆年:', processedData.lunarBirthYear);
-          
           const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
-          console.log('判斷後的民國年:', minguoYear);
-          
           const gregorianYear = convertMinguoForStorage(minguoYear);
-          console.log('轉換為西元年:', gregorianYear);
           
           processedData.lunarBirthYear = gregorianYear;
           processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
           processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
-          
-          console.log('準備傳給autoFillDates的主客戶農曆數據:', {
-            lunarBirthYear: processedData.lunarBirthYear,
-            lunarBirthMonth: processedData.lunarBirthMonth,
-            lunarBirthDay: processedData.lunarBirthDay
-          });
+          // 確保lunarIsLeapMonth有正確的值
+          processedData.lunarIsLeapMonth = processedData.lunarIsLeapMonth || false;
           
           // 清空國曆資料，讓autoFillDates重新轉換
           processedData.gregorianBirthYear = null;
@@ -675,24 +665,14 @@ const AdminDashboardPage = () => {
           } else if (hasMemberLunarChanged) {
             // 只有農曆有變化
             if (processedMember.lunarBirthYear && processedMember.lunarBirthMonth && processedMember.lunarBirthDay) {
-              console.log('=== AdminDashboard 家人農曆處理調試 ===');
-              console.log('原始農曆年:', processedMember.lunarBirthYear);
-              
               const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear, 10));
-              console.log('判斷後的民國年:', minguoYear);
-              
               const gregorianYear = convertMinguoForStorage(minguoYear);
-              console.log('轉換為西元年:', gregorianYear);
               
               processedMember.lunarBirthYear = gregorianYear;
               processedMember.lunarBirthMonth = parseInt(processedMember.lunarBirthMonth, 10);
               processedMember.lunarBirthDay = parseInt(processedMember.lunarBirthDay, 10);
-              
-              console.log('準備傳給autoFillDates的家人農曆數據:', {
-                lunarBirthYear: processedMember.lunarBirthYear,
-                lunarBirthMonth: processedMember.lunarBirthMonth,
-                lunarBirthDay: processedMember.lunarBirthDay
-              });
+              // 確保lunarIsLeapMonth有正確的值
+              processedMember.lunarIsLeapMonth = processedMember.lunarIsLeapMonth || false;
               
               // 清空國曆資料，讓autoFillDates重新轉換
               processedMember.gregorianBirthYear = null;
