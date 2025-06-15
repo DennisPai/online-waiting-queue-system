@@ -533,9 +533,17 @@ exports.updateQueueData = async (req, res) => {
       });
     }
     
-        // 管理員編輯功能：前端已完成所有年份判斷、日期轉換和虛歲計算，後端直接使用
-    const processedData = { ...updateData };
-    console.log('管理員編輯 - 接收前端已處理完成的資料:', processedData);
+    // 在保存前進行日期自動轉換
+    updateData = autoFillDates(updateData);
+    
+        // 處理家人資料的日期轉換
+    if (updateData.familyMembers && updateData.familyMembers.length > 0) {
+      const familyData = autoFillFamilyMembersDates({ familyMembers: updateData.familyMembers });
+      updateData.familyMembers = familyData.familyMembers;
+    }
+
+    // 計算虛歲
+    updateData = addVirtualAge(updateData);
 
     // 更新允許的欄位
     const allowedFields = [
@@ -546,8 +554,8 @@ exports.updateQueueData = async (req, res) => {
     ];
 
     allowedFields.forEach(field => {
-      if (processedData[field] !== undefined) {
-        record[field] = processedData[field];
+      if (updateData[field] !== undefined) {
+        record[field] = updateData[field];
       }
     });
 

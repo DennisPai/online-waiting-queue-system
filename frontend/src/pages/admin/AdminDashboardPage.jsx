@@ -85,7 +85,10 @@ import {
   autoFillFamilyMembersDates, 
   formatMinguoYear, 
   formatMinguoDate,
-  calculateVirtualAge 
+  calculateVirtualAge,
+  autoConvertToMinguo,
+  convertMinguoForStorage,
+  addVirtualAge 
 } from '../../utils/calendarConverter';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import RegisterForm from '../RegisterForm';
@@ -541,60 +544,148 @@ const AdminDashboardPage = () => {
   // 保存編輯的資料
   const handleSaveData = () => {
     if (selectedRecord && editMode) {
-      // 步驟1：年份判斷和轉換（仿效登記候位邏輯）
+      // 完全仿效登記候位的處理流程
       let processedData = { ...editedData };
-
-      // 處理主客戶的國曆出生年 - 如果有輸入值
-      if (processedData.gregorianBirthYear && processedData.gregorianBirthYear.toString().trim() !== '') {
-        const { minguoYear } = autoConvertToMinguo(parseInt(processedData.gregorianBirthYear));
-        const gregorianYear = convertMinguoForStorage(minguoYear);
-        processedData.gregorianBirthYear = gregorianYear;
-        console.log(`管理員編輯 - 國曆處理: 輸入年份 ${editedData.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
+      
+      // 1. 前端進行年份判斷和轉換 - 處理主客戶
+      const hasGregorianChanged = 
+        processedData.gregorianBirthYear !== selectedRecord.gregorianBirthYear ||
+        processedData.gregorianBirthMonth !== selectedRecord.gregorianBirthMonth ||
+        processedData.gregorianBirthDay !== selectedRecord.gregorianBirthDay;
+        
+      const hasLunarChanged = 
+        processedData.lunarBirthYear !== selectedRecord.lunarBirthYear ||
+        processedData.lunarBirthMonth !== selectedRecord.lunarBirthMonth ||
+        processedData.lunarBirthDay !== selectedRecord.lunarBirthDay;
+      
+      // 根據變化情況決定處理邏輯
+      if (hasGregorianChanged && hasLunarChanged) {
+        // 如果國曆和農曆都有變化，以國曆為準
+        if (processedData.gregorianBirthYear && processedData.gregorianBirthMonth && processedData.gregorianBirthDay) {
+          const { minguoYear } = autoConvertToMinguo(parseInt(processedData.gregorianBirthYear, 10));
+          const gregorianYear = convertMinguoForStorage(minguoYear);
+          
+          processedData.gregorianBirthYear = gregorianYear;
+          processedData.gregorianBirthMonth = parseInt(processedData.gregorianBirthMonth, 10);
+          processedData.gregorianBirthDay = parseInt(processedData.gregorianBirthDay, 10);
+          
+          // 清空農曆資料，讓autoFillDates重新轉換
+          processedData.lunarBirthYear = null;
+          processedData.lunarBirthMonth = null;
+          processedData.lunarBirthDay = null;
+          processedData.lunarIsLeapMonth = false;
+        }
+      } else if (hasGregorianChanged) {
+        // 只有國曆有變化
+        if (processedData.gregorianBirthYear && processedData.gregorianBirthMonth && processedData.gregorianBirthDay) {
+          const { minguoYear } = autoConvertToMinguo(parseInt(processedData.gregorianBirthYear, 10));
+          const gregorianYear = convertMinguoForStorage(minguoYear);
+          
+          processedData.gregorianBirthYear = gregorianYear;
+          processedData.gregorianBirthMonth = parseInt(processedData.gregorianBirthMonth, 10);
+          processedData.gregorianBirthDay = parseInt(processedData.gregorianBirthDay, 10);
+          
+          // 清空農曆資料，讓autoFillDates重新轉換
+          processedData.lunarBirthYear = null;
+          processedData.lunarBirthMonth = null;
+          processedData.lunarBirthDay = null;
+          processedData.lunarIsLeapMonth = false;
+        }
+      } else if (hasLunarChanged) {
+        // 只有農曆有變化
+        if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
+          const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
+          const gregorianYear = convertMinguoForStorage(minguoYear);
+          
+          processedData.lunarBirthYear = gregorianYear;
+          processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
+          processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
+          
+          // 清空國曆資料，讓autoFillDates重新轉換
+          processedData.gregorianBirthYear = null;
+          processedData.gregorianBirthMonth = null;
+          processedData.gregorianBirthDay = null;
+        }
       }
-
-      // 處理主客戶的農曆出生年 - 如果有輸入值
-      if (processedData.lunarBirthYear && processedData.lunarBirthYear.toString().trim() !== '') {
-        const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear));
-        const gregorianYear = convertMinguoForStorage(minguoYear);
-        processedData.lunarBirthYear = gregorianYear;
-        console.log(`管理員編輯 - 農曆處理: 輸入年份 ${editedData.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
-      }
-
-      // 處理家人資料的年份判斷
+      
+      // 2. 前端進行日期轉換
+      processedData = autoFillDates(processedData);
+      
+      // 3. 處理家人資料的年份判斷和轉換
       if (processedData.familyMembers && processedData.familyMembers.length > 0) {
-        processedData.familyMembers = processedData.familyMembers.map(member => {
-          const processedMember = { ...member };
+        processedData.familyMembers = processedData.familyMembers.map((member, index) => {
+          const originalMember = selectedRecord.familyMembers?.[index];
+          let processedMember = { ...member };
           
-          // 處理家人的國曆出生年
-          if (processedMember.gregorianBirthYear && processedMember.gregorianBirthYear.toString().trim() !== '') {
-            const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.gregorianBirthYear));
-            const gregorianYear = convertMinguoForStorage(minguoYear);
-            processedMember.gregorianBirthYear = gregorianYear;
-            console.log(`管理員編輯家人 - 國曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.gregorianBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
-          }
+          const hasMemberGregorianChanged = !originalMember ||
+            processedMember.gregorianBirthYear !== originalMember.gregorianBirthYear ||
+            processedMember.gregorianBirthMonth !== originalMember.gregorianBirthMonth ||
+            processedMember.gregorianBirthDay !== originalMember.gregorianBirthDay;
+            
+          const hasMemberLunarChanged = !originalMember ||
+            processedMember.lunarBirthYear !== originalMember.lunarBirthYear ||
+            processedMember.lunarBirthMonth !== originalMember.lunarBirthMonth ||
+            processedMember.lunarBirthDay !== originalMember.lunarBirthDay;
           
-          // 處理家人的農曆出生年
-          if (processedMember.lunarBirthYear && processedMember.lunarBirthYear.toString().trim() !== '') {
-            const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear));
-            const gregorianYear = convertMinguoForStorage(minguoYear);
-            processedMember.lunarBirthYear = gregorianYear;
-            console.log(`管理員編輯家人 - 農曆處理: ${member.name || '未命名家人'} 輸入年份 ${member.lunarBirthYear} -> 民國 ${minguoYear} 年 -> 西元 ${gregorianYear} 年`);
+          // 根據變化情況決定處理邏輯
+          if (hasMemberGregorianChanged && hasMemberLunarChanged) {
+            // 如果國曆和農曆都有變化，以國曆為準
+            if (processedMember.gregorianBirthYear && processedMember.gregorianBirthMonth && processedMember.gregorianBirthDay) {
+              const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.gregorianBirthYear, 10));
+              const gregorianYear = convertMinguoForStorage(minguoYear);
+              
+              processedMember.gregorianBirthYear = gregorianYear;
+              processedMember.gregorianBirthMonth = parseInt(processedMember.gregorianBirthMonth, 10);
+              processedMember.gregorianBirthDay = parseInt(processedMember.gregorianBirthDay, 10);
+              
+              // 清空農曆資料，讓autoFillDates重新轉換
+              processedMember.lunarBirthYear = null;
+              processedMember.lunarBirthMonth = null;
+              processedMember.lunarBirthDay = null;
+              processedMember.lunarIsLeapMonth = false;
+            }
+          } else if (hasMemberGregorianChanged) {
+            // 只有國曆有變化
+            if (processedMember.gregorianBirthYear && processedMember.gregorianBirthMonth && processedMember.gregorianBirthDay) {
+              const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.gregorianBirthYear, 10));
+              const gregorianYear = convertMinguoForStorage(minguoYear);
+              
+              processedMember.gregorianBirthYear = gregorianYear;
+              processedMember.gregorianBirthMonth = parseInt(processedMember.gregorianBirthMonth, 10);
+              processedMember.gregorianBirthDay = parseInt(processedMember.gregorianBirthDay, 10);
+              
+              // 清空農曆資料，讓autoFillDates重新轉換
+              processedMember.lunarBirthYear = null;
+              processedMember.lunarBirthMonth = null;
+              processedMember.lunarBirthDay = null;
+              processedMember.lunarIsLeapMonth = false;
+            }
+          } else if (hasMemberLunarChanged) {
+            // 只有農曆有變化
+            if (processedMember.lunarBirthYear && processedMember.lunarBirthMonth && processedMember.lunarBirthDay) {
+              const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear, 10));
+              const gregorianYear = convertMinguoForStorage(minguoYear);
+              
+              processedMember.lunarBirthYear = gregorianYear;
+              processedMember.lunarBirthMonth = parseInt(processedMember.lunarBirthMonth, 10);
+              processedMember.lunarBirthDay = parseInt(processedMember.lunarBirthDay, 10);
+              
+              // 清空國曆資料，讓autoFillDates重新轉換
+              processedMember.gregorianBirthYear = null;
+              processedMember.gregorianBirthMonth = null;
+              processedMember.gregorianBirthDay = null;
+            }
           }
           
           return processedMember;
         });
-      }
-
-      // 步驟2：進行國曆農曆互轉（此時年份已經是正確的西元年）
-      processedData = autoFillDates(processedData);
-      
-      // 處理家人資料的日期轉換
-      if (processedData.familyMembers && processedData.familyMembers.length > 0) {
+        
+        // 對家人資料進行日期轉換
         const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.familyMembers });
         processedData.familyMembers = familyData.familyMembers;
       }
-
-      // 步驟3：計算虛歲
+      
+      // 4. 前端計算虛歲
       processedData = addVirtualAge(processedData);
       
       dispatch(updateQueueData({

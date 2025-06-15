@@ -849,16 +849,21 @@ exports.updateQueueByCustomer = async (req, res) => {
       });
     }
     
-    // 前端已完成所有年份判斷、日期轉換和虛歲計算，後端直接使用
-    const processedUpdateData = { ...updateData };
-    console.log('客戶自助編輯 - 接收前端已處理完成的資料:', processedUpdateData);
+    // 在保存前進行日期自動轉換
+    let processedUpdateData = autoFillDates(updateData);
+    
+    // 處理家人資料的日期轉換
+    if (processedUpdateData.familyMembers && processedUpdateData.familyMembers.length > 0) {
+      const familyData = autoFillFamilyMembersDates({ familyMembers: processedUpdateData.familyMembers });
+      processedUpdateData.familyMembers = familyData.familyMembers;
+    }
     
     // 允許修改的欄位
     const allowedFields = [
       'name', 'phone', 'email', 'gender',
       'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
-      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'virtualAge'
+      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails'
     ];
     
     // 更新資料
