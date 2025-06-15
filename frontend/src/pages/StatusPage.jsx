@@ -258,12 +258,22 @@ const StatusPage = () => {
           processedData.lunarIsLeapMonth = false;
         }
       } else if (hasLunarChanged) {
-        // 只有農曆有變化
+        // 只有農曆有變化 - 農曆年份需要判斷是否為用戶新輸入的年份
         if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
-          const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
-          const gregorianYear = convertMinguoForStorage(minguoYear);
+          // 如果農曆年份是用戶新輸入的，需要進行年份判斷和轉換
+          const inputYear = parseInt(processedData.lunarBirthYear, 10);
+          let finalLunarYear;
           
-          processedData.lunarBirthYear = gregorianYear;
+          // 判斷是否為用戶新輸入的年份（通常小於1000表示民國年）
+          if (inputYear < 1000) {
+            const { minguoYear } = autoConvertToMinguo(inputYear);
+            finalLunarYear = convertMinguoForStorage(minguoYear);
+          } else {
+            // 已經是西元年，直接使用
+            finalLunarYear = inputYear;
+          }
+          
+          processedData.lunarBirthYear = finalLunarYear;
           processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
           processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
           
@@ -327,12 +337,22 @@ const StatusPage = () => {
               processedMember.lunarIsLeapMonth = false;
             }
           } else if (hasMemberLunarChanged) {
-            // 只有農曆有變化
+            // 只有農曆有變化 - 農曆年份需要判斷是否為用戶新輸入的年份
             if (processedMember.lunarBirthYear && processedMember.lunarBirthMonth && processedMember.lunarBirthDay) {
-              const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear, 10));
-              const gregorianYear = convertMinguoForStorage(minguoYear);
+              // 如果農曆年份是用戶新輸入的，需要進行年份判斷和轉換
+              const inputYear = parseInt(processedMember.lunarBirthYear, 10);
+              let finalLunarYear;
               
-              processedMember.lunarBirthYear = gregorianYear;
+              // 判斷是否為用戶新輸入的年份（通常小於1000表示民國年）
+              if (inputYear < 1000) {
+                const { minguoYear } = autoConvertToMinguo(inputYear);
+                finalLunarYear = convertMinguoForStorage(minguoYear);
+              } else {
+                // 已經是西元年，直接使用
+                finalLunarYear = inputYear;
+              }
+              
+              processedMember.lunarBirthYear = finalLunarYear;
               processedMember.lunarBirthMonth = parseInt(processedMember.lunarBirthMonth, 10);
               processedMember.lunarBirthDay = parseInt(processedMember.lunarBirthDay, 10);
               
