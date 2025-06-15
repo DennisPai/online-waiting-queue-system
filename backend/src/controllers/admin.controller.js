@@ -533,13 +533,17 @@ exports.updateQueueData = async (req, res) => {
       });
     }
     
-    // 前端已經進行了完整的日期轉換和虛歲計算，後端直接使用
-    // 移除重複的日期轉換邏輯，避免雙重轉換導致錯誤
-    console.log('後端接收到前端已處理的數據，直接儲存:', {
-      gregorianBirthYear: updateData.gregorianBirthYear,
-      lunarBirthYear: updateData.lunarBirthYear,
-      virtualAge: updateData.virtualAge
-    });
+    // 在保存前進行日期自動轉換
+    updateData = autoFillDates(updateData);
+    
+        // 處理家人資料的日期轉換
+    if (updateData.familyMembers && updateData.familyMembers.length > 0) {
+      const familyData = autoFillFamilyMembersDates({ familyMembers: updateData.familyMembers });
+      updateData.familyMembers = familyData.familyMembers;
+    }
+
+    // 計算虛歲
+    updateData = addVirtualAge(updateData);
 
     // 更新允許的欄位
     const allowedFields = [
