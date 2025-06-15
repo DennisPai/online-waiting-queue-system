@@ -87,20 +87,31 @@ export function gregorianToLunar(year, month, day) {
  */
 export function lunarToGregorian(year, month, day, isLeapMonth = false) {
   try {
+    console.log('=== lunarToGregorian 調試 ===');
+    console.log('輸入參數:', { year, month, day, isLeapMonth });
+    
     // 創建農曆日期對象，閏月月份用負數表示
     const lunarMonth = isLeapMonth ? -month : month;
+    console.log('準備創建 Lunar 對象:', { year, lunarMonth, day });
+    
     const lunar = Lunar.fromYmd(year, lunarMonth, day);
+    console.log('成功創建 Lunar 對象:', lunar);
     
     // 轉換為國曆
     const solar = lunar.getSolar();
+    console.log('轉換得到的 Solar 對象:', solar);
     
-    return {
+    const result = {
       year: solar.getYear(),
       month: solar.getMonth(),
       day: solar.getDay()
     };
+    
+    console.log('最終返回結果:', result);
+    return result;
   } catch (error) {
     console.error('農曆轉國曆錯誤:', error);
+    console.error('輸入參數:', { year, month, day, isLeapMonth });
     throw new Error('農曆日期轉換失敗');
   }
 }
