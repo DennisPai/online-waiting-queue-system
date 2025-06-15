@@ -258,17 +258,15 @@ const StatusPage = () => {
           processedData.lunarIsLeapMonth = false;
         }
       } else if (hasLunarChanged) {
-        // 只有農曆有變化 - 完全仿效登記候位的處理方式
+        // 只有農曆有變化
         if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
+          // 農曆年份也使用民國年輸入，完全仿效登記功能的處理方式
           const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
-          const gregorianYear = convertMinguoForStorage(minguoYear);
+          const gregorianFormatLunarYear = convertMinguoForStorage(minguoYear);
           
-          // 仿效RegisterPage的邏輯：農曆模式下，lunarBirthYear使用轉換後的西元年
-          processedData.lunarBirthYear = gregorianYear;
+          processedData.lunarBirthYear = gregorianFormatLunarYear;
           processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
           processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
-          // 確保lunarIsLeapMonth有正確的值
-          processedData.lunarIsLeapMonth = processedData.lunarIsLeapMonth || false;
           
           // 清空國曆資料，讓autoFillDates重新轉換
           processedData.gregorianBirthYear = null;
@@ -332,10 +330,11 @@ const StatusPage = () => {
           } else if (hasMemberLunarChanged) {
             // 只有農曆有變化
             if (processedMember.lunarBirthYear && processedMember.lunarBirthMonth && processedMember.lunarBirthDay) {
+              // 農曆年份也使用民國年輸入，完全仿效登記功能的處理方式
               const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear, 10));
-              const gregorianYear = convertMinguoForStorage(minguoYear);
+              const gregorianFormatLunarYear = convertMinguoForStorage(minguoYear);
               
-              processedMember.lunarBirthYear = gregorianYear;
+              processedMember.lunarBirthYear = gregorianFormatLunarYear;
               processedMember.lunarBirthMonth = parseInt(processedMember.lunarBirthMonth, 10);
               processedMember.lunarBirthDay = parseInt(processedMember.lunarBirthDay, 10);
               
@@ -434,8 +433,6 @@ const StatusPage = () => {
       ...newFamilyMembers[index],
       [field]: value
     };
-
-
 
     setEditData({
       ...editData,
