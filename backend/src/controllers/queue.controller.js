@@ -849,15 +849,30 @@ exports.updateQueueByCustomer = async (req, res) => {
       });
     }
     
-    // 前端已經完成所有年份判斷、日期轉換和虛歲計算，後端直接使用
+    // 前端已經完成所有處理邏輯，後端直接使用數據
+    // 不需要再次進行日期轉換，避免重複處理導致錯誤
     let processedUpdateData = updateData;
+    
+    // 如果前端沒有進行完整處理（兼容性處理），才進行後端轉換
+    if (processedUpdateData.needsBackendProcessing) {
+      processedUpdateData = autoFillDates(processedUpdateData);
+      
+      // 處理家人資料的日期轉換
+      if (processedUpdateData.familyMembers && processedUpdateData.familyMembers.length > 0) {
+        const familyData = autoFillFamilyMembersDates({ familyMembers: processedUpdateData.familyMembers });
+        processedUpdateData.familyMembers = familyData.familyMembers;
+      }
+      
+      // 移除處理標記
+      delete processedUpdateData.needsBackendProcessing;
+    }
     
     // 允許修改的欄位
     const allowedFields = [
       'name', 'phone', 'email', 'gender',
       'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
-      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails'
+      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'virtualAge'
     ];
     
     // 更新資料

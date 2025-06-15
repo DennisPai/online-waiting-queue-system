@@ -258,12 +258,11 @@ const StatusPage = () => {
           processedData.lunarIsLeapMonth = false;
         }
       } else if (hasLunarChanged) {
-        // 只有農曆有變化 - 關鍵修正：農曆年也需要正確的年份判斷和轉換
+        // 只有農曆有變化
         if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
           const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
           const gregorianYear = convertMinguoForStorage(minguoYear);
           
-          // 修正：將轉換後的西元年正確賦值給農曆年份欄位
           processedData.lunarBirthYear = gregorianYear;
           processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
           processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
