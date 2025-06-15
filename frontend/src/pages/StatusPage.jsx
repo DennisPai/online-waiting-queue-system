@@ -59,7 +59,8 @@ import {
   formatMinguoYear, 
   formatMinguoDate,
   autoConvertToMinguo,
-  convertMinguoForStorage
+  convertMinguoForStorage,
+  addVirtualAge
 } from '../utils/calendarConverter';
 
 const StatusPage = () => {

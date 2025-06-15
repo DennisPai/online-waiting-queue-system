@@ -350,32 +350,42 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
         }
       }
       
-      // 轉換日期欄位格式以符合後端期望
-      if (submitData.calendarType === 'gregorian') {
-        submitData.gregorianBirthYear = submitData.birthYear ? parseInt(submitData.birthYear) : null;
-        submitData.gregorianBirthMonth = submitData.birthMonth ? parseInt(submitData.birthMonth) : null;
-        submitData.gregorianBirthDay = submitData.birthDay ? parseInt(submitData.birthDay) : null;
-      } else if (submitData.calendarType === 'lunar') {
-        submitData.lunarBirthYear = submitData.birthYear ? parseInt(submitData.birthYear) : null;
-        submitData.lunarBirthMonth = submitData.birthMonth ? parseInt(submitData.birthMonth) : null;
-        submitData.lunarBirthDay = submitData.birthDay ? parseInt(submitData.birthDay) : null;
-        submitData.lunarIsLeapMonth = submitData.lunarIsLeapMonth || false;
+      // 轉換日期欄位格式以符合後端期望 - 完全仿效登記候位流程
+      if (submitData.birthYear) {
+        const { minguoYear } = autoConvertToMinguo(parseInt(submitData.birthYear, 10));
+        const gregorianYear = convertMinguoForStorage(minguoYear);
+        
+        if (submitData.calendarType === 'gregorian') {
+          submitData.gregorianBirthYear = gregorianYear;
+          submitData.gregorianBirthMonth = submitData.birthMonth ? parseInt(submitData.birthMonth) : null;
+          submitData.gregorianBirthDay = submitData.birthDay ? parseInt(submitData.birthDay) : null;
+        } else if (submitData.calendarType === 'lunar') {
+          submitData.lunarBirthYear = gregorianYear;
+          submitData.lunarBirthMonth = submitData.birthMonth ? parseInt(submitData.birthMonth) : null;
+          submitData.lunarBirthDay = submitData.birthDay ? parseInt(submitData.birthDay) : null;
+          submitData.lunarIsLeapMonth = submitData.lunarIsLeapMonth || false;
+        }
       }
       
-      // 處理家人數據的日期欄位
+      // 處理家人數據的日期欄位 - 完全仿效登記候位流程
       if (submitData.familyMembers && submitData.familyMembers.length > 0) {
         submitData.familyMembers = submitData.familyMembers.map(member => {
           const processedMember = { ...member };
           
-          if (member.calendarType === 'gregorian') {
-            processedMember.gregorianBirthYear = member.birthYear ? parseInt(member.birthYear) : null;
-            processedMember.gregorianBirthMonth = member.birthMonth ? parseInt(member.birthMonth) : null;
-            processedMember.gregorianBirthDay = member.birthDay ? parseInt(member.birthDay) : null;
-          } else if (member.calendarType === 'lunar') {
-            processedMember.lunarBirthYear = member.birthYear ? parseInt(member.birthYear) : null;
-            processedMember.lunarBirthMonth = member.birthMonth ? parseInt(member.birthMonth) : null;
-            processedMember.lunarBirthDay = member.birthDay ? parseInt(member.birthDay) : null;
-            processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
+          if (member.birthYear) {
+            const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear, 10));
+            const gregorianYear = convertMinguoForStorage(minguoYear);
+            
+            if (member.calendarType === 'gregorian') {
+              processedMember.gregorianBirthYear = gregorianYear;
+              processedMember.gregorianBirthMonth = member.birthMonth ? parseInt(member.birthMonth) : null;
+              processedMember.gregorianBirthDay = member.birthDay ? parseInt(member.birthDay) : null;
+            } else if (member.calendarType === 'lunar') {
+              processedMember.lunarBirthYear = gregorianYear;
+              processedMember.lunarBirthMonth = member.birthMonth ? parseInt(member.birthMonth) : null;
+              processedMember.lunarBirthDay = member.birthDay ? parseInt(member.birthDay) : null;
+              processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
+            }
           }
           
           return processedMember;
