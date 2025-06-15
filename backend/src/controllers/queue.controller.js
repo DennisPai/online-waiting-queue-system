@@ -849,14 +849,8 @@ exports.updateQueueByCustomer = async (req, res) => {
       });
     }
     
-    // 在保存前進行日期自動轉換
-    let processedUpdateData = autoFillDates(updateData);
-    
-    // 處理家人資料的日期轉換
-    if (processedUpdateData.familyMembers && processedUpdateData.familyMembers.length > 0) {
-      const familyData = autoFillFamilyMembersDates({ familyMembers: processedUpdateData.familyMembers });
-      processedUpdateData.familyMembers = familyData.familyMembers;
-    }
+    // 前端已完成所有日期轉換和虛歲計算，後端直接使用
+    let processedUpdateData = updateData;
     
     // 允許修改的欄位
     const allowedFields = [
