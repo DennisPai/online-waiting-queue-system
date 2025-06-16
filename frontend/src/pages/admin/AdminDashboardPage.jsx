@@ -88,7 +88,8 @@ import {
   calculateVirtualAge,
   autoConvertToMinguo,
   convertMinguoForStorage,
-  addVirtualAge 
+  addVirtualAge,
+  gregorianToMinguo 
 } from '../../utils/calendarConverter';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import RegisterForm from '../RegisterForm';
@@ -592,13 +593,13 @@ const AdminDashboardPage = () => {
           processedData.lunarIsLeapMonth = false;
         }
       } else if (hasLunarChanged) {
-        // 只有農曆有變化 - 完全仿效登記候位的處理流程
+        // 只有農曆有變化
         if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
-          // 判斷農曆年份是民國或西元，轉換為西元年
+          // 判斷農曆年份是民國年還是西元年，並轉換為西元年
           const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
           const gregorianYear = convertMinguoForStorage(minguoYear);
           
-          // 設置農曆資料為西元年形式，清空國曆讓autoFillDates處理
+          // 農曆年份也需要轉換為西元年，因為autoFillDates期望西元年格式
           processedData.lunarBirthYear = gregorianYear;
           processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
           processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
@@ -663,13 +664,13 @@ const AdminDashboardPage = () => {
               processedMember.lunarIsLeapMonth = false;
             }
           } else if (hasMemberLunarChanged) {
-            // 只有農曆有變化 - 完全仿效登記候位的處理流程
+            // 只有農曆有變化
             if (processedMember.lunarBirthYear && processedMember.lunarBirthMonth && processedMember.lunarBirthDay) {
-              // 判斷農曆年份是民國或西元，轉換為西元年
+              // 判斷農曆年份是民國年還是西元年，並轉換為西元年
               const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear, 10));
               const gregorianYear = convertMinguoForStorage(minguoYear);
               
-              // 設置農曆資料為西元年形式，清空國曆讓autoFillDates處理
+              // 農曆年份也需要轉換為西元年，因為autoFillDates期望西元年格式
               processedMember.lunarBirthYear = gregorianYear;
               processedMember.lunarBirthMonth = parseInt(processedMember.lunarBirthMonth, 10);
               processedMember.lunarBirthDay = parseInt(processedMember.lunarBirthDay, 10);
@@ -797,9 +798,8 @@ const AdminDashboardPage = () => {
       
       // 顯示農曆出生日期（使用民國年）
       if (member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay) {
-        const minguoYear = member.lunarBirthYear - 1911;
         const leapText = member.lunarIsLeapMonth ? ' 閏月' : '';
-        birthInfos.push(`民國${minguoYear}年${member.lunarBirthMonth}月${member.lunarBirthDay}日 (農曆${leapText})`);
+        birthInfos.push(`${formatMinguoDate(member.lunarBirthYear, member.lunarBirthMonth, member.lunarBirthDay)} (農曆${leapText})`);
       }
       
       const birthInfo = birthInfos.length > 0 ? birthInfos.join(' / ') : '出生日期未設定';
@@ -1131,10 +1131,10 @@ const AdminDashboardPage = () => {
   const formatBirthDateColumn = (row) => {
     // 顯示國曆或農曆出生日期（使用民國年）
     if (row.gregorianBirthYear && row.gregorianBirthMonth && row.gregorianBirthDay) {
-      const minguoYear = row.gregorianBirthYear - 1911;
+      const minguoYear = gregorianToMinguo(row.gregorianBirthYear);
       return `國曆民國${minguoYear}/${row.gregorianBirthMonth}/${row.gregorianBirthDay}`;
     } else if (row.lunarBirthYear && row.lunarBirthMonth && row.lunarBirthDay) {
-      const minguoYear = row.lunarBirthYear - 1911;
+      const minguoYear = gregorianToMinguo(row.lunarBirthYear);
       const leapText = row.lunarIsLeapMonth ? '閏' : '';
       return `農曆民國${minguoYear}/${leapText}${row.lunarBirthMonth}/${row.lunarBirthDay}`;
     }
@@ -1690,13 +1690,13 @@ const AdminDashboardPage = () => {
                       {/* 顯示國曆出生日期（民國年） */}
                       {selectedRecord.gregorianBirthYear && (
                         <Typography variant="body2" sx={{ mt: 1 }}>
-                          國曆: 民國{selectedRecord.gregorianBirthYear - 1911}年{selectedRecord.gregorianBirthMonth}月{selectedRecord.gregorianBirthDay}日
+                          國曆: {formatMinguoDate(selectedRecord.gregorianBirthYear, selectedRecord.gregorianBirthMonth, selectedRecord.gregorianBirthDay)}
                         </Typography>
                       )}
                       {/* 顯示農曆出生日期（民國年） */}
                       {selectedRecord.lunarBirthYear && (
                         <Typography variant="body2" sx={{ mt: 1 }}>
-                          農曆: 民國{selectedRecord.lunarBirthYear - 1911}年{selectedRecord.lunarBirthMonth}月{selectedRecord.lunarBirthDay}日
+                          農曆: {formatMinguoDate(selectedRecord.lunarBirthYear, selectedRecord.lunarBirthMonth, selectedRecord.lunarBirthDay)}
                           {selectedRecord.lunarIsLeapMonth && ' (閏月)'}
                         </Typography>
                       )}

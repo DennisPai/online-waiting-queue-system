@@ -258,13 +258,13 @@ const StatusPage = () => {
           processedData.lunarIsLeapMonth = false;
         }
       } else if (hasLunarChanged) {
-        // 只有農曆有變化 - 完全仿效登記候位的處理流程
+        // 只有農曆有變化
         if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
-          // 判斷農曆年份是民國或西元，轉換為西元年
+          // 判斷農曆年份是民國年還是西元年，並轉換為西元年
           const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
           const gregorianYear = convertMinguoForStorage(minguoYear);
           
-          // 設置農曆資料為西元年形式，清空國曆讓autoFillDates處理
+          // 農曆年份也需要轉換為西元年，因為autoFillDates期望西元年格式
           processedData.lunarBirthYear = gregorianYear;
           processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
           processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
@@ -329,13 +329,13 @@ const StatusPage = () => {
               processedMember.lunarIsLeapMonth = false;
             }
           } else if (hasMemberLunarChanged) {
-            // 只有農曆有變化 - 完全仿效登記候位的處理流程
+            // 只有農曆有變化
             if (processedMember.lunarBirthYear && processedMember.lunarBirthMonth && processedMember.lunarBirthDay) {
-              // 判斷農曆年份是民國或西元，轉換為西元年
+              // 判斷農曆年份是民國年還是西元年，並轉換為西元年
               const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear, 10));
               const gregorianYear = convertMinguoForStorage(minguoYear);
               
-              // 設置農曆資料為西元年形式，清空國曆讓autoFillDates處理
+              // 農曆年份也需要轉換為西元年，因為autoFillDates期望西元年格式
               processedMember.lunarBirthYear = gregorianYear;
               processedMember.lunarBirthMonth = parseInt(processedMember.lunarBirthMonth, 10);
               processedMember.lunarBirthDay = parseInt(processedMember.lunarBirthDay, 10);
