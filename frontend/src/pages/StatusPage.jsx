@@ -147,12 +147,32 @@ const StatusPage = () => {
       record: record,
       mode: 'view'
     });
-    // 初始化編輯資料，確保地址和家人資料結構正確
+    
+    // 初始化編輯資料，將西元年轉換為民國年供編輯使用
+    const editableData = { ...record };
+    
+    // 轉換主客戶的年份為民國年
+    if (editableData.gregorianBirthYear) {
+      editableData.gregorianBirthYear = editableData.gregorianBirthYear - 1911;
+    }
+    if (editableData.lunarBirthYear) {
+      editableData.lunarBirthYear = editableData.lunarBirthYear - 1911;
+    }
+    
+    // 轉換家人的年份為民國年
+    if (editableData.familyMembers && editableData.familyMembers.length > 0) {
+      editableData.familyMembers = editableData.familyMembers.map(member => ({
+        ...member,
+        gregorianBirthYear: member.gregorianBirthYear ? member.gregorianBirthYear - 1911 : member.gregorianBirthYear,
+        lunarBirthYear: member.lunarBirthYear ? member.lunarBirthYear - 1911 : member.lunarBirthYear
+      }));
+    }
+    
     setEditData({
-      ...record,
-      addresses: record.addresses || [],
-      familyMembers: record.familyMembers || [],
-      consultationTopics: record.consultationTopics || []
+      ...editableData,
+      addresses: editableData.addresses || [],
+      familyMembers: editableData.familyMembers || [],
+      consultationTopics: editableData.consultationTopics || []
     });
   };
 
