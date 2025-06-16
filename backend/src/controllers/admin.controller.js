@@ -1,6 +1,6 @@
 const WaitingRecord = require('../models/waiting-record.model');
 const SystemSetting = require('../models/system-setting.model');
-const { autoFillDates, autoFillFamilyMembersDates, addVirtualAge } = require('../utils/calendarConverter');
+const { autoFillDates, autoFillFamilyMembersDates, addVirtualAge, processEditBirthDateChanges, processFamilyMembersEditBirthDateChanges } = require('../utils/calendarConverter');
 
 // 確保 orderIndex 的一致性和唯一性
 async function ensureOrderIndexConsistency() {
@@ -532,13 +532,18 @@ exports.updateQueueData = async (req, res) => {
         message: '查無此候位記錄'
       });
     }
+
+    // 使用新的編輯邏輯處理主客戶出生日期變更
+    console.log('處理主客戶出生日期變更');
+    updateData = processEditBirthDateChanges(updateData, record.toObject());
     
-    // 在保存前進行日期自動轉換
-    updateData = autoFillDates(updateData);
-    
-        // 處理家人資料的日期轉換
+    // 處理家人資料的日期變更邏輯
     if (updateData.familyMembers && updateData.familyMembers.length > 0) {
-      const familyData = autoFillFamilyMembersDates({ familyMembers: updateData.familyMembers });
+      console.log('處理家人出生日期變更');
+      const familyData = processFamilyMembersEditBirthDateChanges(
+        { familyMembers: updateData.familyMembers },
+        { familyMembers: record.familyMembers || [] }
+      );
       updateData.familyMembers = familyData.familyMembers;
     }
 

@@ -238,4 +238,198 @@ export function autoFillFamilyMembersDates(data) {
   result.familyMembers = data.familyMembers.map(member => autoFillDates(member));
   
   return result;
+}
+
+/**
+ * 專門處理編輯客戶資料時的日期變更邏輯
+ * 完全仿效登記候位的處理流程
+ * @param {object} newData - 新的客戶資料
+ * @param {object} oldData - 舊的客戶資料 
+ * @returns {object} - 處理後的資料
+ */
+export function processEditBirthDateChanges(newData, oldData) {
+  try {
+    const result = { ...newData };
+    
+    // 檢查國曆年月日是否有變更
+    const gregorianChanged = (
+      newData.gregorianBirthYear !== oldData.gregorianBirthYear ||
+      newData.gregorianBirthMonth !== oldData.gregorianBirthMonth ||
+      newData.gregorianBirthDay !== oldData.gregorianBirthDay
+    );
+    
+    // 檢查農曆年月日是否有變更
+    const lunarChanged = (
+      newData.lunarBirthYear !== oldData.lunarBirthYear ||
+      newData.lunarBirthMonth !== oldData.lunarBirthMonth ||
+      newData.lunarBirthDay !== oldData.lunarBirthDay ||
+      newData.lunarIsLeapMonth !== oldData.lunarIsLeapMonth
+    );
+    
+    // 若國曆和農曆都有變更，以國曆為準
+    if (gregorianChanged && lunarChanged) {
+      console.log('國曆和農曆都有變更，以國曆為準');
+      
+      // 清空農曆資料
+      result.lunarBirthYear = null;
+      result.lunarBirthMonth = null;
+      result.lunarBirthDay = null;
+      result.lunarIsLeapMonth = false;
+      
+      // 處理國曆資料變更邏輯
+      return processGregorianDateChange(result);
+    }
+    // 若只有國曆有變更
+    else if (gregorianChanged) {
+      console.log('僅國曆有變更');
+      
+      // 清空農曆資料
+      result.lunarBirthYear = null;
+      result.lunarBirthMonth = null;
+      result.lunarBirthDay = null;
+      result.lunarIsLeapMonth = false;
+      
+      // 處理國曆資料變更邏輯
+      return processGregorianDateChange(result);
+    }
+    // 若只有農曆有變更
+    else if (lunarChanged) {
+      console.log('僅農曆有變更');
+      
+      // 清空國曆資料
+      result.gregorianBirthYear = null;
+      result.gregorianBirthMonth = null;
+      result.gregorianBirthDay = null;
+      
+      // 處理農曆資料變更邏輯
+      return processLunarDateChange(result);
+    }
+    // 若都沒有變更，直接返回
+    else {
+      console.log('出生日期無變更');
+      return result;
+    }
+    
+  } catch (error) {
+    console.error('處理編輯日期變更失敗:', error);
+    return newData;
+  }
+}
+
+/**
+ * 處理國曆資料變更邏輯（完全仿效登記候位流程）
+ * @param {object} data - 客戶資料
+ * @returns {object} - 處理後的資料
+ */
+function processGregorianDateChange(data) {
+  try {
+    const result = { ...data };
+    
+    // 檢查是否有完整的國曆年月日
+    if (result.gregorianBirthYear && result.gregorianBirthMonth && result.gregorianBirthDay) {
+      
+      // 步驟1: 判斷國曆年份為民國or西元 (仿效登記候位邏輯)
+      const { minguoYear } = autoConvertToMinguo(result.gregorianBirthYear);
+      const gregorianYear = convertMinguoForStorage(minguoYear);
+      
+      // 步驟2: 將國曆年份統一轉為西元年進行處理
+      result.gregorianBirthYear = gregorianYear;
+      
+      // 步驟3: 國曆轉農曆
+      const lunarDate = gregorianToLunar(
+        result.gregorianBirthYear,
+        result.gregorianBirthMonth,
+        result.gregorianBirthDay
+      );
+      
+      // 步驟4: 農曆西元資料填入農曆欄位
+      result.lunarBirthYear = lunarDate.year;
+      result.lunarBirthMonth = lunarDate.month;
+      result.lunarBirthDay = lunarDate.day;
+      result.lunarIsLeapMonth = lunarDate.isLeapMonth;
+      
+      console.log('國曆資料處理完成:', {
+        原始年份: data.gregorianBirthYear,
+        民國年: minguoYear,
+        西元年: gregorianYear,
+        轉換後農曆: lunarDate
+      });
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('處理國曆資料變更失敗:', error);
+    return data;
+  }
+}
+
+/**
+ * 處理農曆資料變更邏輯（完全仿效登記候位流程）
+ * @param {object} data - 客戶資料
+ * @returns {object} - 處理後的資料
+ */
+function processLunarDateChange(data) {
+  try {
+    const result = { ...data };
+    
+    // 檢查是否有完整的農曆年月日
+    if (result.lunarBirthYear && result.lunarBirthMonth && result.lunarBirthDay) {
+      
+      // 步驟1: 判斷農曆年份為民國or西元 (仿效登記候位邏輯)
+      const { minguoYear } = autoConvertToMinguo(result.lunarBirthYear);
+      const gregorianYear = convertMinguoForStorage(minguoYear);
+      
+      // 步驟2: 將農曆年份統一轉為西元年進行處理
+      result.lunarBirthYear = gregorianYear;
+      
+      // 步驟3: 農曆轉國曆
+      const gregorianDate = lunarToGregorian(
+        result.lunarBirthYear,
+        result.lunarBirthMonth,
+        result.lunarBirthDay,
+        result.lunarIsLeapMonth || false
+      );
+      
+      // 步驟4: 國曆西元資料填入國曆欄位
+      result.gregorianBirthYear = gregorianDate.year;
+      result.gregorianBirthMonth = gregorianDate.month;
+      result.gregorianBirthDay = gregorianDate.day;
+      
+      console.log('農曆資料處理完成:', {
+        原始年份: data.lunarBirthYear,
+        民國年: minguoYear,
+        西元年: gregorianYear,
+        轉換後國曆: gregorianDate
+      });
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('處理農曆資料變更失敗:', error);
+    return data;
+  }
+}
+
+/**
+ * 為家人資料處理編輯時的日期變更邏輯
+ * @param {object} newFamilyData - 包含新家人資料的對象
+ * @param {object} oldFamilyData - 包含舊家人資料的對象
+ * @returns {object} - 處理後的資料
+ */
+export function processFamilyMembersEditBirthDateChanges(newFamilyData, oldFamilyData = {}) {
+  if (!newFamilyData.familyMembers || !Array.isArray(newFamilyData.familyMembers)) {
+    return newFamilyData;
+  }
+  
+  const result = { ...newFamilyData };
+  const oldFamilyMembers = oldFamilyData.familyMembers || [];
+  
+  result.familyMembers = newFamilyData.familyMembers.map((member, index) => {
+    const oldMember = oldFamilyMembers[index] || {};
+    return processEditBirthDateChanges(member, oldMember);
+  });
+  
+  return result;
 } 
