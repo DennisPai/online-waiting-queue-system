@@ -209,8 +209,44 @@ const StatusPage = () => {
 
   const handleSaveData = async () => {
     try {
+      // 導入必要的轉換函數
+      const { autoConvertToMinguo, convertMinguoForStorage } = await import('../utils/calendarConverter');
+      
+      // 處理年份轉換（仿效登記候位的邏輯）
+      let processedData = { ...editData };
+      
+      // 處理主客戶的年份轉換
+      if (processedData.gregorianBirthYear) {
+        const { minguoYear } = autoConvertToMinguo(processedData.gregorianBirthYear);
+        processedData.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+      }
+      
+      if (processedData.lunarBirthYear) {
+        const { minguoYear } = autoConvertToMinguo(processedData.lunarBirthYear);
+        processedData.lunarBirthYear = convertMinguoForStorage(minguoYear);
+      }
+      
+      // 處理家人的年份轉換
+      if (processedData.familyMembers && processedData.familyMembers.length > 0) {
+        processedData.familyMembers = processedData.familyMembers.map(member => {
+          const processedMember = { ...member };
+          
+          if (processedMember.gregorianBirthYear) {
+            const { minguoYear } = autoConvertToMinguo(processedMember.gregorianBirthYear);
+            processedMember.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+          }
+          
+          if (processedMember.lunarBirthYear) {
+            const { minguoYear } = autoConvertToMinguo(processedMember.lunarBirthYear);
+            processedMember.lunarBirthYear = convertMinguoForStorage(minguoYear);
+          }
+          
+          return processedMember;
+        });
+      }
+      
       // 在保存前進行日期自動轉換
-      let processedData = autoFillDates(editData);
+      processedData = autoFillDates(processedData);
       
       // 處理家人資料的日期轉換 - 修正調用方式
       if (processedData.familyMembers && processedData.familyMembers.length > 0) {

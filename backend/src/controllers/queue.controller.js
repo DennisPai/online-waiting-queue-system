@@ -849,177 +849,26 @@ exports.updateQueueByCustomer = async (req, res) => {
       });
     }
     
-    // 仿效登記候位的處理流程：檢查並處理年份變化
-    const originalData = record.toObject();
-    
-    // 檢查國曆年月日是否有變化
-    const gregorianChanged = (
-      updateData.gregorianBirthYear !== originalData.gregorianBirthYear ||
-      updateData.gregorianBirthMonth !== originalData.gregorianBirthMonth ||
-      updateData.gregorianBirthDay !== originalData.gregorianBirthDay
-    );
-    
-    // 檢查農曆年月日是否有變化
-    const lunarChanged = (
-      updateData.lunarBirthYear !== originalData.lunarBirthYear ||
-      updateData.lunarBirthMonth !== originalData.lunarBirthMonth ||
-      updateData.lunarBirthDay !== originalData.lunarBirthDay ||
-      updateData.lunarIsLeapMonth !== originalData.lunarIsLeapMonth
-    );
-    
-    // 如果國曆和農曆都改變了，以國曆為準
-    if (gregorianChanged && lunarChanged) {
-      // 清空農曆資料，只處理國曆
-      updateData.lunarBirthYear = null;
-      updateData.lunarBirthMonth = null;
-      updateData.lunarBirthDay = null;
-      updateData.lunarIsLeapMonth = false;
-    }
-    
-    // 如果國曆年月日有變化，按照登記候位流程處理
-    if (gregorianChanged && updateData.gregorianBirthYear && updateData.gregorianBirthMonth && updateData.gregorianBirthDay) {
-      // 清空農曆資料（除非農曆沒變化）
-      if (gregorianChanged && !lunarChanged) {
-        updateData.lunarBirthYear = null;
-        updateData.lunarBirthMonth = null;
-        updateData.lunarBirthDay = null;
-        updateData.lunarIsLeapMonth = false;
-      }
-      
-      // 判斷新的國曆年份為民國or西元，如果民國則轉換成西元
-      const { minguoYear } = autoConvertToMinguo(updateData.gregorianBirthYear);
-      const gregorianYear = convertMinguoForStorage(minguoYear);
-      
-      // 更新為西元年
-      updateData.gregorianBirthYear = gregorianYear;
-    }
-    
-    // 如果農曆年月日有變化，按照登記候位流程處理
-    if (lunarChanged && !gregorianChanged && updateData.lunarBirthYear && updateData.lunarBirthMonth && updateData.lunarBirthDay) {
-      // 清空國曆資料
-      updateData.gregorianBirthYear = null;
-      updateData.gregorianBirthMonth = null;
-      updateData.gregorianBirthDay = null;
-      
-      // 判斷新的農曆年份為民國or西元，如果民國則轉換成西元
-      const { minguoYear } = autoConvertToMinguo(updateData.lunarBirthYear);
-      const gregorianYear = convertMinguoForStorage(minguoYear);
-      
-      // 先創建臨時資料進行農曆轉國曆
-      const tempData = {
-        lunarBirthYear: gregorianYear,
-        lunarBirthMonth: updateData.lunarBirthMonth,
-        lunarBirthDay: updateData.lunarBirthDay,
-        lunarIsLeapMonth: updateData.lunarIsLeapMonth
-      };
-      
-      // 用臨時資料進行農曆轉國曆
-      const convertedData = autoFillDates(tempData);
-      
-      // 保留原始的農曆年份（民國年），只更新國曆資料
-      updateData.gregorianBirthYear = convertedData.gregorianBirthYear;
-      updateData.gregorianBirthMonth = convertedData.gregorianBirthMonth;
-      updateData.gregorianBirthDay = convertedData.gregorianBirthDay;
-      // 農曆年份保持原值，不進行後續的autoFillDates處理
-    }
-    
-    // 處理家人資料的年份轉換
-    if (updateData.familyMembers && updateData.familyMembers.length > 0) {
-      updateData.familyMembers = updateData.familyMembers.map((member, index) => {
-        const originalMember = originalData.familyMembers && originalData.familyMembers[index] 
-          ? originalData.familyMembers[index] : {};
-        
-        // 檢查家人國曆年月日是否有變化
-        const memberGregorianChanged = (
-          member.gregorianBirthYear !== originalMember.gregorianBirthYear ||
-          member.gregorianBirthMonth !== originalMember.gregorianBirthMonth ||
-          member.gregorianBirthDay !== originalMember.gregorianBirthDay
-        );
-        
-        // 檢查家人農曆年月日是否有變化
-        const memberLunarChanged = (
-          member.lunarBirthYear !== originalMember.lunarBirthYear ||
-          member.lunarBirthMonth !== originalMember.lunarBirthMonth ||
-          member.lunarBirthDay !== originalMember.lunarBirthDay ||
-          member.lunarIsLeapMonth !== originalMember.lunarIsLeapMonth
-        );
-        
-        // 如果國曆和農曆都改變了，以國曆為準
-        if (memberGregorianChanged && memberLunarChanged) {
-          member.lunarBirthYear = null;
-          member.lunarBirthMonth = null;
-          member.lunarBirthDay = null;
-          member.lunarIsLeapMonth = false;
-        }
-        
-        // 如果家人國曆年月日有變化，按照登記候位流程處理
-        if (memberGregorianChanged && member.gregorianBirthYear && member.gregorianBirthMonth && member.gregorianBirthDay) {
-          // 清空農曆資料（除非農曆沒變化）
-          if (memberGregorianChanged && !memberLunarChanged) {
-            member.lunarBirthYear = null;
-            member.lunarBirthMonth = null;
-            member.lunarBirthDay = null;
-            member.lunarIsLeapMonth = false;
-          }
-          
-          // 判斷年份為民國or西元，如果民國則轉換成西元
-          const { minguoYear } = autoConvertToMinguo(member.gregorianBirthYear);
-          const gregorianYear = convertMinguoForStorage(minguoYear);
-          member.gregorianBirthYear = gregorianYear;
-        }
-        
-        // 如果家人農曆年月日有變化，按照登記候位流程處理
-        if (memberLunarChanged && !memberGregorianChanged && member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay) {
-          // 清空國曆資料
-          member.gregorianBirthYear = null;
-          member.gregorianBirthMonth = null;
-          member.gregorianBirthDay = null;
-          
-          // 判斷年份為民國or西元，如果民國則轉換成西元
-          const { minguoYear } = autoConvertToMinguo(member.lunarBirthYear);
-          const gregorianYear = convertMinguoForStorage(minguoYear);
-          
-          // 先創建臨時資料進行農曆轉國曆
-          const tempMemberData = {
-            lunarBirthYear: gregorianYear,
-            lunarBirthMonth: member.lunarBirthMonth,
-            lunarBirthDay: member.lunarBirthDay,
-            lunarIsLeapMonth: member.lunarIsLeapMonth
-          };
-          
-          // 用臨時資料進行農曆轉國曆
-          const convertedMemberData = autoFillDates(tempMemberData);
-          
-          // 保留原始的農曆年份（民國年），只更新國曆資料
-          member.gregorianBirthYear = convertedMemberData.gregorianBirthYear;
-          member.gregorianBirthMonth = convertedMemberData.gregorianBirthMonth;
-          member.gregorianBirthDay = convertedMemberData.gregorianBirthDay;
-          // 農曆年份保持原值
-        }
-        
-        return member;
-      });
-    }
+    // 仿效登記候位的處理流程：前端已處理年份轉換，後端只需進行日期轉換
     
     // 在保存前進行日期自動轉換（國曆轉農曆或農曆轉國曆）
-    // 但如果農曆年月日有變化，則已經處理過轉換，跳過
-    let processedUpdateData = updateData;
-    if (!(lunarChanged && !gregorianChanged && updateData.lunarBirthYear && updateData.lunarBirthMonth && updateData.lunarBirthDay)) {
-      processedUpdateData = autoFillDates(updateData);
-    }
+    let processedUpdateData = autoFillDates(updateData);
     
     // 處理家人資料的日期轉換
     if (processedUpdateData.familyMembers && processedUpdateData.familyMembers.length > 0) {
       const familyData = autoFillFamilyMembersDates({ familyMembers: processedUpdateData.familyMembers });
       processedUpdateData.familyMembers = familyData.familyMembers;
     }
+
+    // 計算虛歲
+    processedUpdateData = addVirtualAge(processedUpdateData);
     
     // 允許修改的欄位
     const allowedFields = [
       'name', 'phone', 'email', 'gender',
       'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
-      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails'
+      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'virtualAge'
     ];
     
     // 更新資料

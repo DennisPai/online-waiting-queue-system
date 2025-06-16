@@ -85,7 +85,9 @@ import {
   autoFillFamilyMembersDates, 
   formatMinguoYear, 
   formatMinguoDate,
-  calculateVirtualAge 
+  calculateVirtualAge,
+  autoConvertToMinguo,
+  convertMinguoForStorage 
 } from '../../utils/calendarConverter';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import RegisterForm from '../RegisterForm';
@@ -541,8 +543,43 @@ const AdminDashboardPage = () => {
   // 保存編輯的資料
   const handleSaveData = () => {
     if (selectedRecord && editMode) {
+      // 處理年份轉換（仿效登記候位的邏輯）
+      
+      // 處理年份轉換（仿效登記候位的邏輯）
+      let processedData = { ...editedData };
+      
+      // 處理主客戶的年份轉換
+      if (processedData.gregorianBirthYear) {
+        const { minguoYear } = autoConvertToMinguo(processedData.gregorianBirthYear);
+        processedData.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+      }
+      
+      if (processedData.lunarBirthYear) {
+        const { minguoYear } = autoConvertToMinguo(processedData.lunarBirthYear);
+        processedData.lunarBirthYear = convertMinguoForStorage(minguoYear);
+      }
+      
+      // 處理家人的年份轉換
+      if (processedData.familyMembers && processedData.familyMembers.length > 0) {
+        processedData.familyMembers = processedData.familyMembers.map(member => {
+          const processedMember = { ...member };
+          
+          if (processedMember.gregorianBirthYear) {
+            const { minguoYear } = autoConvertToMinguo(processedMember.gregorianBirthYear);
+            processedMember.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+          }
+          
+          if (processedMember.lunarBirthYear) {
+            const { minguoYear } = autoConvertToMinguo(processedMember.lunarBirthYear);
+            processedMember.lunarBirthYear = convertMinguoForStorage(minguoYear);
+          }
+          
+          return processedMember;
+        });
+      }
+      
       // 在保存前進行日期自動轉換
-      let processedData = autoFillDates(editedData);
+      processedData = autoFillDates(processedData);
       
       // 處理家人資料的日期轉換
       if (processedData.familyMembers && processedData.familyMembers.length > 0) {
