@@ -905,8 +905,22 @@ exports.updateQueueByCustomer = async (req, res) => {
       const { minguoYear } = autoConvertToMinguo(updateData.lunarBirthYear);
       const gregorianYear = convertMinguoForStorage(minguoYear);
       
-      // 更新為西元年
-      updateData.lunarBirthYear = gregorianYear;
+      // 先創建臨時資料進行農曆轉國曆
+      const tempData = {
+        lunarBirthYear: gregorianYear,
+        lunarBirthMonth: updateData.lunarBirthMonth,
+        lunarBirthDay: updateData.lunarBirthDay,
+        lunarIsLeapMonth: updateData.lunarIsLeapMonth
+      };
+      
+      // 用臨時資料進行農曆轉國曆
+      const convertedData = autoFillDates(tempData);
+      
+      // 保留原始的農曆年份（民國年），只更新國曆資料
+      updateData.gregorianBirthYear = convertedData.gregorianBirthYear;
+      updateData.gregorianBirthMonth = convertedData.gregorianBirthMonth;
+      updateData.gregorianBirthDay = convertedData.gregorianBirthDay;
+      // 農曆年份保持原值，不進行後續的autoFillDates處理
     }
     
     // 處理家人資料的年份轉換
@@ -964,7 +978,23 @@ exports.updateQueueByCustomer = async (req, res) => {
           // 判斷年份為民國or西元，如果民國則轉換成西元
           const { minguoYear } = autoConvertToMinguo(member.lunarBirthYear);
           const gregorianYear = convertMinguoForStorage(minguoYear);
-          member.lunarBirthYear = gregorianYear;
+          
+          // 先創建臨時資料進行農曆轉國曆
+          const tempMemberData = {
+            lunarBirthYear: gregorianYear,
+            lunarBirthMonth: member.lunarBirthMonth,
+            lunarBirthDay: member.lunarBirthDay,
+            lunarIsLeapMonth: member.lunarIsLeapMonth
+          };
+          
+          // 用臨時資料進行農曆轉國曆
+          const convertedMemberData = autoFillDates(tempMemberData);
+          
+          // 保留原始的農曆年份（民國年），只更新國曆資料
+          member.gregorianBirthYear = convertedMemberData.gregorianBirthYear;
+          member.gregorianBirthMonth = convertedMemberData.gregorianBirthMonth;
+          member.gregorianBirthDay = convertedMemberData.gregorianBirthDay;
+          // 農曆年份保持原值
         }
         
         return member;
@@ -972,7 +1002,11 @@ exports.updateQueueByCustomer = async (req, res) => {
     }
     
     // 在保存前進行日期自動轉換（國曆轉農曆或農曆轉國曆）
-    let processedUpdateData = autoFillDates(updateData);
+    // 但如果農曆年月日有變化，則已經處理過轉換，跳過
+    let processedUpdateData = updateData;
+    if (!(lunarChanged && !gregorianChanged && updateData.lunarBirthYear && updateData.lunarBirthMonth && updateData.lunarBirthDay)) {
+      processedUpdateData = autoFillDates(updateData);
+    }
     
     // 處理家人資料的日期轉換
     if (processedUpdateData.familyMembers && processedUpdateData.familyMembers.length > 0) {
