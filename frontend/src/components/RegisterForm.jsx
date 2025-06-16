@@ -355,15 +355,15 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
         const { minguoYear } = autoConvertToMinguo(parseInt(submitData.birthYear, 10));
         const gregorianYear = convertMinguoForStorage(minguoYear);
         
-        if (submitData.calendarType === 'gregorian') {
+      if (submitData.calendarType === 'gregorian') {
           submitData.gregorianBirthYear = gregorianYear;
-          submitData.gregorianBirthMonth = submitData.birthMonth ? parseInt(submitData.birthMonth) : null;
-          submitData.gregorianBirthDay = submitData.birthDay ? parseInt(submitData.birthDay) : null;
-        } else if (submitData.calendarType === 'lunar') {
+        submitData.gregorianBirthMonth = submitData.birthMonth ? parseInt(submitData.birthMonth) : null;
+        submitData.gregorianBirthDay = submitData.birthDay ? parseInt(submitData.birthDay) : null;
+      } else if (submitData.calendarType === 'lunar') {
           submitData.lunarBirthYear = gregorianYear;
-          submitData.lunarBirthMonth = submitData.birthMonth ? parseInt(submitData.birthMonth) : null;
-          submitData.lunarBirthDay = submitData.birthDay ? parseInt(submitData.birthDay) : null;
-          submitData.lunarIsLeapMonth = submitData.lunarIsLeapMonth || false;
+        submitData.lunarBirthMonth = submitData.birthMonth ? parseInt(submitData.birthMonth) : null;
+        submitData.lunarBirthDay = submitData.birthDay ? parseInt(submitData.birthDay) : null;
+        submitData.lunarIsLeapMonth = submitData.lunarIsLeapMonth || false;
         }
       }
       
@@ -375,16 +375,16 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
           if (member.birthYear) {
             const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear, 10));
             const gregorianYear = convertMinguoForStorage(minguoYear);
-            
-            if (member.calendarType === 'gregorian') {
+          
+          if (member.calendarType === 'gregorian') {
               processedMember.gregorianBirthYear = gregorianYear;
-              processedMember.gregorianBirthMonth = member.birthMonth ? parseInt(member.birthMonth) : null;
-              processedMember.gregorianBirthDay = member.birthDay ? parseInt(member.birthDay) : null;
-            } else if (member.calendarType === 'lunar') {
+            processedMember.gregorianBirthMonth = member.birthMonth ? parseInt(member.birthMonth) : null;
+            processedMember.gregorianBirthDay = member.birthDay ? parseInt(member.birthDay) : null;
+          } else if (member.calendarType === 'lunar') {
               processedMember.lunarBirthYear = gregorianYear;
-              processedMember.lunarBirthMonth = member.birthMonth ? parseInt(member.birthMonth) : null;
-              processedMember.lunarBirthDay = member.birthDay ? parseInt(member.birthDay) : null;
-              processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
+            processedMember.lunarBirthMonth = member.birthMonth ? parseInt(member.birthMonth) : null;
+            processedMember.lunarBirthDay = member.birthDay ? parseInt(member.birthDay) : null;
+            processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
             }
           }
           

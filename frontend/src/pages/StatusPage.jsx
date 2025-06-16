@@ -147,32 +147,12 @@ const StatusPage = () => {
       record: record,
       mode: 'view'
     });
-    
-    // 初始化編輯資料，將西元年轉換為民國年供編輯使用
-    const editableData = { ...record };
-    
-    // 轉換主客戶的年份為民國年
-    if (editableData.gregorianBirthYear) {
-      editableData.gregorianBirthYear = editableData.gregorianBirthYear - 1911;
-    }
-    if (editableData.lunarBirthYear) {
-      editableData.lunarBirthYear = editableData.lunarBirthYear - 1911;
-    }
-    
-    // 轉換家人的年份為民國年
-    if (editableData.familyMembers && editableData.familyMembers.length > 0) {
-      editableData.familyMembers = editableData.familyMembers.map(member => ({
-        ...member,
-        gregorianBirthYear: member.gregorianBirthYear ? member.gregorianBirthYear - 1911 : member.gregorianBirthYear,
-        lunarBirthYear: member.lunarBirthYear ? member.lunarBirthYear - 1911 : member.lunarBirthYear
-      }));
-    }
-    
+    // 初始化編輯資料，確保地址和家人資料結構正確
     setEditData({
-      ...editableData,
-      addresses: editableData.addresses || [],
-      familyMembers: editableData.familyMembers || [],
-      consultationTopics: editableData.consultationTopics || []
+      ...record,
+      addresses: record.addresses || [],
+      familyMembers: record.familyMembers || [],
+      consultationTopics: record.consultationTopics || []
     });
   };
 
@@ -278,11 +258,13 @@ const StatusPage = () => {
           processedData.lunarIsLeapMonth = false;
         }
       } else if (hasLunarChanged) {
-        // 只有農曆有變化
+        // 只有農曆有變化 - 完全仿效登記候位的處理流程
         if (processedData.lunarBirthYear && processedData.lunarBirthMonth && processedData.lunarBirthDay) {
+          // 判斷農曆年份是民國或西元，轉換為西元年
           const { minguoYear } = autoConvertToMinguo(parseInt(processedData.lunarBirthYear, 10));
           const gregorianYear = convertMinguoForStorage(minguoYear);
           
+          // 設置農曆資料為西元年形式，清空國曆讓autoFillDates處理
           processedData.lunarBirthYear = gregorianYear;
           processedData.lunarBirthMonth = parseInt(processedData.lunarBirthMonth, 10);
           processedData.lunarBirthDay = parseInt(processedData.lunarBirthDay, 10);
@@ -347,11 +329,13 @@ const StatusPage = () => {
               processedMember.lunarIsLeapMonth = false;
             }
           } else if (hasMemberLunarChanged) {
-            // 只有農曆有變化
+            // 只有農曆有變化 - 完全仿效登記候位的處理流程
             if (processedMember.lunarBirthYear && processedMember.lunarBirthMonth && processedMember.lunarBirthDay) {
+              // 判斷農曆年份是民國或西元，轉換為西元年
               const { minguoYear } = autoConvertToMinguo(parseInt(processedMember.lunarBirthYear, 10));
               const gregorianYear = convertMinguoForStorage(minguoYear);
               
+              // 設置農曆資料為西元年形式，清空國曆讓autoFillDates處理
               processedMember.lunarBirthYear = gregorianYear;
               processedMember.lunarBirthMonth = parseInt(processedMember.lunarBirthMonth, 10);
               processedMember.lunarBirthDay = parseInt(processedMember.lunarBirthDay, 10);
