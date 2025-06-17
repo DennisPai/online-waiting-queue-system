@@ -469,9 +469,16 @@ const AdminDashboardPage = () => {
   // 處理表單輸入變更
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    let processedValue = value;
+    
+    // 將queueNumber轉換為數字類型
+    if (name === 'queueNumber') {
+      processedValue = value === '' ? '' : parseInt(value, 10);
+    }
+    
     setEditedData({
       ...editedData,
-      [name]: value
+      [name]: processedValue
     });
   };
 
