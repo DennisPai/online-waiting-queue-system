@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Container,
@@ -76,8 +76,7 @@ import {
   updateOrderLocal,
   updateQueueData,
   deleteCustomer,
-  clearAllQueue,
-  checkDuplicateQueueNumbers
+  clearAllQueue
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
 import ExportDialog from '../../components/ExportDialog';
@@ -114,7 +113,7 @@ const AVAILABLE_COLUMNS = {
 
 const AdminDashboardPage = () => {
   const dispatch = useDispatch();
-  const { queueList, pagination, currentQueue, isLoading, error, duplicateRecordIds } = useSelector(
+  const { queueList, pagination, currentQueue, isLoading, error } = useSelector(
     (state) => state.queue
   );
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -158,6 +157,17 @@ const AdminDashboardPage = () => {
   const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
 
+  // 計算重複的客戶號碼集合，若出現>1次視為重複
+  const duplicateQueueNumbers = useMemo(() => {
+    const counts = {};
+    localQueueList.forEach(item => {
+      if (item.queueNumber !== undefined && item.queueNumber !== null) {
+        counts[item.queueNumber] = (counts[item.queueNumber] || 0) + 1;
+      }
+    });
+    return new Set(Object.keys(counts).filter(num => counts[num] > 1).map(Number));
+  }, [localQueueList]);
+
   // 初始加載候位列表和當前候位狀態
   useEffect(() => {
     loadQueueList();
@@ -169,13 +179,6 @@ const AdminDashboardPage = () => {
     // 無論queueList是否為空都要更新localQueueList
     setLocalQueueList(queueList || []);
   }, [queueList]);
-
-  // 檢查重複的客戶號碼
-  useEffect(() => {
-    if (queueList && queueList.length > 0) {
-      dispatch(checkDuplicateQueueNumbers());
-    }
-  }, [queueList, dispatch]);
 
   const loadQueueList = useCallback(() => {
     const status = currentTab === 0 ? undefined : 'cancelled';
@@ -401,7 +404,6 @@ const AdminDashboardPage = () => {
     setSelectedRecord(record);
     setEditMode(false);
     setEditedData({});
-    setOpenDialog(true);
   };
 
   // 關閉詳細資料對話框
@@ -415,10 +417,10 @@ const AdminDashboardPage = () => {
   const handleEnterEditMode = () => {
     if (selectedRecord) {
       setEditedData({
+        queueNumber: selectedRecord.queueNumber,
         name: selectedRecord.name,
         email: selectedRecord.email,
         phone: selectedRecord.phone,
-        queueNumber: selectedRecord.queueNumber,
         gender: selectedRecord.gender,
         // 國曆農曆出生日期欄位
         gregorianBirthYear: selectedRecord.gregorianBirthYear || '',
@@ -557,6 +559,11 @@ const AdminDashboardPage = () => {
       // 處理年份轉換（仿效登記候位的邏輯）
       let processedData = { ...editedData };
       
+      // 轉型 queueNumber
+      if (processedData.queueNumber) {
+        processedData.queueNumber = Number(processedData.queueNumber);
+      }
+      
       // 處理主客戶的年份轉換
       if (processedData.gregorianBirthYear) {
         const { minguoYear } = autoConvertToMinguo(processedData.gregorianBirthYear);
@@ -612,10 +619,6 @@ const AdminDashboardPage = () => {
             })
           );
           loadQueueList();
-          // 重新檢查重複號碼
-          setTimeout(() => {
-            dispatch(checkDuplicateQueueNumbers());
-          }, 500);
         })
         .catch((error) => {
           dispatch(
@@ -1171,31 +1174,7 @@ const AdminDashboardPage = () => {
   };
 
   return (
-    <Container maxWidth="xl">
-      <Typography variant="h4" component="h1" gutterBottom>
-        候位管理
-      </Typography>
-
-      {/* 重複號碼警告 */}
-      {duplicateRecordIds && duplicateRecordIds.length > 0 && (
-        <Alert 
-          severity="warning" 
-          sx={{ mb: 2 }}
-          action={
-            <Button 
-              color="inherit" 
-              size="small"
-              onClick={() => dispatch(checkDuplicateQueueNumbers())}
-            >
-              重新檢查
-            </Button>
-          }
-        >
-          ⚠️ 檢測到 {duplicateRecordIds.length} 個客戶有重複的號碼！
-          請檢查表格中標示為紅色背景的客戶並修正其號碼，確保每個客戶都有唯一的號碼。
-        </Alert>
-      )}
-
+    <Container maxWidth="lg">
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
           候位管理
@@ -1347,19 +1326,14 @@ const AdminDashboardPage = () => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 sx={{
-                                  backgroundColor: duplicateRecordIds.includes(row._id) 
-                                    ? 'rgba(244, 67, 54, 0.1)' // 淡紅色背景，表示重複號碼
-                                    : snapshot.isDragging 
-                                      ? 'rgba(25, 118, 210, 0.08)' 
-                                      : 'inherit',
+                                  backgroundColor: duplicateQueueNumbers.has(row.queueNumber)
+                                    ? 'rgba(255, 205, 210, 0.5)'
+                                    : (snapshot.isDragging ? 'rgba(25, 118, 210, 0.08)' : 'inherit'),
                                   '&:hover': {
-                                    backgroundColor: duplicateRecordIds.includes(row._id)
-                                      ? 'rgba(244, 67, 54, 0.15)' // hover時稍微深一點的紅色
+                                    backgroundColor: duplicateQueueNumbers.has(row.queueNumber)
+                                      ? 'rgba(255, 205, 210, 0.5)'
                                       : 'rgba(0, 0, 0, 0.04)'
-                                  },
-                                  borderLeft: duplicateRecordIds.includes(row._id) 
-                                    ? '4px solid #f44336' // 左邊框提示重複
-                                    : 'none'
+                                  }
                                 }}
                               >
                                 <TableCell {...provided.dragHandleProps}>
@@ -1454,20 +1428,13 @@ const AdminDashboardPage = () => {
                     </TableRow>
                   ) : (
                     localQueueList.map((row, index) => (
-                      <TableRow 
+                      <TableRow
                         key={row._id}
                         sx={{
-                          backgroundColor: duplicateRecordIds.includes(row._id) 
-                            ? 'rgba(244, 67, 54, 0.1)' // 淡紅色背景，表示重複號碼
-                            : 'inherit',
+                          backgroundColor: duplicateQueueNumbers.has(row.queueNumber) ? 'rgba(255, 205, 210, 0.5)' : 'inherit',
                           '&:hover': {
-                            backgroundColor: duplicateRecordIds.includes(row._id)
-                              ? 'rgba(244, 67, 54, 0.15)' // hover時稍微深一點的紅色
-                              : 'rgba(0, 0, 0, 0.04)'
-                          },
-                          borderLeft: duplicateRecordIds.includes(row._id) 
-                            ? '4px solid #f44336' // 左邊框提示重複
-                            : 'none'
+                            backgroundColor: duplicateQueueNumbers.has(row.queueNumber) ? 'rgba(255, 205, 210, 0.5)' : 'rgba(0, 0, 0, 0.04)'
+                          }
                         }}
                       >
                         {visibleColumns.includes('queueNumber') && (
@@ -1575,6 +1542,22 @@ const AdminDashboardPage = () => {
                   <Divider sx={{ my: 1 }} />
                 </Grid>
                 <Grid item xs={12} sm={4}>
+                  <Typography variant="body2" color="text.secondary">客戶號碼</Typography>
+                  {!editMode ? (
+                    <Typography variant="body1">{selectedRecord.queueNumber}</Typography>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      name="queueNumber"
+                      type="number"
+                      value={editedData.queueNumber}
+                      onChange={handleInputChange}
+                      margin="dense"
+                      size="small"
+                    />
+                  )}
+                </Grid>
+                <Grid item xs={12} sm={4}>
                   <Typography variant="body2" color="text.secondary">姓名</Typography>
                   {!editMode ? (
                     <Typography variant="body1">{selectedRecord.name}</Typography>
@@ -1617,26 +1600,6 @@ const AdminDashboardPage = () => {
                       margin="dense"
                       size="small"
                       type="email"
-                    />
-                  )}
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Typography variant="body2" color="text.secondary">客戶號碼</Typography>
-                  {!editMode ? (
-                    <Typography variant="body1" fontWeight="bold" color="primary">
-                      {selectedRecord.queueNumber}
-                    </Typography>
-                  ) : (
-                    <TextField
-                      fullWidth
-                      name="queueNumber"
-                      value={editedData.queueNumber}
-                      onChange={handleInputChange}
-                      margin="dense"
-                      size="small"
-                      type="number"
-                      inputProps={{ min: 1 }}
-                      helperText="請確保號碼唯一，不與其他客戶重複"
                     />
                   )}
                 </Grid>

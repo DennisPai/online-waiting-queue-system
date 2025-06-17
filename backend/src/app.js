@@ -91,6 +91,26 @@ mongoose.connect(mongoUri)
     const initResult = await initializeData();
     console.log('數據初始化結果:', initResult ? '成功' : '失敗');
     
+    // ----------------------
+    //  移除 queueNumber 唯一索引
+    // ----------------------
+    try {
+      const WaitingRecord = require('./models/waiting-record.model');
+      const indexes = await WaitingRecord.collection.indexes();
+      const uniqueIdx = indexes.find(idx => idx.key && idx.key.queueNumber === 1 && idx.unique);
+      if (uniqueIdx) {
+        await WaitingRecord.collection.dropIndex('queueNumber_1');
+        console.log('已刪除 queueNumber 唯一索引');
+        // 建立普通索引加速查詢
+        await WaitingRecord.collection.createIndex({ queueNumber: 1 });
+        console.log('已建立 queueNumber 普通索引');
+      }
+    } catch (idxErr) {
+      if (idxErr.codeName !== 'IndexNotFound' && idxErr.code !== 27) {
+        console.error('處理 queueNumber 索引時發生錯誤:', idxErr.message);
+      }
+    }
+    
     // 啟動伺服器
     const PORT = process.env.PORT || 8080;
     server.listen(PORT, '0.0.0.0', () => {

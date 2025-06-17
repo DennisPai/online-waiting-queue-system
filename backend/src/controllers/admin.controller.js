@@ -533,45 +533,12 @@ exports.updateQueueData = async (req, res) => {
       });
     }
     
-    // 如果要更新客戶號碼，檢查是否重複
-    if (updateData.queueNumber !== undefined) {
-      const newQueueNumber = parseInt(updateData.queueNumber);
-      
-      // 檢查新號碼是否為有效數字
-      if (isNaN(newQueueNumber) || newQueueNumber < 1) {
-        return res.status(400).json({
-          success: false,
-          message: '客戶號碼必須是大於0的整數'
-        });
-      }
-      
-      // 檢查是否與其他客戶重複（排除自己）
-      const duplicateRecord = await WaitingRecord.findOne({
-        queueNumber: newQueueNumber,
-        _id: { $ne: queueId }
-      });
-      
-      if (duplicateRecord) {
-        return res.status(400).json({
-          success: false,
-          message: `客戶號碼 ${newQueueNumber} 已被使用，請選擇其他號碼`,
-          duplicateInfo: {
-            existingCustomer: duplicateRecord.name,
-            queueNumber: newQueueNumber
-          }
-        });
-      }
-      
-      // 更新客戶號碼
-      record.queueNumber = newQueueNumber;
-    }
-    
     // 仿效登記候位的處理流程：前端已處理年份轉換，後端只需進行日期轉換
     
     // 在保存前進行日期自動轉換（國曆轉農曆或農曆轉國曆）
     updateData = autoFillDates(updateData);
     
-    // 處理家人資料的日期轉換
+        // 處理家人資料的日期轉換
     if (updateData.familyMembers && updateData.familyMembers.length > 0) {
       const familyData = autoFillFamilyMembersDates({ familyMembers: updateData.familyMembers });
       updateData.familyMembers = familyData.familyMembers;
@@ -580,16 +547,17 @@ exports.updateQueueData = async (req, res) => {
     // 計算虛歲
     updateData = addVirtualAge(updateData);
 
-    // 更新允許的欄位（新增queueNumber支援）
+    // 更新允許的欄位
     const allowedFields = [
-      'name', 'email', 'phone', 'gender', 'queueNumber',
+      'queueNumber', // 允許管理員調整客戶號碼
+      'name', 'email', 'phone', 'gender',
       'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
       'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'virtualAge'
     ];
 
     allowedFields.forEach(field => {
-      if (updateData[field] !== undefined && field !== 'queueNumber') {
+      if (updateData[field] !== undefined) {
         record[field] = updateData[field];
       }
     });
@@ -853,61 +821,6 @@ exports.clearAllQueue = async (req, res) => {
     });
   } catch (error) {
     console.error('清除所有候位資料錯誤:', error);
-    res.status(500).json({
-      success: false,
-      message: '伺服器內部錯誤',
-      error: process.env.NODE_ENV === 'development' ? error.message : {}
-    });
-  }
-};
-
-// 檢查重複的客戶號碼
-exports.checkDuplicateQueueNumbers = async (req, res) => {
-  try {
-    // 使用聚合管道查找重複的客戶號碼
-    const duplicates = await WaitingRecord.aggregate([
-      {
-        $group: {
-          _id: "$queueNumber",
-          count: { $sum: 1 },
-          records: { 
-            $push: { 
-              _id: "$_id", 
-              name: "$name", 
-              phone: "$phone",
-              status: "$status",
-              orderIndex: "$orderIndex"
-            } 
-          }
-        }
-      },
-      {
-        $match: {
-          count: { $gt: 1 }
-        }
-      },
-      {
-        $sort: { _id: 1 }
-      }
-    ]);
-
-    // 取得所有重複號碼的記錄ID
-    const duplicateRecordIds = [];
-    duplicates.forEach(duplicate => {
-      duplicate.records.forEach(record => {
-        duplicateRecordIds.push(record._id.toString());
-      });
-    });
-
-    res.status(200).json({
-      success: true,
-      data: {
-        duplicates,
-        duplicateRecordIds
-      }
-    });
-  } catch (error) {
-    console.error('檢查重複客戶號碼錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',

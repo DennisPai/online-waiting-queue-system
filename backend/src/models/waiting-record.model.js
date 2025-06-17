@@ -83,7 +83,7 @@ const waitingRecordSchema = new mongoose.Schema({
   queueNumber: {
     type: Number,
     required: true,
-    unique: true
+    index: true
   },
   orderIndex: {
     type: Number,
