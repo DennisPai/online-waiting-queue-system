@@ -754,7 +754,7 @@ exports.getNextWaitingNumber = async (req, res) => {
 // 客戶取消預約
 exports.cancelQueueByCustomer = async (req, res) => {
   try {
-    const { queueNumber, name, phone } = req.body;
+    const { queueNumber } = req.body;
     
     if (!queueNumber) {
       return res.status(400).json({
@@ -763,7 +763,7 @@ exports.cancelQueueByCustomer = async (req, res) => {
       });
     }
     
-    // 主要使用候位號碼查找記錄
+    // 使用候位號碼查找記錄（候位號碼是唯一標識，不需要額外驗證）
     const record = await WaitingRecord.findOne({ 
       queueNumber: parseInt(queueNumber)
     });
@@ -772,14 +772,6 @@ exports.cancelQueueByCustomer = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: '查無此候位記錄'
-      });
-    }
-    
-    // 如果提供了姓名和電話，進行額外的安全驗證
-    if (name && phone && (record.name !== name || record.phone !== phone)) {
-      return res.status(404).json({
-        success: false,
-        message: '候位記錄驗證失敗'
       });
     }
     
@@ -819,7 +811,7 @@ exports.cancelQueueByCustomer = async (req, res) => {
 // 客戶修改資料
 exports.updateQueueByCustomer = async (req, res) => {
   try {
-    const { queueNumber, name, phone, ...updateData } = req.body;
+    const { queueNumber, ...updateData } = req.body;
     
     if (!queueNumber) {
       return res.status(400).json({
@@ -828,7 +820,7 @@ exports.updateQueueByCustomer = async (req, res) => {
       });
     }
     
-    // 主要使用候位號碼查找記錄，如果提供了原始姓名和電話則進行額外驗證
+    // 使用候位號碼查找記錄（候位號碼是唯一標識，不需要額外驗證）
     const record = await WaitingRecord.findOne({ 
       queueNumber: parseInt(queueNumber)
     });
@@ -837,15 +829,6 @@ exports.updateQueueByCustomer = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: '查無此候位記錄'
-      });
-    }
-    
-    // 如果前端有提供原始姓名和電話，進行額外的安全驗證
-    // 但這不是必需的，因為候位號碼已經是唯一標識
-    if (name && phone && (record.name !== name || record.phone !== phone)) {
-      return res.status(404).json({
-        success: false,
-        message: '候位記錄驗證失敗'
       });
     }
     
