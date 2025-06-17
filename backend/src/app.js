@@ -86,6 +86,17 @@ mongoose.connect(mongoUri)
   .then(async () => {
     console.log('成功連接到MongoDB');
     
+    // 移除舊的唯一索引（如果存在）
+    console.log('檢查並移除queueNumber唯一索引...');
+    try {
+      const removeUniqueIndex = require('./utils/removeUniqueIndex');
+      await removeUniqueIndex();
+      console.log('索引檢查完成');
+    } catch (error) {
+      console.error('索引處理時發生錯誤:', error);
+      // 不要因為索引錯誤而停止服務器啟動
+    }
+    
     // 初始化數據
     console.log('開始執行數據初始化...');
     const initResult = await initializeData();

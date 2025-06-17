@@ -573,10 +573,50 @@ exports.updateQueueData = async (req, res) => {
     });
   } catch (error) {
     console.error('更新客戶資料錯誤:', error);
+    console.error('錯誤詳情:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      keyPattern: error.keyPattern,
+      keyValue: error.keyValue
+    });
+    
+    // 處理MongoDB重複鍵錯誤 (舊的唯一索引仍存在的情況)
+    if (error.code === 11000) {
+      console.log('檢測到重複鍵錯誤，嘗試移除唯一索引...');
+      
+      // 嘗試移除queueNumber的唯一索引
+      try {
+        const WaitingRecord = require('../models/waiting-record.model');
+        await WaitingRecord.collection.dropIndex('queueNumber_1');
+        console.log('成功移除queueNumber唯一索引');
+        
+        // 重新嘗試保存
+        await record.save();
+        return res.status(200).json({
+          success: true,
+          message: '客戶資料更新成功（已移除重複限制）',
+          data: record
+        });
+      } catch (dropError) {
+        console.error('移除索引失敗:', dropError);
+        
+        return res.status(400).json({
+          success: false,
+          message: '資料庫索引問題：系統已偵測到重複號碼限制，請聯繫管理員移除資料庫的唯一索引限制。'
+        });
+      }
+    }
+    
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',
-      error: process.env.NODE_ENV === 'development' ? error.message : {}
+      error: process.env.NODE_ENV === 'development' ? error.message : {},
+      details: process.env.NODE_ENV === 'development' ? {
+        name: error.name,
+        code: error.code,
+        keyPattern: error.keyPattern
+      } : {}
     });
   }
 };
