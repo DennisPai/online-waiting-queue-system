@@ -700,7 +700,7 @@ import { autoFillDates, autoFillFamilyMembersDates } from '../utils/calendarConv
 ```javascript
 // 確保 RegisterPage.jsx 的 submissionData 包含所有必要欄位
 const submissionData = {
-  email: convertedData.email,        // 必須
+  email: convertedData.email,        // 現在為選填欄位
   name: convertedData.name,          // 必須
   phone: convertedData.phone,        // 必須
   gender: convertedData.gender,      // 必須
@@ -777,6 +777,10 @@ docker-compose up -d
   - [ ] 後端API是否返回新的欄位格式（gregorianBirthYear等）
   - [ ] 前端顯示邏輯是否同時顯示國曆和農曆
   - [ ] `getQueueByNameAndPhone` API返回的欄位是否正確
+- [ ] **客戶自助編輯功能檢查**（2024年最新修正）：
+  - [ ] 姓名、電話、電子郵件在客戶編輯模式下可正常修改
+  - [ ] 修改後台驗證邏輯使用候位號碼作為主要標識
+  - [ ] 電子郵件已設為非必填欄位，前後端驗證一致
 - [ ] **簡化模式功能檢查**（2024年最新功能）：
   - [ ] 系統設定模型是否包含 `simplifiedMode` 欄位
   - [ ] 簡化模式API端點是否正確實現（`PUT /admin/settings/simplifiedMode`）
