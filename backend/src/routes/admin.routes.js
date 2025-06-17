@@ -127,4 +127,7 @@ router.put(
 // 清除所有候位資料
 router.delete('/queue/clear-all', adminController.clearAllQueue);
 
+// 檢查重複的客戶號碼
+router.get('/queue/check-duplicates', adminController.checkDuplicateQueueNumbers);
+
 module.exports = router; 

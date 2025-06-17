@@ -11,6 +11,8 @@ const initialState = {
   isQueueOpen: true,
   nextSessionDate: null,
   queueList: [],
+  duplicateQueueNumbers: [], // 新增：重複的客戶號碼列表
+  duplicateRecordIds: [], // 新增：重複記錄的ID列表
   pagination: {
     page: 1,
     limit: 20,
@@ -279,6 +281,20 @@ export const getPublicOrderedNumbers = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '獲取公共排序候位號碼失敗');
+    }
+  }
+);
+
+// 檢查重複的客戶號碼
+export const checkDuplicateQueueNumbers = createAsyncThunk(
+  'queue/checkDuplicates',
+  async (_, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.checkDuplicateQueueNumbers(token);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '檢查重複客戶號碼失敗');
     }
   }
 );
@@ -630,6 +646,20 @@ const queueSlice = createSlice({
         };
       })
       .addCase(clearAllQueue.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // 檢查重複的客戶號碼
+      .addCase(checkDuplicateQueueNumbers.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(checkDuplicateQueueNumbers.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.duplicateQueueNumbers = action.payload.duplicates || [];
+        state.duplicateRecordIds = action.payload.duplicateRecordIds || [];
+      })
+      .addCase(checkDuplicateQueueNumbers.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });
