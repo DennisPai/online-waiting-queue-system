@@ -549,7 +549,7 @@ exports.updateQueueData = async (req, res) => {
 
     // 更新允許的欄位
     const allowedFields = [
-      'queueNumber', // 允許管理員調整客戶號碼
+      'queueNumber',
       'name', 'email', 'phone', 'gender',
       'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',

@@ -31,6 +31,7 @@ router.put(
 router.put(
   '/queue/:queueId/update',
   [
+    body('queueNumber').optional().isInt({ min: 1 }).withMessage('客戶號碼必須是正整數'),
     body('name').optional().notEmpty().withMessage('姓名不能為空'),
     body('email').optional().isEmail().withMessage('電子郵件格式錯誤'),
     body('phone').optional().notEmpty().withMessage('電話不能為空'),
@@ -126,8 +127,5 @@ router.put(
 
 // 清除所有候位資料
 router.delete('/queue/clear-all', adminController.clearAllQueue);
-
-// 檢查重複的客戶號碼
-router.get('/queue/check-duplicates', adminController.checkDuplicateQueueNumbers);
 
 module.exports = router; 

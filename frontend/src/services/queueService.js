@@ -280,22 +280,6 @@ const deleteCustomer = async (queueId, token) => {
   }
 };
 
-// 檢查重複的客戶號碼
-const checkDuplicateQueueNumbers = async (token) => {
-  try {
-    const config = {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    };
-    const response = await axios.get(`${API_ENDPOINTS.ADMIN}/queue/check-duplicates`, config);
-    return response.data;
-  } catch (error) {
-    console.error('檢查重複客戶號碼錯誤:', error);
-    throw error;
-  }
-};
-
 // 設定每位客戶預估處理時間
 const setMinutesPerCustomer = async (minutesPerCustomer, token) => {
   const response = await axios.put(
@@ -373,7 +357,6 @@ const queueService = {
   setMaxQueueNumber,
   updateQueueData,
   deleteCustomer,
-  checkDuplicateQueueNumbers,
   setMinutesPerCustomer,
   setSimplifiedMode,
   setPublicRegistrationEnabled,
