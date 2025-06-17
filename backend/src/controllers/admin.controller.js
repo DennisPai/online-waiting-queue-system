@@ -533,20 +533,7 @@ exports.updateQueueData = async (req, res) => {
       });
     }
     
-    // 如果要更新queueNumber，檢查是否會產生重複
-    if (updateData.queueNumber && updateData.queueNumber !== record.queueNumber) {
-      const existingRecord = await WaitingRecord.findOne({ 
-        queueNumber: updateData.queueNumber,
-        _id: { $ne: queueId } // 排除當前記錄本身
-      });
-      
-      if (existingRecord) {
-        return res.status(400).json({
-          success: false,
-          message: `號碼 ${updateData.queueNumber} 已被其他客戶使用，請選擇其他號碼`
-        });
-      }
-    }
+    // 允許重複號碼，不進行檢查 - 由前端視覺提醒處理
     
     // 仿效登記候位的處理流程：前端已處理年份轉換，後端只需進行日期轉換
     
@@ -586,22 +573,6 @@ exports.updateQueueData = async (req, res) => {
     });
   } catch (error) {
     console.error('更新客戶資料錯誤:', error);
-    
-    // 處理MongoDB重複鍵錯誤
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern)[0];
-      let message = '資料重複錯誤';
-      
-      if (field === 'queueNumber') {
-        message = `號碼 ${error.keyValue.queueNumber} 已被其他客戶使用，請選擇其他號碼`;
-      }
-      
-      return res.status(400).json({
-        success: false,
-        message: message
-      });
-    }
-    
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',
