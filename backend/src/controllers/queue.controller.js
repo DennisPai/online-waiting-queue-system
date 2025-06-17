@@ -161,7 +161,8 @@ exports.registerQueue = async (req, res) => {
     
     // 檢查必要欄位 - 在簡化模式下跳過驗證
     if (!settings.simplifiedMode) {
-    const requiredFields = ['email', 'name', 'phone', 'gender', 'addresses', 'consultationTopics'];
+    // 電子郵件現在為非必填欄位
+    const requiredFields = ['name', 'phone', 'gender', 'addresses', 'consultationTopics'];
     for (const field of requiredFields) {
       if (!req.body[field]) {
         console.error(`缺少必要欄位: ${field}`);

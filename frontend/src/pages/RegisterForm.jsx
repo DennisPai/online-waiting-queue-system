@@ -340,8 +340,8 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
     } else {
       // 完整驗證模式
       // 基本資料驗證
-      if (!formData.email) errors.email = '請輸入電子郵件';
-      else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = '請輸入有效的電子郵件';
+      // 電子郵件現在為非必填，但如果有填寫則需驗證格式
+      if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) errors.email = '請輸入有效的電子郵件';
       
       if (!formData.name) errors.name = '請輸入姓名';
       if (!formData.phone) errors.phone = '請輸入聯絡手機';
@@ -614,11 +614,10 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
         <Grid item xs={12}>
           <TextField
-            required={!queueStatus?.simplifiedMode}
             fullWidth
             id="email"
             name="email"
-            label="電子郵件"
+            label="電子郵件 (選填)"
             type="email"
             value={formData.email}
             onChange={handleChange}
