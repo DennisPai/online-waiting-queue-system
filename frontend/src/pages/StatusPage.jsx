@@ -259,8 +259,6 @@ const StatusPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           queueNumber: detailsDialog.record.queueNumber,
-          name: detailsDialog.record.name,
-          phone: detailsDialog.record.phone,
           ...processedData
         })
       });
@@ -273,8 +271,11 @@ const StatusPage = () => {
           severity: 'success'
         }));
         setDetailsDialog({ open: false, record: null, mode: 'view' });
-        // 重新查詢狀態
-        dispatch(searchQueueByNameAndPhone({ name: editData.name, phone: editData.phone }));
+        // 重新查詢狀態 - 使用修改後的姓名和電話
+        dispatch(searchQueueByNameAndPhone({ 
+          name: processedData.name || editData.name, 
+          phone: processedData.phone || editData.phone 
+        }));
       } else {
         dispatch(showAlert({
           message: data.message || '修改資料失敗',
