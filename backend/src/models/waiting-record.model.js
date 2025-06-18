@@ -96,9 +96,10 @@ const waitingRecordSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
-    lowercase: true
+    lowercase: true,
+    default: ''
   },
   name: {
     type: String,
