@@ -33,7 +33,12 @@ router.put(
   [
     body('queueNumber').optional().isInt({ min: 1 }).withMessage('客戶號碼必須是正整數'),
     body('name').optional().notEmpty().withMessage('姓名不能為空'),
-    body('email').optional().isEmail().withMessage('電子郵件格式錯誤'),
+    body('email').optional().custom((value) => {
+      if (value && value.trim() !== '' && !/\S+@\S+\.\S+/.test(value)) {
+        throw new Error('電子郵件格式錯誤');
+      }
+      return true;
+    }),
     body('phone').optional().notEmpty().withMessage('電話不能為空'),
     body('gender').optional().isIn(['male', 'female']).withMessage('性別值無效'),
     body('gregorianBirthYear').optional().isNumeric().withMessage('國曆出生年份必須是數字'),
