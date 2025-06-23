@@ -141,19 +141,27 @@ const StatusPage = () => {
 
   // 顯示詳細資料
   const handleShowDetails = (record) => {
+    console.log('StatusPage - 初始化 record:', record);
+    console.log('StatusPage - record.otherDetails:', record.otherDetails);
+    
     setDetailsDialog({
       open: true,
       record: record,
       mode: 'view'
     });
     // 初始化編輯資料，確保地址和家人資料結構正確
-    setEditData({
+    const initialEditData = {
       ...record,
       addresses: record.addresses || [],
       familyMembers: record.familyMembers || [],
       consultationTopics: record.consultationTopics || [],
       otherDetails: record.otherDetails || ''
-    });
+    };
+    
+    console.log('StatusPage - 初始化 editData:', initialEditData);
+    console.log('StatusPage - editData.otherDetails:', initialEditData.otherDetails);
+    
+    setEditData(initialEditData);
   };
 
   // 取消預約
@@ -205,6 +213,11 @@ const StatusPage = () => {
 
   // 修改資料
   const handleEditData = () => {
+    console.log('StatusPage - 切換到編輯模式');
+    console.log('StatusPage - 當前 editData:', editData);
+    console.log('StatusPage - editData.consultationTopics:', editData.consultationTopics);
+    console.log('StatusPage - editData.otherDetails:', editData.otherDetails);
+    
     setDetailsDialog(prev => ({ ...prev, mode: 'edit' }));
   };
 
@@ -382,16 +395,20 @@ const StatusPage = () => {
     const currentTopics = [...(editData.consultationTopics || [])];
     const topicIndex = currentTopics.indexOf(topic);
     
+    let newEditData = { ...editData };
+    
     if (topicIndex === -1) {
       currentTopics.push(topic);
     } else {
       currentTopics.splice(topicIndex, 1);
+      // 如果取消勾選"其他"，清空其他詳細內容
+      if (topic === 'other') {
+        newEditData.otherDetails = '';
+      }
     }
     
-    setEditData({
-      ...editData,
-      consultationTopics: currentTopics
-    });
+    newEditData.consultationTopics = currentTopics;
+    setEditData(newEditData);
   };
 
   // 格式化諮詢主題顯示
