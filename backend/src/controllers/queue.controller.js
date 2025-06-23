@@ -686,6 +686,7 @@ exports.getQueueByNameAndPhone = async (req, res) => {
         addresses: record.addresses,
         familyMembers: record.familyMembers,
         consultationTopics: record.consultationTopics,
+        otherDetails: record.otherDetails,
         createdAt: record.createdAt
       };
     }));
