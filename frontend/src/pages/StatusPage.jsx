@@ -160,7 +160,7 @@ const StatusPage = () => {
     setConfirmDialog({
       open: true,
       title: '確認取消預約',
-      message: `確定要取消候位號碼 ${record.queueNumber} 的預約嗎？此操作無法復原。`,
+      message: `確定要取消叫號順序 ${record.orderIndex} 的預約嗎？此操作無法復原。`,
       onConfirm: () => confirmCancelQueue(record)
     });
   };
@@ -528,10 +528,10 @@ const StatusPage = () => {
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h5" component="div">
-                        候位號碼: 
+                        叫號順序: 
                       </Typography>
                       <Typography variant="h4" color="primary" component="div" sx={{ ml: 2, fontWeight: 'bold', fontSize: { xs: '1.75rem', md: '2rem' } }}>
-                        {record.queueNumber}
+                        {record.orderIndex}
                       </Typography>
                       <Box sx={{ ml: 'auto' }}>
                         {record.status && (
@@ -603,10 +603,10 @@ const StatusPage = () => {
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h5" component="div">
-                    候位號碼: 
+                    叫號順序: 
                   </Typography>
                   <Typography variant="h4" color="primary" component="div" sx={{ ml: 2, fontWeight: 'bold', fontSize: { xs: '1.75rem', md: '2rem' } }}>
-                    {currentQueueStatus.queueNumber}
+                    {currentQueueStatus.orderIndex}
                   </Typography>
                   <Box sx={{ ml: 'auto' }}>
                     {currentQueueStatus.status && (
@@ -714,7 +714,7 @@ const StatusPage = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <InfoIcon sx={{ mr: 1 }} />
-              候位號碼 {detailsDialog.record?.queueNumber} 詳細資料
+              叫號順序 {detailsDialog.record?.orderIndex} 詳細資料
             </Box>
             <Button
               onClick={() => setDetailsDialog({ open: false, record: null, mode: 'view' })}

@@ -507,6 +507,7 @@ exports.getQueueNumberStatus = async (req, res) => {
       success: true,
       data: {
         queueNumber: record.queueNumber,
+        orderIndex: record.orderIndex,
         status: record.status,
         statusMessage,
         peopleAhead: peopleAheadCount,
@@ -662,6 +663,7 @@ exports.getQueueByNameAndPhone = async (req, res) => {
       
       return {
         queueNumber: record.queueNumber,
+        orderIndex: record.orderIndex,
         status: actualStatus,
         statusMessage,
         peopleAhead: peopleAheadCount,
