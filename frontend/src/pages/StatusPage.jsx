@@ -151,7 +151,8 @@ const StatusPage = () => {
       ...record,
       addresses: record.addresses || [],
       familyMembers: record.familyMembers || [],
-      consultationTopics: record.consultationTopics || []
+      consultationTopics: record.consultationTopics || [],
+      otherDetails: record.otherDetails || ''
     });
   };
 

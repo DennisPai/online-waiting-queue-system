@@ -460,7 +460,8 @@ const AdminDashboardPage = () => {
         ],
         // 處理家庭成員
         familyMembers: selectedRecord.familyMembers || [],
-        consultationTopics: [...selectedRecord.consultationTopics]
+        consultationTopics: [...selectedRecord.consultationTopics],
+        otherDetails: selectedRecord.otherDetails || ''
       });
       setEditMode(true);
     }
