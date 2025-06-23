@@ -141,27 +141,19 @@ const StatusPage = () => {
 
   // 顯示詳細資料
   const handleShowDetails = (record) => {
-    console.log('StatusPage - 初始化 record:', record);
-    console.log('StatusPage - record.otherDetails:', record.otherDetails);
-    
     setDetailsDialog({
       open: true,
       record: record,
       mode: 'view'
     });
     // 初始化編輯資料，確保地址和家人資料結構正確
-    const initialEditData = {
+    setEditData({
       ...record,
       addresses: record.addresses || [],
       familyMembers: record.familyMembers || [],
       consultationTopics: record.consultationTopics || [],
       otherDetails: record.otherDetails || ''
-    };
-    
-    console.log('StatusPage - 初始化 editData:', initialEditData);
-    console.log('StatusPage - editData.otherDetails:', initialEditData.otherDetails);
-    
-    setEditData(initialEditData);
+    });
   };
 
   // 取消預約
@@ -213,11 +205,8 @@ const StatusPage = () => {
 
   // 修改資料
   const handleEditData = () => {
-    console.log('StatusPage - 切換到編輯模式');
-    console.log('StatusPage - 當前 editData:', editData);
-    console.log('StatusPage - editData.consultationTopics:', editData.consultationTopics);
-    console.log('StatusPage - editData.otherDetails:', editData.otherDetails);
-    
+    console.log('進入編輯模式，editData:', editData);
+    console.log('原始record數據:', detailsDialog.record);
     setDetailsDialog(prev => ({ ...prev, mode: 'edit' }));
   };
 
@@ -407,8 +396,10 @@ const StatusPage = () => {
       }
     }
     
-    newEditData.consultationTopics = currentTopics;
-    setEditData(newEditData);
+    setEditData({
+      ...newEditData,
+      consultationTopics: currentTopics
+    });
   };
 
   // 格式化諮詢主題顯示
@@ -971,21 +962,32 @@ const StatusPage = () => {
               </Grid>
 
               {/* 其他詳細內容 - 只在編輯模式且選擇了"其他"時顯示 */}
-              {detailsDialog.mode === 'edit' && editData.consultationTopics && editData.consultationTopics.includes('other') && (
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="其他詳細內容"
-                    multiline
-                    rows={3}
-                    value={editData.otherDetails || ''}
-                    onChange={(e) => setEditData({ ...editData, otherDetails: e.target.value })}
-                    placeholder="請詳細描述其他問題..."
-                    inputProps={{ maxLength: 500 }}
-                    helperText="最多500字"
-                  />
-                </Grid>
-              )}
+              {(() => {
+                const shouldShow = detailsDialog.mode === 'edit' && editData.consultationTopics && editData.consultationTopics.includes('other');
+                console.log('其他詳細內容顯示條件:', {
+                  mode: detailsDialog.mode,
+                  consultationTopics: editData.consultationTopics,
+                  includesOther: editData.consultationTopics && editData.consultationTopics.includes('other'),
+                  shouldShow: shouldShow,
+                  otherDetails: editData.otherDetails
+                });
+                
+                return shouldShow && (
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="其他詳細內容"
+                      multiline
+                      rows={3}
+                      value={editData.otherDetails || ''}
+                      onChange={(e) => setEditData({ ...editData, otherDetails: e.target.value })}
+                      placeholder="請詳細描述其他問題..."
+                      inputProps={{ maxLength: 500 }}
+                      helperText="最多500字"
+                    />
+                  </Grid>
+                );
+              })()}
 
               {/* 地址資訊 */}
               <Grid item xs={12}>
