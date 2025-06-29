@@ -493,7 +493,8 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
           addresses: convertedData.addresses,
           familyMembers: convertedFamilyMembers,
           consultationTopics: convertedData.consultationTopics,
-          otherDetails: convertedData.otherDetails
+          otherDetails: convertedData.otherDetails,
+          remarks: convertedData.remarks
         });
 
         const submissionData = dataWithAge;

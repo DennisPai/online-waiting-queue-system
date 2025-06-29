@@ -489,7 +489,9 @@ const RegisterPage = () => {
           lunarIsLeapMonth: convertedData.lunarIsLeapMonth,
           addresses: convertedData.addresses,
           familyMembers: convertedFamilyMembers,
-          consultationTopics: convertedData.consultationTopics
+          consultationTopics: convertedData.consultationTopics,
+          otherDetails: convertedData.otherDetails,
+          remarks: convertedData.remarks
         });
 
         const submissionData = dataWithAge;
