@@ -2,7 +2,7 @@ const WaitingRecord = require('../models/waiting-record.model');
 const SystemSetting = require('../models/system-setting.model');
 const { autoFillDates, autoFillFamilyMembersDates, addVirtualAge, autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
 
-// 確保 orderIndex 的一致性和唯一性
+// 確保 orderIndex 的一致性和唯一性 - 修正版本，避免重新排序所有記錄
 async function ensureOrderIndexConsistency() {
   try {
     // 檢查是否有記錄沒有 orderIndex
@@ -14,44 +14,23 @@ async function ensureOrderIndexConsistency() {
     });
     
     if (recordsWithoutOrder.length > 0) {
-      console.log(`發現 ${recordsWithoutOrder.length} 條記錄沒有 orderIndex，正在重新分配...`);
+      console.log(`發現 ${recordsWithoutOrder.length} 條記錄沒有 orderIndex，正在分配...`);
       
-      // 重新分配所有記錄的 orderIndex
-      // 等待中和處理中的記錄排在前面，已完成的記錄排在後面
-      const waitingRecords = await WaitingRecord.find({ 
-        status: { $in: ['waiting', 'processing'] } 
-      }).sort({ createdAt: 1 });
+      // 找到目前最大的 orderIndex
+      const maxOrderRecord = await WaitingRecord.findOne()
+        .sort({ orderIndex: -1 })
+        .limit(1);
       
-      const completedRecords = await WaitingRecord.find({ 
-        status: 'completed' 
-      }).sort({ completedAt: 1, createdAt: 1 });
+      let nextOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
       
-      const cancelledRecords = await WaitingRecord.find({ 
-        status: 'cancelled' 
-      }).sort({ createdAt: 1 });
-      
-      // 重新分配連續的 orderIndex
-      let orderIndex = 1;
-      
-      // 先分配等待中和處理中的記錄
-      for (const record of waitingRecords) {
-        record.orderIndex = orderIndex++;
+      // 為沒有 orderIndex 的記錄分配新的順序，而不是重新排序所有記錄
+      for (const record of recordsWithoutOrder) {
+        record.orderIndex = nextOrderIndex++;
         await record.save();
+        console.log(`為記錄 ${record.queueNumber} 分配 orderIndex: ${record.orderIndex}`);
       }
       
-      // 再分配已完成的記錄
-      for (const record of completedRecords) {
-        record.orderIndex = orderIndex++;
-        await record.save();
-      }
-      
-      // 最後分配已取消的記錄
-      for (const record of cancelledRecords) {
-        record.orderIndex = orderIndex++;
-        await record.save();
-      }
-      
-      console.log(`已重新分配 ${orderIndex - 1} 條記錄的 orderIndex`);
+      console.log(`已為 ${recordsWithoutOrder.length} 條記錄分配 orderIndex`);
     }
     
     // 檢查是否有重複的 orderIndex
@@ -63,34 +42,24 @@ async function ensureOrderIndexConsistency() {
     if (duplicates.length > 0) {
       console.log(`發現 ${duplicates.length} 個重複的 orderIndex，正在修正...`);
       
-      // 重新分配所有記錄的 orderIndex
-      const waitingRecords = await WaitingRecord.find({ 
-        status: { $in: ['waiting', 'processing'] } 
-      }).sort({ createdAt: 1 });
+      // 找到目前最大的 orderIndex
+      const maxOrderRecord = await WaitingRecord.findOne()
+        .sort({ orderIndex: -1 })
+        .limit(1);
       
-      const completedRecords = await WaitingRecord.find({ 
-        status: 'completed' 
-      }).sort({ completedAt: 1, createdAt: 1 });
+      let nextOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
       
-      const cancelledRecords = await WaitingRecord.find({ 
-        status: 'cancelled' 
-      }).sort({ createdAt: 1 });
-      
-      let orderIndex = 1;
-      
-      for (const record of waitingRecords) {
-        record.orderIndex = orderIndex++;
-        await record.save();
-      }
-      
-      for (const record of completedRecords) {
-        record.orderIndex = orderIndex++;
-        await record.save();
-      }
-      
-      for (const record of cancelledRecords) {
-        record.orderIndex = orderIndex++;
-        await record.save();
+      // 只修正重複的記錄，保持其他記錄的順序不變
+      for (const duplicate of duplicates) {
+        const duplicateRecords = await WaitingRecord.find({ orderIndex: duplicate._id });
+        
+        // 保留第一個記錄的 orderIndex，其他記錄分配新的 orderIndex
+        for (let i = 1; i < duplicateRecords.length; i++) {
+          const record = duplicateRecords[i];
+          record.orderIndex = nextOrderIndex++;
+          await record.save();
+          console.log(`修正重複記錄 ${record.queueNumber} 的 orderIndex 為: ${record.orderIndex}`);
+        }
       }
       
       console.log(`已修正重複的 orderIndex`);

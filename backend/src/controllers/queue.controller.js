@@ -2,7 +2,7 @@ const WaitingRecord = require('../models/waiting-record.model');
 const SystemSetting = require('../models/system-setting.model');
 const { autoFillDates, autoFillFamilyMembersDates, addVirtualAge, autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
 
-// 確保 orderIndex 的一致性和唯一性
+// 確保 orderIndex 的一致性和唯一性 - 修正版本，避免重新排序所有記錄
 async function ensureOrderIndexConsistency() {
   try {
     // 檢查是否有記錄沒有 orderIndex
@@ -14,23 +14,23 @@ async function ensureOrderIndexConsistency() {
     });
     
     if (recordsWithoutOrder.length > 0) {
-      console.log(`發現 ${recordsWithoutOrder.length} 條記錄沒有 orderIndex，正在重新分配...`);
+      console.log(`發現 ${recordsWithoutOrder.length} 條記錄沒有 orderIndex，正在分配...`);
       
-      // 重新分配所有記錄的 orderIndex
-      // 先取得所有記錄，按狀態和創建時間排序
-      const allRecords = await WaitingRecord.find().sort({ 
-        status: 1,  // waiting=0, processing=1, completed=2, cancelled=3
-        createdAt: 1 
-      });
+      // 找到目前最大的 orderIndex
+      const maxOrderRecord = await WaitingRecord.findOne()
+        .sort({ orderIndex: -1 })
+        .limit(1);
       
-      // 重新分配連續的 orderIndex
-      for (let i = 0; i < allRecords.length; i++) {
-        const record = allRecords[i];
-        record.orderIndex = i + 1;
+      let nextOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
+      
+      // 為沒有 orderIndex 的記錄分配新的順序，而不是重新排序所有記錄
+      for (const record of recordsWithoutOrder) {
+        record.orderIndex = nextOrderIndex++;
         await record.save();
+        console.log(`為記錄 ${record.queueNumber} 分配 orderIndex: ${record.orderIndex}`);
       }
       
-      console.log(`已重新分配 ${allRecords.length} 條記錄的 orderIndex`);
+      console.log(`已為 ${recordsWithoutOrder.length} 條記錄分配 orderIndex`);
     }
     
     // 檢查是否有重複的 orderIndex
@@ -42,16 +42,24 @@ async function ensureOrderIndexConsistency() {
     if (duplicates.length > 0) {
       console.log(`發現 ${duplicates.length} 個重複的 orderIndex，正在修正...`);
       
-      // 重新分配所有記錄的 orderIndex
-      const allRecords = await WaitingRecord.find().sort({ 
-        status: 1,  // waiting=0, processing=1, completed=2, cancelled=3
-        createdAt: 1 
-      });
+      // 找到目前最大的 orderIndex
+      const maxOrderRecord = await WaitingRecord.findOne()
+        .sort({ orderIndex: -1 })
+        .limit(1);
       
-      for (let i = 0; i < allRecords.length; i++) {
-        const record = allRecords[i];
-        record.orderIndex = i + 1;
-        await record.save();
+      let nextOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
+      
+      // 只修正重複的記錄，保持其他記錄的順序不變
+      for (const duplicate of duplicates) {
+        const duplicateRecords = await WaitingRecord.find({ orderIndex: duplicate._id });
+        
+        // 保留第一個記錄的 orderIndex，其他記錄分配新的 orderIndex
+        for (let i = 1; i < duplicateRecords.length; i++) {
+          const record = duplicateRecords[i];
+          record.orderIndex = nextOrderIndex++;
+          await record.save();
+          console.log(`修正重複記錄 ${record.queueNumber} 的 orderIndex 為: ${record.orderIndex}`);
+        }
       }
       
       console.log(`已修正重複的 orderIndex`);
@@ -352,28 +360,17 @@ exports.registerQueue = async (req, res) => {
 
     console.log('準備創建的候位記錄:', recordData);
     
-    // 計算新客戶的orderIndex
+    // 計算新客戶的orderIndex - 修正版本，避免影響現有記錄順序
     // 首先確保所有現有記錄都有orderIndex
     await ensureOrderIndexConsistency();
     
-    // 找到所有等待中和處理中客戶的最大orderIndex
-    const maxWaitingOrderIndex = await WaitingRecord.findOne({ 
-      status: { $in: ['waiting', 'processing'] }
-    }).sort({ orderIndex: -1 }).limit(1);
+    // 找到所有記錄中的最大orderIndex，新客戶排在最後
+    const maxOrderRecord = await WaitingRecord.findOne()
+      .sort({ orderIndex: -1 })
+      .limit(1);
     
-    // 新客戶應該排在等待中客戶的最後
-    let newOrderIndex;
-    if (maxWaitingOrderIndex) {
-      newOrderIndex = maxWaitingOrderIndex.orderIndex + 1;
-      
-      // 將所有已完成的客戶向後移動
-      await WaitingRecord.updateMany(
-        { status: 'completed' },
-        { $inc: { orderIndex: 1 } }
-      );
-    } else {
-      newOrderIndex = 1;
-    }
+    // 新客戶的orderIndex始終為最大值+1，不影響現有記錄的順序
+    const newOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
     
     // 將orderIndex添加到記錄數據中
     recordData.orderIndex = newOrderIndex;
@@ -382,8 +379,13 @@ exports.registerQueue = async (req, res) => {
     const newRecord = await WaitingRecord.create(recordData);
     console.log('創建的候位記錄ID:', newRecord._id, '排序:', newOrderIndex);
     
-    // 計算目前等待人數（用於顯示）- 應該等於該候位記錄的叫號順序
-    const waitingCount = newOrderIndex;
+    // 計算目前等待組數（基於實際的等待中和處理中客戶數量）
+    const waitingAndProcessingCount = await WaitingRecord.countDocuments({
+      status: { $in: ['waiting', 'processing'] }
+    });
+    
+    // 新客戶的等待組數應該等於目前等待中和處理中的客戶總數
+    const waitingCount = waitingAndProcessingCount;
     
     // 計算預估等待時間 - 根據在該客戶前面的所有人數計算
     // 獲取排在該客戶前面的所有記錄
