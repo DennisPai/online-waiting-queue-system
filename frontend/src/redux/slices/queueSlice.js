@@ -18,6 +18,8 @@ const initialState = {
     pages: 0
   },
   currentQueueStatus: null,
+  maxOrderIndex: 0, // 新增：目前最大的叫號順序
+  maxOrderMessage: '', // 新增：最大叫號順序的提醒訊息
   isLoading: false,
   error: null
 };
@@ -279,6 +281,19 @@ export const getPublicOrderedNumbers = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '獲取公共排序候位號碼失敗');
+    }
+  }
+);
+
+// 獲取最大叫號順序（公共API）
+export const getMaxOrderIndex = createAsyncThunk(
+  'queue/getMaxOrderIndex',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await queueService.getMaxOrderIndex();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '獲取最大叫號順序失敗');
     }
   }
 );
@@ -601,6 +616,20 @@ const queueSlice = createSlice({
         };
       })
       .addCase(getPublicOrderedNumbers.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // 獲取最大叫號順序
+      .addCase(getMaxOrderIndex.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getMaxOrderIndex.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.maxOrderIndex = action.payload.maxOrderIndex;
+        state.maxOrderMessage = action.payload.message;
+      })
+      .addCase(getMaxOrderIndex.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })

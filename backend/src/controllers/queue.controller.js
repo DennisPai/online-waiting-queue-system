@@ -934,4 +934,31 @@ exports.getOrderedNumbers = async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : {}
     });
   }
+};
+
+// 獲取目前最大叫號順序（公共API）
+exports.getMaxOrderIndex = async (req, res) => {
+  try {
+    // 找到目前最大的 orderIndex
+    const maxOrderRecord = await WaitingRecord.findOne()
+      .sort({ orderIndex: -1 })
+      .limit(1);
+    
+    const maxOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex : 0;
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        maxOrderIndex: maxOrderIndex,
+        message: maxOrderIndex > 0 ? `目前已報名到第 ${maxOrderIndex} 位` : '目前還沒有人報名'
+      }
+    });
+  } catch (error) {
+    console.error('獲取最大叫號順序錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器內部錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
 }; 

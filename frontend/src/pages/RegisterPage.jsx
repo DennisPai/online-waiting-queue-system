@@ -30,7 +30,7 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { registerQueue, resetRegistration } from '../redux/slices/queueSlice';
+import { registerQueue, resetRegistration, getMaxOrderIndex } from '../redux/slices/queueSlice';
 import { showAlert } from '../redux/slices/uiSlice';
 import { 
   gregorianToLunar, 
@@ -85,16 +85,17 @@ const addressTypeOptions = [
 const RegisterPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isLoading, registeredQueueNumber, waitingCount, estimatedWaitTime, estimatedEndTime, error } = useSelector(
+  const { isLoading, registeredQueueNumber, waitingCount, estimatedWaitTime, estimatedEndTime, error, maxOrderIndex, maxOrderMessage } = useSelector(
     (state) => state.queue
   );
   const [formData, setFormData] = useState(initialFormData);
   const [formErrors, setFormErrors] = useState({});
   const [showSuccessPage, setShowSuccessPage] = useState(false);
 
-  // 組件掛載時先重置狀態
+  // 組件掛載時先重置狀態並獲取最大叫號順序
   useEffect(() => {
     dispatch(resetRegistration());
+    dispatch(getMaxOrderIndex()); // 獲取目前最大叫號順序
     // 重置表單數據
     setFormData(initialFormData);
     setShowSuccessPage(false);
@@ -595,6 +596,25 @@ const RegisterPage = () => {
       <Typography component="h1" variant="h4" align="center" gutterBottom>
         線上候位登記
       </Typography>
+      
+      {/* 顯示目前最大叫號順序的提醒訊息 */}
+      {maxOrderMessage && (
+        <Box sx={{ mb: 3 }}>
+          <Card sx={{ bgcolor: 'info.light', color: 'info.contrastText' }}>
+            <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h6" align="center" sx={{ fontWeight: 'bold' }}>
+                📢 候位提醒
+              </Typography>
+              <Typography variant="body1" align="center" sx={{ mt: 1 }}>
+                {maxOrderMessage}
+              </Typography>
+              <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9 }}>
+                您將會是第 {maxOrderIndex + 1} 位
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
       
       <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4 }}>
         <Grid container spacing={3}>

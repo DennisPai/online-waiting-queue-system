@@ -31,7 +31,7 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { registerQueue, resetRegistration, getQueueStatus } from '../redux/slices/queueSlice';
+import { registerQueue, resetRegistration, getQueueStatus, getMaxOrderIndex } from '../redux/slices/queueSlice';
 import { showAlert } from '../redux/slices/uiSlice';
 import { 
   gregorianToLunar, 
@@ -85,7 +85,7 @@ const addressTypeOptions = [
 
 const RegisterForm = ({ onSuccess, isDialog = false }) => {
   const dispatch = useDispatch();
-  const { isLoading, registeredQueueNumber, waitingCount, estimatedWaitTime, estimatedEndTime, error, queueStatus } = useSelector(
+  const { isLoading, registeredQueueNumber, waitingCount, estimatedWaitTime, estimatedEndTime, error, queueStatus, maxOrderIndex, maxOrderMessage } = useSelector(
     (state) => state.queue
   );
   const [formData, setFormData] = useState(initialFormData);
@@ -96,6 +96,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
   useEffect(() => {
     dispatch(resetRegistration());
     dispatch(getQueueStatus()); // 獲取系統設定，包含簡化模式
+    dispatch(getMaxOrderIndex()); // 獲取目前最大叫號順序
     // 重置表單數據
     setFormData(initialFormData);
     setShowSuccessMessage(false);
@@ -443,6 +444,16 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
   return (
     <Box sx={{ mt: isDialog ? 0 : 2 }}>
+      {/* 顯示目前最大叫號順序的提醒訊息 */}
+      {maxOrderMessage && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            <strong>📢 候位提醒：</strong>{maxOrderMessage}<br />
+            您將會是第 {maxOrderIndex + 1} 位
+          </Typography>
+        </Alert>
+      )}
+      
       {/* 簡化模式提示 */}
       {isSimplifiedMode && (
         <Alert severity="info" sx={{ mb: 3 }}>

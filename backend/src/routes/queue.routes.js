@@ -10,6 +10,7 @@ router.get('/number/:queueNumber', queueController.getQueueNumberStatus);
 router.get('/search', queueController.getQueueByNameAndPhone);
 router.get('/next-waiting', queueController.getNextWaitingNumber);
 router.get('/ordered-numbers', queueController.getOrderedNumbers);
+router.get('/max-order', queueController.getMaxOrderIndex);
 
 // 客戶自助操作路由
 router.post('/cancel', queueController.cancelQueueByCustomer);

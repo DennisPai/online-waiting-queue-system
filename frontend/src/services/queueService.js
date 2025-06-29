@@ -86,6 +86,17 @@ const getPublicOrderedNumbers = async () => {
   }
 };
 
+// 獲取最大叫號順序（公共API）
+const getMaxOrderIndex = async () => {
+  try {
+    const response = await axios.get(`${API_ENDPOINTS.QUEUE}/max-order`);
+    return response.data;
+  } catch (error) {
+    console.error('獲取最大叫號順序錯誤:', error);
+    throw error.response?.data || error;
+  }
+};
+
 // 獲取順序1和順序2的客戶號碼
 const getOrderedQueueNumbers = async (token) => {
   const config = {
@@ -346,6 +357,7 @@ const queueService = {
   searchQueueByNameAndPhone,
   searchQueueByNameOrPhone,
   getPublicOrderedNumbers,
+  getMaxOrderIndex,
   
   // 管理員 API
   getQueueList,
