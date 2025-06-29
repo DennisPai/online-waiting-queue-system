@@ -687,6 +687,7 @@ exports.getQueueByNameAndPhone = async (req, res) => {
         familyMembers: record.familyMembers,
         consultationTopics: record.consultationTopics,
         otherDetails: record.otherDetails,
+        remarks: record.remarks,
         createdAt: record.createdAt
       };
     }));
@@ -868,7 +869,7 @@ exports.updateQueueByCustomer = async (req, res) => {
       'name', 'phone', 'email', 'gender',
       'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
-      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'virtualAge'
+      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'remarks', 'virtualAge'
     ];
     
     // 更新資料

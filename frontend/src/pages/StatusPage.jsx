@@ -152,7 +152,8 @@ const StatusPage = () => {
       addresses: record.addresses || [],
       familyMembers: record.familyMembers || [],
       consultationTopics: record.consultationTopics || [],
-      otherDetails: record.otherDetails || ''
+      otherDetails: record.otherDetails || '',
+      remarks: record.remarks || ''
     });
   };
 
@@ -970,6 +971,37 @@ const StatusPage = () => {
                     placeholder="請詳細描述其他問題..."
                     inputProps={{ maxLength: 500 }}
                     helperText="最多500字"
+                  />
+                </Grid>
+              )}
+
+              {/* 備註欄位 */}
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 2 }}>
+                  其他備註
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+              </Grid>
+              
+              {detailsDialog.mode === 'view' ? (
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="text.secondary">備註</Typography>
+                  <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                    {detailsDialog.record.remarks || '無'}
+                  </Typography>
+                </Grid>
+              ) : (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="其他備註(選填)"
+                    multiline
+                    rows={3}
+                    value={editData.remarks || ''}
+                    onChange={(e) => setEditData({ ...editData, remarks: e.target.value })}
+                    placeholder="如有其他需要說明的事項，請在此填寫..."
+                    inputProps={{ maxLength: 1000 }}
+                    helperText="可填寫任何其他備註事項（最多1000字）"
                   />
                 </Grid>
               )}

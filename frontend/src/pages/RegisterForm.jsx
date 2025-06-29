@@ -55,7 +55,8 @@ const initialFormData = {
   addresses: [{ address: '', addressType: 'home' }],
   familyMembers: [],
   consultationTopics: [],
-  otherDetails: ''
+  otherDetails: '',
+  remarks: ''
 };
 
 // 諮詢主題選項
@@ -1061,6 +1062,21 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
             />
           </Grid>
         )}
+
+        {/* 備註欄位 */}
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="其他備註(選填)"
+            multiline
+            rows={3}
+            value={formData.remarks}
+            onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+            placeholder="如有其他需要說明的事項，請在此填寫..."
+            inputProps={{ maxLength: 1000 }}
+            helperText="可填寫任何其他備註事項（最多1000字）"
+          />
+        </Grid>
 
         {/* 提交按鈕 */}
         <Grid item xs={12}>

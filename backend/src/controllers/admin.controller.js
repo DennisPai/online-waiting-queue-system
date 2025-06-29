@@ -555,7 +555,7 @@ exports.updateQueueData = async (req, res) => {
       'name', 'email', 'phone', 'gender',
       'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
-      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'virtualAge'
+      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'remarks', 'virtualAge'
     ];
 
     allowedFields.forEach(field => {

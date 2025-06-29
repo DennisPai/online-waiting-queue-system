@@ -461,7 +461,8 @@ const AdminDashboardPage = () => {
         // 處理家庭成員
         familyMembers: selectedRecord.familyMembers || [],
         consultationTopics: [...selectedRecord.consultationTopics],
-        otherDetails: selectedRecord.otherDetails || ''
+        otherDetails: selectedRecord.otherDetails || '',
+        remarks: selectedRecord.remarks || ''
       });
       setEditMode(true);
     }
@@ -2142,6 +2143,33 @@ const AdminDashboardPage = () => {
                     />
                   </Grid>
                 )}
+
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2 }}>其他備註</Typography>
+                  <Divider sx={{ my: 1 }} />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="text.secondary">備註</Typography>
+                  {!editMode ? (
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                      {selectedRecord.remarks || '無'}
+                    </Typography>
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="其他備註(選填)"
+                      multiline
+                      rows={3}
+                      value={editedData.remarks || ''}
+                      onChange={(e) => setEditedData({ ...editedData, remarks: e.target.value })}
+                      placeholder="如有其他需要說明的事項，請在此填寫..."
+                      inputProps={{ maxLength: 1000 }}
+                      helperText="可填寫任何其他備註事項（最多1000字）"
+                      margin="dense"
+                      size="small"
+                    />
+                  )}
+                </Grid>
 
                 <Grid item xs={12}>
                   <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2 }}>候位狀態</Typography>

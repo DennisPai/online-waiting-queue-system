@@ -199,6 +199,13 @@ const waitingRecordSchema = new mongoose.Schema({
     trim: true,
     maxlength: 500
   },
+  // 備註欄位
+  remarks: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 1000
+  },
   completedAt: {
     type: Date,
     default: null

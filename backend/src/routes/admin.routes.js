@@ -50,7 +50,8 @@ router.put(
     body('lunarIsLeapMonth').optional().isBoolean().withMessage('農曆閏月必須是布林值'),
     body('addresses').optional().isArray().withMessage('地址必須是陣列'),
     body('familyMembers').optional().isArray().withMessage('家人資訊必須是陣列'),
-    body('consultationTopics').optional().isArray().withMessage('諮詢主題必須是陣列')
+    body('consultationTopics').optional().isArray().withMessage('諮詢主題必須是陣列'),
+    body('remarks').optional().isLength({ max: 1000 }).withMessage('備註內容不能超過1000字')
   ],
   validateRequest,
   adminController.updateQueueData

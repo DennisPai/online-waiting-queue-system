@@ -34,6 +34,7 @@ export const formatCustomerDataForExport = (customers) => {
       '諮詢主題': Array.isArray(customer.consultationTopics) 
         ? customer.consultationTopics.map(topic => formatConsultationTopic(topic, customer.otherDetails)).join(', ')
         : '',
+      '備註': customer.remarks || '',
       '總人數': 1 + (customer.familyMembers ? customer.familyMembers.length : 0),
       '登記時間': customer.createdAt ? new Date(customer.createdAt).toLocaleString('zh-TW') : '',
       '更新時間': customer.updatedAt ? new Date(customer.updatedAt).toLocaleString('zh-TW') : '',
