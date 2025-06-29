@@ -462,9 +462,10 @@ exports.updateQueueOrder = async (req, res) => {
       });
     }
     
-    // 獲取更新後的所有記錄
-    const updatedRecords = await WaitingRecord.find()
-      .sort({ orderIndex: 1 });
+    // 獲取更新後的記錄，排除已取消的客戶（只返回候位列表中應該顯示的記錄）
+    const updatedRecords = await WaitingRecord.find({
+      status: { $ne: 'cancelled' }  // 排除已取消的記錄，與getQueueList的過濾邏輯保持一致
+    }).sort({ orderIndex: 1 });
       
     console.log('返回更新後的記錄列表，數量:', updatedRecords.length);
     

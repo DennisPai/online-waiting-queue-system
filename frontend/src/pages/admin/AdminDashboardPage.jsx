@@ -387,13 +387,8 @@ const AdminDashboardPage = () => {
               severity: 'success'
             })
           );
-          // 使用後端返回的數據更新狀態 - 修正這裡的存取路徑
-          if (response && response.data && Array.isArray(response.data.allRecords)) {
-            setLocalQueueList(response.data.allRecords);
-          } else if (response && Array.isArray(response.allRecords)) {
-            setLocalQueueList(response.allRecords);
-          }
-          // 不需要做任何事，Redux store 已經通過 extraReducers 更新了
+          // 重新加載列表以確保狀態過濾的一致性，避免已取消客戶出現在候位列表中
+          loadQueueList();
         })
         .catch((error) => {
           console.error('更新順序錯誤:', error);
