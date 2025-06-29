@@ -206,6 +206,17 @@ const StatusPage = () => {
 
   // 修改資料
   const handleEditData = () => {
+    // 切換到編輯模式時，確保editData包含最新的記錄資料
+    if (detailsDialog.record) {
+      setEditData({
+        ...detailsDialog.record,
+        addresses: detailsDialog.record.addresses || [],
+        familyMembers: detailsDialog.record.familyMembers || [],
+        consultationTopics: detailsDialog.record.consultationTopics || [],
+        otherDetails: detailsDialog.record.otherDetails || '',
+        remarks: detailsDialog.record.remarks || ''
+      });
+    }
     setDetailsDialog(prev => ({ ...prev, mode: 'edit' }));
   };
 

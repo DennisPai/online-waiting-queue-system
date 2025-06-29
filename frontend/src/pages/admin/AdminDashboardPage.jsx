@@ -423,7 +423,31 @@ const AdminDashboardPage = () => {
   const handleOpenDetails = (record) => {
     setSelectedRecord(record);
     setEditMode(false);
-    setEditedData({});
+    // 正確初始化editedData，包含備註欄位
+    setEditedData({
+      queueNumber: record.queueNumber,
+      name: record.name,
+      email: record.email,
+      phone: record.phone,
+      gender: record.gender,
+      gregorianBirthYear: record.gregorianBirthYear || '',
+      gregorianBirthMonth: record.gregorianBirthMonth || '',
+      gregorianBirthDay: record.gregorianBirthDay || '',
+      lunarBirthYear: record.lunarBirthYear || '',
+      lunarBirthMonth: record.lunarBirthMonth || '',
+      lunarBirthDay: record.lunarBirthDay || '',
+      lunarIsLeapMonth: record.lunarIsLeapMonth || false,
+      addresses: record.addresses || [
+        {
+          address: record.address || '',
+          addressType: record.addressType || 'home'
+        }
+      ],
+      familyMembers: record.familyMembers || [],
+      consultationTopics: [...(record.consultationTopics || [])],
+      otherDetails: record.otherDetails || '',
+      remarks: record.remarks || ''
+    });
     setOpenDialog(true);
   };
 
