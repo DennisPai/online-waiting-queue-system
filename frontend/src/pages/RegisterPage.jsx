@@ -609,8 +609,13 @@ const RegisterPage = () => {
                 {maxOrderMessage}
               </Typography>
               <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9 }}>
-                您將會是第 {maxOrderIndex + 1} 位
+                您將會是第 {maxOrderIndex + 1} 號
               </Typography>
+              {maxOrderIndex + 1 > 80 && (
+                <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9, color: 'warning.main' }}>
+                  ※ 超過80號預計將排至凌晨1點以後，若非重大問題急需求助，建議預約下次問事。
+                </Typography>
+              )}
             </CardContent>
           </Card>
         </Box>

@@ -449,7 +449,15 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
         <Alert severity="info" sx={{ mb: 2 }}>
           <Typography variant="body2">
             <strong>📢 候位提醒：</strong>{maxOrderMessage}<br />
-            您將會是第 {maxOrderIndex + 1} 位
+            您將會是第 {maxOrderIndex + 1} 號
+            {maxOrderIndex + 1 > 80 && (
+              <>
+                <br />
+                <span style={{ color: '#ff9800' }}>
+                  ※ 超過80號預計將排至凌晨1點以後，若非重大問題急需求助，建議預約下次問事。
+                </span>
+              </>
+            )}
           </Typography>
         </Alert>
       )}
