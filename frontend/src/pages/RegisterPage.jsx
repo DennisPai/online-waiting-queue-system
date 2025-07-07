@@ -518,7 +518,7 @@ const RegisterPage = () => {
             候位登記成功！
           </Typography>
           
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6" color="text.secondary">
               您的叫號順序：
             </Typography>
@@ -527,8 +527,8 @@ const RegisterPage = () => {
             </Typography>
           </Box>
           
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
-            <Typography variant="body1" color="text.secondary">
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
+            <Typography variant="body2" color="text.secondary">
               候位號碼：{registeredQueueNumber}
             </Typography>
           </Box>
@@ -538,10 +538,10 @@ const RegisterPage = () => {
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
               <Typography variant="body2" color="text.secondary">
-                目前等待組數
+                前方等待組數
               </Typography>
               <Typography variant="h6">
-                {waitingCount} 組
+                {registeredOrderIndex ? registeredOrderIndex - 1 : 0} 組
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
