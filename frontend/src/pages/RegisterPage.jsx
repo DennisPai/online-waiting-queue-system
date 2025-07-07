@@ -85,7 +85,7 @@ const addressTypeOptions = [
 const RegisterPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isLoading, registeredQueueNumber, waitingCount, estimatedWaitTime, estimatedEndTime, error, maxOrderIndex, maxOrderMessage } = useSelector(
+  const { isLoading, registeredQueueNumber, registeredOrderIndex, waitingCount, estimatedWaitTime, estimatedEndTime, error, maxOrderIndex, maxOrderMessage } = useSelector(
     (state) => state.queue
   );
   const [formData, setFormData] = useState(initialFormData);
@@ -520,10 +520,16 @@ const RegisterPage = () => {
           
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
             <Typography variant="h6" color="text.secondary">
-              您的候位號碼：
+              您的叫號順序：
             </Typography>
             <Typography variant="h3" color="primary" sx={{ ml: 2 }}>
-              {registeredQueueNumber}
+              {registeredOrderIndex}
+            </Typography>
+          </Box>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              您的候位號碼：{registeredQueueNumber}
             </Typography>
           </Box>
           
@@ -609,7 +615,7 @@ const RegisterPage = () => {
                 {maxOrderMessage}
               </Typography>
               <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9 }}>
-                您將會是第 {maxOrderIndex + 1} 號
+                您的叫號順序將會是第 {maxOrderIndex + 1} 號
               </Typography>
               {maxOrderIndex + 1 > 80 && (
                 <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9, color: 'warning.main' }}>

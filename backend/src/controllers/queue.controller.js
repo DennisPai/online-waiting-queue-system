@@ -424,6 +424,7 @@ exports.registerQueue = async (req, res) => {
       message: '候位登記成功',
       data: {
         queueNumber: newRecord.queueNumber,
+        orderIndex: newRecord.orderIndex, // 新增：返回叫號順序
         waitingCount,
         estimatedWaitTime,
         estimatedEndTime: estimatedEndTime.toISOString(),
