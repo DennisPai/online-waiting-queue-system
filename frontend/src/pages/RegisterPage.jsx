@@ -103,10 +103,10 @@ const RegisterPage = () => {
 
   // 如果已經登記成功，則顯示成功頁面
   useEffect(() => {
-    if (registeredQueueNumber) {
+    if (registeredQueueNumber && registeredOrderIndex) {
       setShowSuccessPage(true);
     }
-  }, [registeredQueueNumber]);
+  }, [registeredQueueNumber, registeredOrderIndex]);
 
   // 處理表單錯誤
   useEffect(() => {
@@ -527,9 +527,9 @@ const RegisterPage = () => {
             </Typography>
           </Box>
           
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              您的候位號碼：{registeredQueueNumber}
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body1" color="text.secondary">
+              候位號碼：{registeredQueueNumber}
             </Typography>
           </Box>
           
