@@ -355,10 +355,10 @@ const queueSlice = createSlice({
       .addCase(registerQueue.fulfilled, (state, action) => {
         state.isLoading = false;
         state.registeredQueueNumber = action.payload.queueNumber; // 使用新的狀態
+        state.registeredOrderIndex = action.payload.orderIndex; // 保存叫號順序
         state.waitingCount = action.payload.waitingCount;
         state.estimatedWaitTime = action.payload.estimatedWaitTime;
         state.estimatedEndTime = action.payload.estimatedEndTime;
-        state.registeredOrderIndex = action.payload.orderIndex; // 保存叫號順序
       })
       .addCase(registerQueue.rejected, (state, action) => {
         state.isLoading = false;
@@ -648,6 +648,7 @@ const queueSlice = createSlice({
         state.currentQueue = 0;
         state.waitingCount = 0;
         state.registeredQueueNumber = null;
+        state.registeredOrderIndex = null;
         state.currentQueueStatus = null;
         state.queueStatus = {
           ...state.queueStatus,

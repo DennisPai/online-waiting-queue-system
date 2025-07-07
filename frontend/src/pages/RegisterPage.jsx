@@ -103,10 +103,10 @@ const RegisterPage = () => {
 
   // 如果已經登記成功，則顯示成功頁面
   useEffect(() => {
-    if (registeredQueueNumber && registeredOrderIndex) {
+    if (registeredQueueNumber) {
       setShowSuccessPage(true);
     }
-  }, [registeredQueueNumber, registeredOrderIndex]);
+  }, [registeredQueueNumber]);
 
   // 處理表單錯誤
   useEffect(() => {
@@ -523,7 +523,7 @@ const RegisterPage = () => {
               您的叫號順序：
             </Typography>
             <Typography variant="h3" color="primary" sx={{ ml: 2 }}>
-              {registeredOrderIndex}
+              第 {registeredOrderIndex} 號
             </Typography>
           </Box>
           

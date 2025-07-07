@@ -951,7 +951,7 @@ exports.getMaxOrderIndex = async (req, res) => {
       success: true,
       data: {
         maxOrderIndex: maxOrderIndex,
-        message: maxOrderIndex > 0 ? `目前已報名到第 ${maxOrderIndex} 號` : '目前還沒有人報名'
+        message: maxOrderIndex > 0 ? `目前叫號順序到第 ${maxOrderIndex} 號` : '目前還沒有人候位'
       }
     });
   } catch (error) {
