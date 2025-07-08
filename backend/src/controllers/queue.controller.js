@@ -332,7 +332,7 @@ exports.registerQueue = async (req, res) => {
     // 首先確保所有現有記錄都有orderIndex
     await ensureOrderIndexConsistency();
     
-    // 創建新記錄之前，計算目前活躍狀態（等待中+處理中）的客戶總數
+    // 計算目前活躍狀態（等待中+處理中）的客戶總數
     const activeCustomerCount = await WaitingRecord.countDocuments({
       status: { $in: ['waiting', 'processing'] }
     });
@@ -349,8 +349,13 @@ exports.registerQueue = async (req, res) => {
     const newRecord = await WaitingRecord.create(recordData);
     console.log('創建的候位記錄ID:', newRecord._id, '排序:', newOrderIndex);
     
-    // 新客戶的等待組數 = 新客戶的orderIndex（因為orderIndex就是基於活躍客戶數+1計算的）
-    const waitingCount = newOrderIndex;
+    // 計算目前等待組數（基於實際的等待中和處理中客戶數量）
+    const waitingAndProcessingCount = await WaitingRecord.countDocuments({
+      status: { $in: ['waiting', 'processing'] }
+    });
+    
+    // 新客戶的等待組數應該等於目前等待中和處理中的客戶總數
+    const waitingCount = waitingAndProcessingCount;
     
     // 計算預估等待時間 - 根據在該客戶前面的所有人數計算
     // 獲取排在該客戶前面的所有記錄
@@ -904,12 +909,13 @@ exports.getOrderedNumbers = async (req, res) => {
 // 獲取目前最大叫號順序（公共API）
 exports.getMaxOrderIndex = async (req, res) => {
   try {
-    // 找到目前最大的 orderIndex
-    const maxOrderRecord = await WaitingRecord.findOne()
-      .sort({ orderIndex: -1 })
-      .limit(1);
+    // ✅ 修正：計算活躍狀態客戶總數，與registerQueue中的waitingCount邏輯一致
+    const activeCustomerCount = await WaitingRecord.countDocuments({
+      status: { $in: ['waiting', 'processing'] }
+    });
     
-    const maxOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex : 0;
+    // 新客戶將會是第 (活躍客戶總數 + 1) 號
+    const maxOrderIndex = activeCustomerCount;
     
     res.status(200).json({
       success: true,
