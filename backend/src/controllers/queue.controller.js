@@ -373,19 +373,19 @@ exports.registerQueue = async (req, res) => {
 
     console.log('準備創建的候位記錄:', recordData);
     
-    // 計算新客戶的orderIndex - 修正版本，避免影響現有記錄順序
+    // 計算新客戶的orderIndex - 確保連續的叫號順序
     // 首先確保所有現有記錄都有orderIndex
     await ensureOrderIndexConsistency();
     
-    // 找到所有記錄中的最大orderIndex，新客戶排在最後
-    const maxOrderRecord = await WaitingRecord.findOne({
+    // 計算目前活躍狀態（等待中+處理中）的客戶總數
+    const activeCustomerCount = await WaitingRecord.countDocuments({
       status: { $in: ['waiting', 'processing'] }
-    })
-      .sort({ orderIndex: -1 })
-      .limit(1);
+    });
     
-    // 新客戶的orderIndex始終為最大值+1，不影響現有記錄的順序
-    const newOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
+    // 新客戶的orderIndex = 活躍客戶總數 + 1，確保叫號順序連續
+    const newOrderIndex = activeCustomerCount + 1;
+    
+    console.log(`目前活躍客戶數: ${activeCustomerCount}, 新客戶orderIndex: ${newOrderIndex}`);
     
     // 將orderIndex添加到記錄數據中
     recordData.orderIndex = newOrderIndex;
