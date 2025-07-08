@@ -2,81 +2,36 @@ const WaitingRecord = require('../models/waiting-record.model');
 const SystemSetting = require('../models/system-setting.model');
 const { autoFillDates, autoFillFamilyMembersDates, addVirtualAge, autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
 
-// 確保 orderIndex 的一致性和唯一性 - 修正版本，避免重新排序所有記錄
+// 確保 orderIndex 的一致性和連續性 - 重新設計版本
 async function ensureOrderIndexConsistency() {
   try {
-    // 檢查是否有記錄沒有 orderIndex（只考慮活躍狀態的客戶）
-    const recordsWithoutOrder = await WaitingRecord.find({ 
-      $and: [
-        {
-          $or: [
-            { orderIndex: { $exists: false } },
-            { orderIndex: null }
-          ]
-        },
-        { status: { $in: ['waiting', 'processing'] } }
-      ]
-    });
+    console.log('開始檢查和修正 orderIndex 一致性...');
     
-    if (recordsWithoutOrder.length > 0) {
-      console.log(`發現 ${recordsWithoutOrder.length} 條記錄沒有 orderIndex，正在分配...`);
-      
-      // 找到目前最大的 orderIndex（只考慮活躍狀態的客戶）
-      const maxOrderRecord = await WaitingRecord.findOne({
-        status: { $in: ['waiting', 'processing'] }
-      })
-        .sort({ orderIndex: -1 })
-        .limit(1);
-      
-      let nextOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
-      
-      // 為沒有 orderIndex 的記錄分配新的順序，而不是重新排序所有記錄
-      for (const record of recordsWithoutOrder) {
-        record.orderIndex = nextOrderIndex++;
-        await record.save();
-        console.log(`為記錄 ${record.queueNumber} 分配 orderIndex: ${record.orderIndex}`);
+    // 獲取所有活躍狀態的客戶，按照當前的 orderIndex 排序
+    const activeRecords = await WaitingRecord.find({
+      status: { $in: ['waiting', 'processing'] }
+    }).sort({ orderIndex: 1 });
+    
+    console.log(`找到 ${activeRecords.length} 個活躍客戶記錄`);
+    
+    // 重新分配連續的 orderIndex (1, 2, 3, ...)
+    let needsUpdate = false;
+    for (let i = 0; i < activeRecords.length; i++) {
+      const correctOrderIndex = i + 1;
+      if (activeRecords[i].orderIndex !== correctOrderIndex) {
+        console.log(`修正客戶 ${activeRecords[i].queueNumber} 的 orderIndex: ${activeRecords[i].orderIndex} → ${correctOrderIndex}`);
+        activeRecords[i].orderIndex = correctOrderIndex;
+        await activeRecords[i].save();
+        needsUpdate = true;
       }
-      
-      console.log(`已為 ${recordsWithoutOrder.length} 條記錄分配 orderIndex`);
     }
     
-    // 檢查是否有重複的 orderIndex（只考慮活躍狀態的客戶）
-    const duplicates = await WaitingRecord.aggregate([
-      { $match: { status: { $in: ['waiting', 'processing'] } } },
-      { $group: { _id: "$orderIndex", count: { $sum: 1 }, docs: { $push: "$_id" } } },
-      { $match: { count: { $gt: 1 } } }
-    ]);
-    
-    if (duplicates.length > 0) {
-      console.log(`發現 ${duplicates.length} 個重複的 orderIndex，正在修正...`);
-      
-      // 找到目前最大的 orderIndex（只考慮活躍狀態的客戶）
-      const maxOrderRecord = await WaitingRecord.findOne({
-        status: { $in: ['waiting', 'processing'] }
-      })
-        .sort({ orderIndex: -1 })
-        .limit(1);
-      
-      let nextOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
-      
-      // 只修正重複的記錄，保持其他記錄的順序不變
-      for (const duplicate of duplicates) {
-        const duplicateRecords = await WaitingRecord.find({ 
-          orderIndex: duplicate._id,
-          status: { $in: ['waiting', 'processing'] }
-        });
-        
-        // 保留第一個記錄的 orderIndex，其他記錄分配新的 orderIndex
-        for (let i = 1; i < duplicateRecords.length; i++) {
-          const record = duplicateRecords[i];
-          record.orderIndex = nextOrderIndex++;
-          await record.save();
-          console.log(`修正重複記錄 ${record.queueNumber} 的 orderIndex 為: ${record.orderIndex}`);
-        }
-      }
-      
-      console.log(`已修正重複的 orderIndex`);
+    if (needsUpdate) {
+      console.log('已重新分配所有活躍客戶的 orderIndex 為連續數字');
+    } else {
+      console.log('所有活躍客戶的 orderIndex 已經是連續的');
     }
+    
   } catch (error) {
     console.error('確保 orderIndex 一致性時發生錯誤:', error);
   }
