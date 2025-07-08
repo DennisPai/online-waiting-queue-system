@@ -5,7 +5,6 @@ const initialState = {
   queueStatus: null,
   currentQueue: null,
   registeredQueueNumber: null, // 新增：專門記錄用戶剛登記的號碼
-  registeredOrderIndex: null, // 新增：專門記錄用戶剛登記的叫號順序
   waitingCount: 0,
   estimatedWaitTime: 0,
   estimatedEndTime: null,
@@ -308,7 +307,6 @@ const queueSlice = createSlice({
     },
     resetRegistration: (state) => {
       state.registeredQueueNumber = null; // 重置用戶登記的號碼
-      state.registeredOrderIndex = null; // 重置用戶登記的叫號順序
       state.error = null;
       state.waitingCount = 0;
       state.estimatedWaitTime = 0;
@@ -354,11 +352,10 @@ const queueSlice = createSlice({
       })
       .addCase(registerQueue.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.registeredQueueNumber = action.payload.data.queueNumber;
-        state.registeredOrderIndex = action.payload.data.orderIndex;
-        state.waitingCount = action.payload.data.waitingCount;
-        state.estimatedWaitTime = action.payload.data.estimatedWaitTime;
-        state.estimatedEndTime = action.payload.data.estimatedEndTime;
+        state.registeredQueueNumber = action.payload.queueNumber; // 使用新的狀態
+        state.waitingCount = action.payload.waitingCount;
+        state.estimatedWaitTime = action.payload.estimatedWaitTime;
+        state.estimatedEndTime = action.payload.estimatedEndTime;
       })
       .addCase(registerQueue.rejected, (state, action) => {
         state.isLoading = false;
@@ -648,7 +645,6 @@ const queueSlice = createSlice({
         state.currentQueue = 0;
         state.waitingCount = 0;
         state.registeredQueueNumber = null;
-        state.registeredOrderIndex = null;
         state.currentQueueStatus = null;
         state.queueStatus = {
           ...state.queueStatus,

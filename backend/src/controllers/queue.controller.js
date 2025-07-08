@@ -5,19 +5,26 @@ const { autoFillDates, autoFillFamilyMembersDates, addVirtualAge, autoConvertToM
 // 確保 orderIndex 的一致性和唯一性 - 修正版本，避免重新排序所有記錄
 async function ensureOrderIndexConsistency() {
   try {
-    // 檢查是否有記錄沒有 orderIndex
+    // 檢查是否有記錄沒有 orderIndex（只考慮活躍狀態的客戶）
     const recordsWithoutOrder = await WaitingRecord.find({ 
-      $or: [
-        { orderIndex: { $exists: false } },
-        { orderIndex: null }
+      $and: [
+        {
+          $or: [
+            { orderIndex: { $exists: false } },
+            { orderIndex: null }
+          ]
+        },
+        { status: { $in: ['waiting', 'processing'] } }
       ]
     });
     
     if (recordsWithoutOrder.length > 0) {
       console.log(`發現 ${recordsWithoutOrder.length} 條記錄沒有 orderIndex，正在分配...`);
       
-      // 找到目前最大的 orderIndex
-      const maxOrderRecord = await WaitingRecord.findOne()
+      // 找到目前最大的 orderIndex（只考慮活躍狀態的客戶）
+      const maxOrderRecord = await WaitingRecord.findOne({
+        status: { $in: ['waiting', 'processing'] }
+      })
         .sort({ orderIndex: -1 })
         .limit(1);
       
@@ -33,8 +40,9 @@ async function ensureOrderIndexConsistency() {
       console.log(`已為 ${recordsWithoutOrder.length} 條記錄分配 orderIndex`);
     }
     
-    // 檢查是否有重複的 orderIndex
+    // 檢查是否有重複的 orderIndex（只考慮活躍狀態的客戶）
     const duplicates = await WaitingRecord.aggregate([
+      { $match: { status: { $in: ['waiting', 'processing'] } } },
       { $group: { _id: "$orderIndex", count: { $sum: 1 }, docs: { $push: "$_id" } } },
       { $match: { count: { $gt: 1 } } }
     ]);
@@ -42,8 +50,10 @@ async function ensureOrderIndexConsistency() {
     if (duplicates.length > 0) {
       console.log(`發現 ${duplicates.length} 個重複的 orderIndex，正在修正...`);
       
-      // 找到目前最大的 orderIndex
-      const maxOrderRecord = await WaitingRecord.findOne()
+      // 找到目前最大的 orderIndex（只考慮活躍狀態的客戶）
+      const maxOrderRecord = await WaitingRecord.findOne({
+        status: { $in: ['waiting', 'processing'] }
+      })
         .sort({ orderIndex: -1 })
         .limit(1);
       
@@ -51,7 +61,10 @@ async function ensureOrderIndexConsistency() {
       
       // 只修正重複的記錄，保持其他記錄的順序不變
       for (const duplicate of duplicates) {
-        const duplicateRecords = await WaitingRecord.find({ orderIndex: duplicate._id });
+        const duplicateRecords = await WaitingRecord.find({ 
+          orderIndex: duplicate._id,
+          status: { $in: ['waiting', 'processing'] }
+        });
         
         // 保留第一個記錄的 orderIndex，其他記錄分配新的 orderIndex
         for (let i = 1; i < duplicateRecords.length; i++) {
@@ -365,7 +378,9 @@ exports.registerQueue = async (req, res) => {
     await ensureOrderIndexConsistency();
     
     // 找到所有記錄中的最大orderIndex，新客戶排在最後
-    const maxOrderRecord = await WaitingRecord.findOne()
+    const maxOrderRecord = await WaitingRecord.findOne({
+      status: { $in: ['waiting', 'processing'] }
+    })
       .sort({ orderIndex: -1 })
       .limit(1);
     
@@ -424,7 +439,6 @@ exports.registerQueue = async (req, res) => {
       message: '候位登記成功',
       data: {
         queueNumber: newRecord.queueNumber,
-        orderIndex: newRecord.orderIndex,
         waitingCount,
         estimatedWaitTime,
         estimatedEndTime: estimatedEndTime.toISOString(),
@@ -951,7 +965,7 @@ exports.getMaxOrderIndex = async (req, res) => {
       success: true,
       data: {
         maxOrderIndex: maxOrderIndex,
-        message: maxOrderIndex > 0 ? `目前叫號順序到第 ${maxOrderIndex} 號` : '目前還沒有人報名'
+        message: maxOrderIndex > 0 ? `目前已報名到第 ${maxOrderIndex} 號` : '目前還沒有人報名'
       }
     });
   } catch (error) {

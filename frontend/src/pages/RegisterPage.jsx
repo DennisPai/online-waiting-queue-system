@@ -85,7 +85,7 @@ const addressTypeOptions = [
 const RegisterPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isLoading, registeredQueueNumber, registeredOrderIndex, waitingCount, estimatedWaitTime, estimatedEndTime, error, maxOrderIndex, maxOrderMessage } = useSelector(
+  const { isLoading, registeredQueueNumber, waitingCount, estimatedWaitTime, estimatedEndTime, error, maxOrderIndex, maxOrderMessage } = useSelector(
     (state) => state.queue
   );
   const [formData, setFormData] = useState(initialFormData);
@@ -518,18 +518,12 @@ const RegisterPage = () => {
             候位登記成功！
           </Typography>
           
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
             <Typography variant="h6" color="text.secondary">
-              您的叫號順序：
+              您的候位號碼：
             </Typography>
             <Typography variant="h3" color="primary" sx={{ ml: 2 }}>
-              第 {registeredOrderIndex} 號
-            </Typography>
-          </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              候位號碼：{registeredQueueNumber}
+              {registeredQueueNumber}
             </Typography>
           </Box>
           
@@ -538,10 +532,10 @@ const RegisterPage = () => {
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
               <Typography variant="body2" color="text.secondary">
-                前方等待組數
+                目前等待組數
               </Typography>
               <Typography variant="h6">
-                {registeredOrderIndex ? registeredOrderIndex - 1 : 0} 組
+                {waitingCount} 組
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -615,7 +609,7 @@ const RegisterPage = () => {
                 {maxOrderMessage}
               </Typography>
               <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9 }}>
-                您的叫號順序將會是第 {maxOrderIndex + 1} 號
+                您將會是第 {maxOrderIndex + 1} 號
               </Typography>
               {maxOrderIndex + 1 > 80 && (
                 <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9, color: 'warning.main' }}>
