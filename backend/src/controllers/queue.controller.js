@@ -7,10 +7,11 @@ async function ensureOrderIndexConsistency() {
   try {
     console.log('開始檢查和修正 orderIndex 一致性...');
     
-    // 獲取所有活躍狀態的客戶，按照當前的 orderIndex 排序
+    // ✅ 修正：獲取所有活躍狀態的客戶，按照queueNumber排序（而非orderIndex）
+    // 因為queueNumber是正確的順序，而orderIndex可能包含已取消客戶的錯誤數字
     const activeRecords = await WaitingRecord.find({
       status: { $in: ['waiting', 'processing'] }
-    }).sort({ orderIndex: 1 });
+    }).sort({ queueNumber: 1 }); // 按照客戶編號排序，這是正確的順序
     
     console.log(`找到 ${activeRecords.length} 個活躍客戶記錄`);
     
@@ -27,7 +28,7 @@ async function ensureOrderIndexConsistency() {
     }
     
     if (needsUpdate) {
-      console.log('已重新分配所有活躍客戶的 orderIndex 為連續數字');
+      console.log('已重新分配所有活躍客戶的 orderIndex 為連續數字（按queueNumber順序）');
     } else {
       console.log('所有活躍客戶的 orderIndex 已經是連續的');
     }
