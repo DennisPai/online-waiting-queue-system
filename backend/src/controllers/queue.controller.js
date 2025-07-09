@@ -329,16 +329,13 @@ exports.registerQueue = async (req, res) => {
 
     console.log('準備創建的候位記錄:', recordData);
     
-    // 計算新客戶的orderIndex - 確保連續的叫號順序
-    // 首先確保所有現有記錄都有orderIndex
-    await ensureOrderIndexConsistency();
-    
+    // 計算新客戶的orderIndex - 不影響現有客戶的手動調整順序
     // 計算目前活躍狀態（等待中+處理中）的客戶總數
     const activeCustomerCount = await WaitingRecord.countDocuments({
       status: { $in: ['waiting', 'processing'] }
     });
     
-    // 新客戶的orderIndex = 活躍客戶總數 + 1，確保叫號順序連續
+    // 新客戶的orderIndex = 活躍客戶總數 + 1，排在所有現有客戶之後
     const newOrderIndex = activeCustomerCount + 1;
     
     console.log(`目前活躍客戶數: ${activeCustomerCount}, 新客戶orderIndex: ${newOrderIndex}`);
