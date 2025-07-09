@@ -2,12 +2,12 @@ const WaitingRecord = require('../models/waiting-record.model');
 const SystemSetting = require('../models/system-setting.model');
 const { autoFillDates, autoFillFamilyMembersDates, addVirtualAge, autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
 
-// 確保 orderIndex 的一致性和連續性 - 與queue.controller.js保持一致的版本
+// 確保 orderIndex 的一致性和連續性 - 與queue.controller.js保持完全一致
 async function ensureOrderIndexConsistency() {
   try {
     console.log('開始檢查和修正 orderIndex 一致性...');
     
-    // ✅ 修正：獲取所有活躍狀態的客戶，按照queueNumber排序（而非orderIndex）
+    // 獲取所有活躍狀態的客戶，按照queueNumber排序（而非orderIndex）
     // 因為queueNumber是正確的順序，而orderIndex可能包含已取消客戶的錯誤數字
     const activeRecords = await WaitingRecord.find({
       status: { $in: ['waiting', 'processing'] }
@@ -28,11 +28,10 @@ async function ensureOrderIndexConsistency() {
     }
     
     if (needsUpdate) {
-      console.log('已重新分配所有活躍客戶的 orderIndex 為連續數字（按queueNumber順序）');
+      console.log('已完成 orderIndex 一致性修正');
     } else {
-      console.log('所有活躍客戶的 orderIndex 已經是連續的');
+      console.log('orderIndex 已是連續狀態，無需修正');
     }
-    
   } catch (error) {
     console.error('確保 orderIndex 一致性時發生錯誤:', error);
   }
