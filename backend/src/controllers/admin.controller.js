@@ -40,8 +40,7 @@ async function ensureOrderIndexConsistency() {
 // 獲取候位列表
 exports.getQueueList = async (req, res) => {
   try {
-    // 確保 orderIndex 的一致性（使用統一的函數）
-    await ensureOrderIndexConsistency();
+    // 列表查看時不重新排序，保持管理員手動調整的順序
     
     // 獲取過濾參數
     const { status, page, limit } = req.query;
@@ -365,10 +364,7 @@ exports.updateQueueOrder = async (req, res) => {
       status: recordToUpdate.status
     });
     
-    // 確保 orderIndex 的一致性
-    await ensureOrderIndexConsistency();
-    
-    // 現在所有記錄都有orderIndex，我們可以安全地進行排序操作
+    // 拖曳更新順序時不需要重新排序整個列表，直接使用現有的orderIndex進行調整
     
     // 確保recordToUpdate有orderIndex
     const currentOrder = recordToUpdate.orderIndex || 0;
