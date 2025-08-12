@@ -5,17 +5,18 @@
 ## 核心重構階段（優先完成）
 
 ### Frontend 重構（當前重點）
-- [ ] **拆分 AdminDashboardPage**：將候位管理頁面拆分為多個元件
-  - [ ] QueueTable 元件（候位清單表格）
-  - [ ] CustomerDetailDialog 元件（客戶詳細資料對話框）
-  - [ ] ExportDialog 元件（匯出功能）
-  - [ ] useQueueManagement hook（候位管理邏輯）
-- [ ] **拆分 RegisterPage**：將註冊頁面拆分為多個元件
-  - [ ] BasicInfoSection 元件（基本資料區塊）
-  - [ ] AddressSection 元件（地址資訊區塊）  
-  - [ ] FamilySection 元件（家人資訊區塊）
-  - [ ] ConsultationSection 元件（諮詢主題區塊）
-  - [ ] useRegistrationForm hook（表單邏輯）
+- [x] **拆分 AdminDashboardPage**：將候位管理頁面拆分為多個元件
+  - [x] QueueTable 元件（候位清單表格）
+  - [x] CustomerDetailDialog 元件（客戶詳細資料對話框）
+  - [x] ExportDialog 元件（匯出功能）- 已存在於 components/
+  - [x] useQueueManagement hook（候位管理邏輯）
+- [x] **拆分 RegisterPage**：將註冊頁面拆分為多個元件
+  - [x] BasicInfoSection 元件（基本資料區塊）
+  - [x] AddressSection 元件（地址資訊區塊）  
+  - [x] FamilySection 元件（家人資訊區塊）
+  - [x] ConsultationSection 元件（諮詢主題區塊）
+  - [x] useRegistrationForm hook（表單邏輯）
+  - [x] RegistrationSuccess 元件（成功頁面）
 - [ ] **表單驗證統一化**：建立 validation schema（使用 yup 或 zod）
   - [ ] 註冊表單驗證 schema
   - [ ] 客戶編輯表單驗證 schema
