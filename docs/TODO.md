@@ -35,10 +35,10 @@
 - [x] **文檔整合**：移除 docs/ENGINEERING_RULES.md，統一使用 .cursor/rules
 
 ### 階段二：後端服務層重構
-- [ ] **建立 Service 層**：抽取業務邏輯到 services/，controllers 僅處理 HTTP
-- [ ] **Repository 模式**：建立數據訪問層，分離 Models 和業務邏輯
-- [ ] **統一錯誤處理**：建立 ApiError 類和全局錯誤處理中間件
-- [ ] **請求驗證器**：統一的 validators/ 目錄和驗證邏輯
+- [x] **建立 Service 層**：抽取業務邏輯到 services/，controllers 僅處理 HTTP
+- [x] **Repository 模式**：建立數據訪問層，分離 Models 和業務邏輯
+- [x] **統一錯誤處理**：建立 ApiError 類和全局錯誤處理中間件
+- [x] **請求驗證器**：統一的 validators/ 目錄和驗證邏輯
 
 ### 階段三：前端架構優化
 - [ ] **拆分複雜 Hooks**：將 useQueueManagement(745行) 拆分為專門 hooks
