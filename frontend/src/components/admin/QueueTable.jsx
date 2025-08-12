@@ -42,7 +42,7 @@ const QueueTable = ({
     } else if (orderIndex === 1) {
       return <Chip label="處理中" color="warning" size="small" />;
     } else {
-      return <Chip label="等待中" color="default" size="small" />;
+      return <Chip label="等待中" color="info" size="small" />;
     }
   };
 
@@ -287,7 +287,7 @@ const QueueTable = ({
                                       <Checkbox
                                         checked={row.status === 'completed'}
                                         onChange={(event) => onCompletionChange(event, row._id, event.target.checked)}
-                                        color="primary"
+                                        color="success"
                                         size="small"
                                         sx={{ mr: 1 }}
                                       />

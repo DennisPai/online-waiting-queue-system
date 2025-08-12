@@ -296,57 +296,90 @@ export const useRegistrationForm = (embedded = false) => {
     const errors = {};
 
     // 基本資料驗證
-    if (!formData.name?.trim()) {
-      errors.name = '姓名為必填項目';
-    }
-
-    if (!formData.phone?.trim()) {
-      errors.phone = '聯絡手機為必填項目';
-    } else if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
-      errors.phone = '請輸入有效的手機號碼';
-    }
-
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = '請輸入有效的電子郵件格式';
+      errors.email = '請輸入有效的電子郵件';
+    }
+    
+    if (!formData.name) {
+      errors.name = '請輸入姓名';
+    }
+    
+    if (!formData.phone) {
+      errors.phone = '請輸入聯絡手機';
+    } else if (!/^[\d-+()]{8,}$/.test(formData.phone)) {
+      errors.phone = '請輸入有效的聯絡手機';
     }
 
     // 出生日期驗證
-    if (!formData.birthYear || !formData.birthMonth || !formData.birthDay) {
-      if (!formData.birthYear) errors.birthYear = '出生年為必填項目';
-      if (!formData.birthMonth) errors.birthMonth = '出生月為必填項目';
-      if (!formData.birthDay) errors.birthDay = '出生日為必填項目';
+    if (!formData.birthYear) {
+      errors.birthYear = '請輸入出生年';
+    } else if (isNaN(formData.birthYear)) {
+      errors.birthYear = '請輸入有效的出生年';
+    } else {
+      const year = parseInt(formData.birthYear);
+      const currentYear = new Date().getFullYear();
+      if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
+        errors.birthYear = '請輸入有效的出生年（民國1-150年或西元1900年後）';
+      }
+    }
+    
+    if (!formData.birthMonth) {
+      errors.birthMonth = '請輸入出生月';
+    } else if (isNaN(formData.birthMonth) || formData.birthMonth < 1 || formData.birthMonth > 12) {
+      errors.birthMonth = '請輸入1-12之間的數字';
+    }
+    
+    if (!formData.birthDay) {
+      errors.birthDay = '請輸入出生日';
+    } else if (isNaN(formData.birthDay) || formData.birthDay < 1 || formData.birthDay > 31) {
+      errors.birthDay = '請輸入1-31之間的數字';
     }
 
     // 地址驗證
-    formData.addresses.forEach((address, index) => {
-      if (!address.address?.trim()) {
-        errors[`addresses.${index}.address`] = '地址為必填項目';
+    formData.addresses.forEach((addr, index) => {
+      if (!addr.address) {
+        errors[`addresses.${index}.address`] = '請輸入地址';
       }
     });
 
     // 家人資料驗證
     formData.familyMembers.forEach((member, index) => {
-      if (!member.name?.trim()) {
-        errors[`familyMembers.${index}.name`] = '家人姓名為必填項目';
+      if (!member.name) {
+        errors[`familyMembers.${index}.name`] = '請輸入家人姓名';
       }
-      if (!member.birthYear || !member.birthMonth || !member.birthDay) {
-        if (!member.birthYear) errors[`familyMembers.${index}.birthYear`] = '家人出生年為必填項目';
-        if (!member.birthMonth) errors[`familyMembers.${index}.birthMonth`] = '家人出生月為必填項目';
-        if (!member.birthDay) errors[`familyMembers.${index}.birthDay`] = '家人出生日為必填項目';
+      if (!member.gender) {
+        errors[`familyMembers.${index}.gender`] = '請選擇性別';
       }
-      if (!member.address?.trim()) {
-        errors[`familyMembers.${index}.address`] = '家人地址為必填項目';
+      if (!member.birthYear) {
+        errors[`familyMembers.${index}.birthYear`] = '請輸入出生年';
+      } else if (isNaN(member.birthYear)) {
+        errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年';
+      } else {
+        const year = parseInt(member.birthYear);
+        const currentYear = new Date().getFullYear();
+        if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
+          errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年（民國1-150年或西元1900年後）';
+        }
+      }
+      if (!member.birthMonth) {
+        errors[`familyMembers.${index}.birthMonth`] = '請輸入出生月';
+      }
+      if (!member.birthDay) {
+        errors[`familyMembers.${index}.birthDay`] = '請輸入出生日';
+      }
+      if (!member.address) {
+        errors[`familyMembers.${index}.address`] = '請輸入地址';
       }
     });
 
-    // 諮詢主題驗證
-    if (!formData.consultationTopics || formData.consultationTopics.length === 0) {
-      errors.consultationTopics = '請至少選擇一個諮詢主題';
+    // 請示內容驗證
+    if (formData.consultationTopics.length === 0) {
+      errors.consultationTopics = '請至少選擇一個請示內容';
     }
 
-    // 如果選擇了"其他"，必須填寫詳細內容
-    if (formData.consultationTopics?.includes('other') && !formData.otherDetails?.trim()) {
-      errors.otherDetails = '請詳細說明其他問題';
+    // 其他詳細內容驗證
+    if (formData.consultationTopics.includes('other') && !formData.otherDetails.trim()) {
+      errors.otherDetails = '選擇「其他」時，請詳細說明您的問題';
     }
 
     setFormErrors(errors);

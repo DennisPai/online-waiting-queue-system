@@ -74,19 +74,22 @@ const RegisterPage = () => {
       </Box>
 
       {/* 候位提醒卡片 */}
-      {maxOrderIndex !== undefined && (
+      {maxOrderMessage && (
         <Box sx={{ mb: 3 }}>
           <Card sx={{ bgcolor: 'info.light', color: 'info.contrastText' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                📋 候位提醒
+            <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h6" align="center" sx={{ fontWeight: 'bold' }}>
+                📢 候位提醒
               </Typography>
-              <Typography variant="body1">
+              <Typography variant="body1" align="center" sx={{ mt: 1 }}>
+                {maxOrderMessage}
+              </Typography>
+              <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9 }}>
                 您的叫號順序將會是第 <strong>{(maxOrderIndex || 0) + 1}</strong> 號
               </Typography>
-              {maxOrderMessage && (
-                <Typography variant="body2" sx={{ mt: 1, opacity: 0.9 }}>
-                  {maxOrderMessage}
+              {(maxOrderIndex + 1) > 80 && (
+                <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9, color: 'warning.main' }}>
+                  ※ 超過80號預計將排至凌晨1點以後，若非重大問題急需求助，建議預約下次問事。
                 </Typography>
               )}
             </CardContent>

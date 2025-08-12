@@ -184,7 +184,7 @@ const FamilySection = ({
                   <Grid item xs={12}>
                     <Box sx={{ 
                       p: 2, 
-                      bgcolor: 'background.default', 
+                      bgcolor: 'background.paper', 
                       borderRadius: 1, 
                       border: '1px solid', 
                       borderColor: 'divider' 

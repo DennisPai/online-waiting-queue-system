@@ -128,7 +128,7 @@ const BasicInfoSection = ({
               value={formData.birthYear}
               onChange={handleChange}
               error={Boolean(formErrors.birthYear)}
-              helperText={formErrors.birthYear}
+              helperText={formErrors.birthYear || "系統會自動判斷民國年或西元年"}
             />
           </Grid>
           <Grid item xs={4}>
@@ -182,7 +182,7 @@ const BasicInfoSection = ({
           <Box sx={{ 
             mt: 2, 
             p: 2, 
-            bgcolor: 'background.default', 
+            bgcolor: 'background.paper', 
             borderRadius: 1, 
             border: '1px solid', 
             borderColor: 'divider' 

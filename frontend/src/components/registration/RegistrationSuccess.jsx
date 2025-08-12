@@ -74,59 +74,37 @@ const RegistrationSuccess = ({
         </Box>
 
         {/* 候位資訊卡片 */}
-        <Card variant="outlined" sx={{ mb: 3 }}>
+        <Card>
           <CardContent>
-            <Grid container spacing={3}>
-              {/* 候位號碼 */}
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ textAlign: 'center', p: 2 }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    您的候位號碼
-                  </Typography>
-                  <Typography 
-                    variant="h3" 
-                    component="div" 
-                    sx={{ 
-                      fontWeight: 'bold', 
-                      color: 'primary.main',
-                      mb: 1
-                    }}
-                  >
-                    {registeredQueueNumber}
-                  </Typography>
-                  <Chip 
-                    label="請記住此號碼" 
-                    color="primary" 
-                    variant="outlined"
-                    size="small"
-                  />
-                </Box>
-              </Grid>
+            <Typography variant="h5" component="div" align="center" gutterBottom>
+              候位登記成功！
+            </Typography>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" color="text.secondary">
+                您的候位號碼：
+              </Typography>
+              <Typography variant="h3" color="primary" sx={{ ml: 2 }}>
+                {registeredQueueNumber}
+              </Typography>
+            </Box>
 
-              {/* 叫號順序 */}
+            <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} sm={6}>
-                <Box sx={{ textAlign: 'center', p: 2 }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    您的叫號順序
-                  </Typography>
-                  <Typography 
-                    variant="h3" 
-                    component="div" 
-                    sx={{ 
-                      fontWeight: 'bold', 
-                      color: 'warning.main',
-                      mb: 1
-                    }}
-                  >
-                    第 {registeredOrderIndex || '?'} 號
-                  </Typography>
-                  <Chip 
-                    label="依此順序叫號" 
-                    color="warning" 
-                    variant="outlined"
-                    size="small"
-                  />
-                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  目前等待組數
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                  {waitingCount !== undefined ? `${Math.max(0, (registeredOrderIndex || 1) - 1)} 組` : '計算中...'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">
+                  預估結束時間
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                  {formatEstimatedTime(estimatedEndTime)}
+                </Typography>
               </Grid>
             </Grid>
           </CardContent>

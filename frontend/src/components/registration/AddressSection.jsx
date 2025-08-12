@@ -73,6 +73,26 @@ const AddressSection = ({
                     error={Boolean(formErrors[`addresses.${index}.address`])}
                     helperText={formErrors[`addresses.${index}.address`]}
                   />
+                  {index === 0 && (!formData.addresses || formData.addresses.length < 3) && (
+                    <IconButton
+                      color="primary"
+                      onClick={onAddAddress}
+                      title="新增地址"
+                      sx={{ mt: 1 }}
+                    >
+                      <AddIcon />
+                    </IconButton>
+                  )}
+                  {index > 0 && (
+                    <IconButton
+                      color="error"
+                      onClick={() => onRemoveAddress(index)}
+                      title="刪除地址"
+                      sx={{ mt: 1 }}
+                    >
+                      <RemoveIcon />
+                    </IconButton>
+                  )}
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <FormControl fullWidth>
