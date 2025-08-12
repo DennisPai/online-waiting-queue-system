@@ -47,6 +47,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['admin', 'staff'],
     default: 'staff'
+  },
+  mustChangePassword: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
@@ -112,7 +116,8 @@ async function createAdmin() {
         username: 'admin',
         password: 'admin123', // 這將被自動加密
         email: 'admin@example.com',
-        role: 'admin'
+        role: 'admin',
+        mustChangePassword: true
       });
       
       await admin.save();

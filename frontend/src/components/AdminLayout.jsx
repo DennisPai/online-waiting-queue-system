@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -26,7 +26,8 @@ import {
   Logout as LogoutIcon
 } from '@mui/icons-material';
 import { hideAlert } from '../redux/slices/uiSlice';
-import { logout } from '../redux/slices/authSlice';
+import { logout, changePassword } from '../redux/slices/authSlice';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 
 const drawerWidth = 240;
 
@@ -34,8 +35,12 @@ const AdminLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user } = useSelector((state) => state.auth);
+  const { user, isLoading } = useSelector((state) => state.auth);
   const { alert } = useSelector((state) => state.ui);
+  const [pwdOpen, setPwdOpen] = useState(false);
+  const [oldPwd, setOldPwd] = useState('');
+  const [newPwd, setNewPwd] = useState('');
+  const mustChange = useMemo(() => !!user?.mustChangePassword, [user]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -44,6 +49,16 @@ const AdminLayout = () => {
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
+  };
+
+  const handleSubmitPassword = async () => {
+    if (!oldPwd || !newPwd) return;
+    try {
+      await dispatch(changePassword({ oldPassword: oldPwd, newPassword: newPwd })).unwrap();
+      setPwdOpen(false);
+      setOldPwd('');
+      setNewPwd('');
+    } catch (_) {}
   };
 
   const handleCloseAlert = (event, reason) => {
@@ -171,6 +186,36 @@ const AdminLayout = () => {
       >
         <Toolbar />
         <Outlet />
+        {/* 首次登入強制修改密碼 */}
+        <Dialog open={mustChange || pwdOpen} disableEscapeKeyDown={mustChange}>
+          <DialogTitle>請變更您的密碼</DialogTitle>
+          <DialogContent>
+            <TextField
+              fullWidth
+              label="原密碼"
+              type="password"
+              value={oldPwd}
+              onChange={(e) => setOldPwd(e.target.value)}
+              margin="dense"
+            />
+            <TextField
+              fullWidth
+              label="新密碼（至少10字元，含字母與數字）"
+              type="password"
+              value={newPwd}
+              onChange={(e) => setNewPwd(e.target.value)}
+              margin="dense"
+            />
+          </DialogContent>
+          <DialogActions>
+            {!mustChange && (
+              <Button onClick={() => setPwdOpen(false)} disabled={isLoading}>取消</Button>
+            )}
+            <Button onClick={handleSubmitPassword} disabled={isLoading || !oldPwd || !newPwd} variant="contained">
+              儲存
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
 
       <Snackbar

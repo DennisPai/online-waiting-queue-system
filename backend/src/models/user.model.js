@@ -26,6 +26,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['admin', 'staff'],
     default: 'staff'
+  },
+  // 首次登入需強制修改密碼的旗標
+  mustChangePassword: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

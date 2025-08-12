@@ -34,4 +34,16 @@ router.post(
 // 獲取當前登入用戶資訊
 router.get('/me', protect, authController.getMe);
 
+// 修改密碼（登入後）
+router.put(
+  '/change-password',
+  protect,
+  [
+    body('oldPassword').notEmpty().withMessage('原密碼不能為空'),
+    body('newPassword').notEmpty().isLength({ min: 10 }).withMessage('新密碼至少10字元')
+  ],
+  validateRequest,
+  authController.changePassword
+);
+
 module.exports = router; 

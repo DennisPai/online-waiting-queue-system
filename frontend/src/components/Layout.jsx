@@ -105,6 +105,11 @@ const Layout = () => {
                   >
                     管理面板
                   </Button>
+                  {!!user?.mustChangePassword && (
+                    <Typography variant="body2" color="warning.main" sx={{ mr: 2 }}>
+                      請儘速變更密碼
+                    </Typography>
+                  )}
                   <Button 
                     color="inherit" 
                     onClick={handleLogout}
