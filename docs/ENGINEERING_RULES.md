@@ -34,6 +34,7 @@
 ## CI/CD
 - GitHub Actions：lint/test/build 分 job
 - 部署順序：先後端（上 v1）→ 再前端切換 v1 → 觀察 24h
+- Zeabur：依服務（backend/frontend）採用分支或標籤觸發。若目前只針對 `main` 自動部署，請在 Zeabur 將自動部署來源改為追蹤 `feat/*` 分支或手動 Redeploy；或先將 PR 合併至 `main` 觸發部署。
 
 ## 目錄
 - `backend/scripts/`：移動 `init-admin.js`、`removeUniqueIndex.js`、`api-test*.js`

@@ -24,19 +24,25 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+// 版本前綴（預設 v1；可透過 REACT_APP_API_VERSION 控制，若要用舊端點可設空字串）
+export const API_VERSION = process.env.REACT_APP_API_VERSION || 'v1';
+export const API_PREFIX = API_VERSION ? `/api/${API_VERSION}` : '/api';
+
 // 添加詳細的調試資訊
 console.log('=== API 配置資訊 ===');
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
 console.log('當前域名:', window.location.hostname);
 console.log('最終API Base URL:', API_BASE_URL);
+console.log('REACT_APP_API_VERSION:', process.env.REACT_APP_API_VERSION);
+console.log('API Prefix:', API_PREFIX);
 console.log('==================');
 
 // API 端點
 export const API_ENDPOINTS = {
-  AUTH: `${API_BASE_URL}/api/auth`,
-  QUEUE: `${API_BASE_URL}/api/queue`, 
-  ADMIN: `${API_BASE_URL}/api/admin`
+  AUTH: `${API_BASE_URL}${API_PREFIX}/auth`,
+  QUEUE: `${API_BASE_URL}${API_PREFIX}/queue`, 
+  ADMIN: `${API_BASE_URL}${API_PREFIX}/admin`
 };
 
 // 健康檢查端點
