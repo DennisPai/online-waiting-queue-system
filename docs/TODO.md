@@ -4,9 +4,9 @@
 
 ## Backend（API 與平台）
 - [x] v1 回應封裝 middleware（統一回應格式已套用於 `/api/v1` 入口）
-- [x] v1 端點大部分對齊 `{ success, code, message, data }`（auth/login、me、register、change-password、queue 全覆蓋；持續檢查 admin 回應鍵一致性）
+- [x] v1 端點全部統一 `{ success, code, message, data }`（auth/queue/admin 覆蓋；token 置於 `data.token`）
 - [ ] 結構化日誌（JSON + traceId + latency + route）；保留 morgan 做相容過渡
-- [ ] Index migrations：`status`、`orderIndex`、`phone`、`queueNumber`（普通索引）
+- [x] Index migrations：`status`、`orderIndex`、`phone`、`queueNumber`（普通索引；腳本已加入 `backend/scripts/migrations/001_add_indexes.js`，待上線環境執行）
 - [x] /ready 擴充：檢查 Mongo 連線健康（`mongoose.connection.readyState`）
 - [ ] 安全策略調參：rate-limit 白名單/滑動窗口；Helmet policy 依部署域名調整
 - [ ] 單元/整合測試（Jest+supertest）：Auth（login/change-password）、Queue（register/status/number）
@@ -28,13 +28,13 @@
 
 ## CI/CD（品質與部署）
 - [ ] GitHub Actions：前後端分 job（lint/test/build），報告覆蓋率
-- [ ] Zeabur：確認自動部署追蹤 `main`；feature 分支改用 PR 合併觸發
+- [x] Zeabur：確認自動部署追蹤 `main`；feature 分支改用 PR 合併觸發
 - [ ] 線上觀察腳本：健康檢查與關鍵 API 探測（curl）
 
 ## 驗收檢查（合併 main 前必過）
-- [ ] 後端：v1 路由全覆蓋、統一回應格式、變更密碼流程測試通過
-- [ ] 前端：`API_VERSION=v1` 正常、改密對話框流程正確、核心頁面運作正常
-- [ ] 文件：PRD/API_SPEC/ENGINEERING_RULES 完整；DEPLOYMENT/USER_GUIDE 已精煉
+- [x] 後端：v1 路由全覆蓋、統一回應格式、變更密碼流程測試通過（手動驗證）
+- [x] 前端：`API_VERSION=v1` 正常、改密對話框流程正確、核心頁面運作正常（手動驗證）
+- [x] 文件：PRD/API_SPEC/CONTRIBUTING/DEPLOYMENT/USER_GUIDE 完整
 - [ ] CI 綠燈；手動驗證 `healthy/ready`、註冊/查詢/叫號/排序/編輯/刪除/匯出
 
 
