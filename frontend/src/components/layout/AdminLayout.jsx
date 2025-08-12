@@ -25,9 +25,9 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon
 } from '@mui/icons-material';
-import { hideAlert } from '../redux/slices/uiSlice';
-import { logout } from '../redux/slices/authSlice';
-import ChangePasswordDialog from './ChangePasswordDialog';
+import { hideAlert } from '../../redux/slices/uiSlice';
+import { logout } from '../../redux/slices/authSlice';
+import ChangePasswordDialog from '../ChangePasswordDialog';
 
 const drawerWidth = 240;
 
