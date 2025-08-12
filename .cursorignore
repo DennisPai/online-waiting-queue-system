@@ -1,1 +1,17 @@
 # Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+
+# Ignore large/built/vendor to speed up indexing
+backend/node_modules/
+frontend/node_modules/
+backend/build/
+frontend/build/
+**/dist/
+**/.cache/
+**/.parcel-cache/
+**/.next/
+**/coverage/
+**/*.log
+
+# Ignore generated lockfiles to reduce noise
+backend/package-lock.json
+frontend/package-lock.json

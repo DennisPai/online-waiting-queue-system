@@ -1,0 +1,30 @@
+---
+alwaysApply: true
+---
+
+# Backend 開發規範（本專案）
+
+## 版本與路由
+- 新增與重構均走 `/api/v1/*`；舊 `/api/*` 保留相容期，於回應加 `Deprecation: true`（待導入）。
+- v1 路由入口：`backend/src/routes/v1/index.js`，已全局套用回應封裝中介層。
+
+## 統一回應
+- 成功：`{ success: true, code: 'OK', message: 'OK', data }`
+- 失敗：`{ success: false, code, message, errors? }`
+- 若 controller 直接回原物件，封裝層會自動包成成功格式；4xx/5xx 會自動包成失敗格式。
+
+## 安全
+- `helmet` 全局啟用；`express-rate-limit` 針對 `/auth/*` 與 `/queue/register`。
+- CORS 使用環境變數控制允許來源（`CORS_ORIGIN`、`SOCKET_CORS_ORIGIN`）。
+
+## 就緒與健康
+- `/health`：靜態健康。
+- `/ready`：包含 Mongo `readyState`；連線成功回 200，否則 503。
+
+## 索引與 Migration
+- 腳本：`backend/scripts/migrations/001_add_indexes.js`，建立 `status/orderIndex/phone/queueNumber` 普通索引。
+- 後續 migration 請新增檔名遞增腳本，保持可重入（多次執行不報錯）。
+
+## 測試
+- 推薦 Jest + supertest 覆蓋 Auth（login/change-password）、Queue（register/status/number）。
+

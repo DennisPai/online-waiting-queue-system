@@ -17,10 +17,13 @@ build/
 dist/
 */build/
 */dist/
+backend/scripts/migrations/*.log
+backend/scripts/migrations/*.tmp
 
 # 日誌文件
 logs
 *.log
+*.out
 
 # 運行時文件
 pids

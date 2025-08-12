@@ -1,4 +1,4 @@
-# Zeabur 部署指南
+# 部署指南（Zeabur）
 
 ## 📋 部署前準備清單
 
@@ -94,7 +94,7 @@
 7. 等待前端服務部署完成
 8. 記錄前端服務的 URL（例如：`https://frontend-xyz789.zeabur.app`）
 
-### 5. 配置網域和CORS
+### 5. 配置網域和 CORS
 1. 前端部署完成後，更新後端環境變數：
    ```
    CORS_ORIGIN=https://your-frontend-domain.zeabur.app
@@ -218,13 +218,13 @@ PORT=80
     - [ ] 開關狀態與辦事狀態獨立運作，互不影響
 - [ ] Socket.io 即時通訊正常
 
-### 管理員登入資訊
+### 管理員登入資訊（預設）
 - **網址**：`https://your-frontend-domain.zeabur.app/admin/login`
 - **實際範例**：`https://online-waiting-queue-system.zeabur.app/admin/login`
 - **帳號**：`admin`
 - **密碼**：`admin123`
 
-⚠️ **重要**：首次登入後請立即修改預設密碼！
+⚠️ 建議：登入後盡快於系統內使用「變更密碼」功能修改預設密碼
 
 ## 🛠️ 故障排除
 
