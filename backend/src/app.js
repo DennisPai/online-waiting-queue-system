@@ -6,6 +6,7 @@ const socketIo = require('socket.io');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 
 // 載入環境變數
 dotenv.config();
@@ -32,11 +33,20 @@ const io = socketIo(server, {
 });
 
 // 中間件 - 優化CORS設定
-app.use(helmet());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:3100',
   credentials: true
 }));
+
+// 安全與日誌
+app.use(helmet());
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+// 速率限制（登入與登記）
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const registerLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
+app.use('/api/auth', authLimiter);
+app.use('/api/queue/register', registerLimiter);
 
 // 添加健康檢查端點
 app.get('/health', (req, res) => {
@@ -47,10 +57,11 @@ app.get('/health', (req, res) => {
   });
 });
 
-// 就緒檢查（Mongo 連線就緒）
+// 就緒檢查端點（簡化版，可擴充檢查 DB 連線狀態）
 app.get('/ready', (req, res) => {
-  const ready = mongoose.connection.readyState === 1; // connected
-  res.status(ready ? 200 : 503).json({ ready, state: mongoose.connection.readyState });
+  const mongoState = mongoose.connection && mongoose.connection.readyState;
+  const ready = mongoState === 1; // 1 = connected
+  res.status(ready ? 200 : 503).json({ ready, mongoState, ts: new Date().toISOString() });
 });
 
 app.use(express.json());
@@ -66,14 +77,11 @@ app.get('/', (req, res) => {
 });
 
 // API路由
-// Rate limit 針對登入與登記
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 60 });
-app.use('/api/auth/login', authLimiter);
-app.use('/api/queue/register', registerLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/admin', adminRoutes);
+// v1 版本路由（逐步遷移到此）
+app.use('/api/v1', require('./routes/v1'));
 
 // 錯誤處理中間件
 app.use((err, req, res, next) => {

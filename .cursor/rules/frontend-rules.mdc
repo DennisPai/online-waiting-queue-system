@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+---
+
+# Frontend 開發規範（僅重點補充，搭配全域 `engineering-rules.mdc`）
+
+## API 存取
+- `API_VERSION` 預設 `v1`，統一使用 `frontend/src/config/api.js` 提供的 `API_ENDPOINTS`。
+- `services/*` 一律回傳單層 `response.data`，Redux slice 只解一次。
+- 若需切回舊端點，可在 `.env` 設 `REACT_APP_API_VERSION=""`（僅灰度、短期）。
+
+## 狀態管理
+- Redux Toolkit：所有 asyncThunk 以 `services/*` 的單層 `data` 為準則；禁止 `.data.data`。
+- Error 處理：以 `error.response?.data?.message` 為主，必要時回退為字串。
+
+## UI/UX
+- 管理端「變更密碼」改為自主操作，不強制首次登入彈窗。
+- 大型頁面拆為元件與 hooks；表單驗證抽離 schema（yup/zod 皆可）。
+
+## Socket
+- `socketService` 僅負責事件橋接與通知；不要在服務內寫業務邏輯。
+

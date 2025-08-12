@@ -1,0 +1,34 @@
+---
+alwaysApply: true
+---
+# Backend 開發規範（僅重點補充，搭配全域 `engineering-rules.mdc`）
+
+## v1 API 原則
+- 路徑：一律置於 `/api/v1/*`，舊端點保留相容期。
+- 回應：統一 `{ success, code, message, data }`。所有有效載荷歸入 `data`，不要在頂層再放 `token`、`pagination` 等鍵。
+- 錯誤碼：UNAUTHORIZED/FORBIDDEN/NOT_FOUND/CONFLICT/VALIDATION_ERROR/INTERNAL_ERROR。
+- 中介層：`backend/src/routes/v1/index.js` 內已掛載封裝；controller 仍須主動輸出 `{ success, data, message? }`。
+
+## 認證與安全
+- JWT：以 `Authorization: Bearer <token>` 驗證；`protect` 作為路由守衛。
+- 密碼變更：`PUT /api/v1/auth/change-password`；不強制首次登入改密，由管理員自行操作。
+- 安全：`helmet`、`express-rate-limit` 用於 `/auth/*`、`/queue/register`。
+
+## 控制器輸出
+- 成功時：`{ success: true, data: <object|array>, message?: string }`。
+- 失敗時：`{ success: false, message, errors? }`（必要時帶 `code`）。
+- Login 例：`data` 內須包含 `token` 與使用者欄位，以利前端 services 單層回傳。
+
+## 索引與遷移
+- 目標索引：`status`、`orderIndex`、`phone`、`queueNumber`（普通索引）。
+- 遷移腳本：`backend/scripts/migrations/001_add_indexes.js`。
+
+## 健康檢查
+- `/health`：服務活性。
+- `/ready`：含 MongoDB 連線狀態（`readyState===1` 回 200；否則 503）。
+
+## 目錄約定
+- `backend/src/routes/v1/*`：v1 路由，僅轉發到 controller；不要在路由內組 payload。
+- `backend/src/controllers/*`：商業邏輯與回應組裝（遵循 v1 回應規範）。
+- `backend/src/utils/v1-response.js`：回應封裝。
+

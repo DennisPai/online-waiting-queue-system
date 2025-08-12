@@ -570,8 +570,10 @@ exports.getOrderedQueueNumbers = async (req, res) => {
 
     const result = {
       success: true,
-      currentProcessingNumber: order1Record ? order1Record.queueNumber : null,
-      nextWaitingNumber: order2Record ? order2Record.queueNumber : null
+      data: {
+        currentProcessingNumber: order1Record ? order1Record.queueNumber : null,
+        nextWaitingNumber: order2Record ? order2Record.queueNumber : null
+      }
     };
 
     // 更新系統設定中的當前叫號

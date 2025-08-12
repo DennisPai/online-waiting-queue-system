@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authService from '../../services/authService';
-import axios from 'axios';
-import { API_ENDPOINTS } from '../../config/api';
 
 const initialState = {
   user: null,
@@ -16,9 +14,9 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await authService.login(credentials);
-      localStorage.setItem('token', response.token);
-      return response;
+      const loginData = await authService.login(credentials); // { user, token }
+      localStorage.setItem('token', loginData.token);
+      return loginData;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '登入失敗');
     }
@@ -38,28 +36,24 @@ export const getCurrentUser = createAsyncThunk(
     try {
       const { token } = getState().auth;
       if (!token) return rejectWithValue('未登入');
-      const response = await authService.getMe(token);
-      return response.data;
+      const me = await authService.getMe(token);
+      return me;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '獲取用戶資料失敗');
     }
   }
 );
 
-// 變更密碼（登入後）
+// 修改密碼（登入後）
 export const changePassword = createAsyncThunk(
   'auth/changePassword',
   async ({ oldPassword, newPassword }, { rejectWithValue, getState }) => {
     try {
       const { token } = getState().auth;
-      const { data } = await axios.put(
-        `${API_ENDPOINTS.AUTH}/change-password`,
-        { oldPassword, newPassword },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      return data;
+      const result = await authService.changePassword(oldPassword, newPassword, token);
+      return result;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || '變更密碼失敗');
+      return rejectWithValue(error.response?.data?.message || '修改密碼失敗');
     }
   }
 );
@@ -82,7 +76,7 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.data;
+        state.user = action.payload.user;
         state.token = action.payload.token;
       })
       .addCase(login.rejected, (state, action) => {
@@ -104,7 +98,14 @@ const authSlice = createSlice({
         state.user = action.payload;
         state.isAuthenticated = true;
       })
-      // 變更密碼
+      .addCase(getCurrentUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+        state.isAuthenticated = false;
+        state.token = null;
+        localStorage.removeItem('token');
+      });
+      // 修改密碼
       .addCase(changePassword.pending, (state) => {
         state.isLoading = true;
       })
@@ -117,13 +118,6 @@ const authSlice = createSlice({
       .addCase(changePassword.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
-      });
-      .addCase(getCurrentUser.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-        state.isAuthenticated = false;
-        state.token = null;
-        localStorage.removeItem('token');
       });
   }
 });

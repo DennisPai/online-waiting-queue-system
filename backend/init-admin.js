@@ -116,8 +116,7 @@ async function createAdmin() {
         username: 'admin',
         password: 'admin123', // 這將被自動加密
         email: 'admin@example.com',
-        role: 'admin',
-        mustChangePassword: true
+        role: 'admin'
       });
       
       await admin.save();

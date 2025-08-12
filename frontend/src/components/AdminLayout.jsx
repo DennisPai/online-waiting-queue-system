@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -26,8 +26,8 @@ import {
   Logout as LogoutIcon
 } from '@mui/icons-material';
 import { hideAlert } from '../redux/slices/uiSlice';
-import { logout, changePassword } from '../redux/slices/authSlice';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import { logout } from '../redux/slices/authSlice';
+import ChangePasswordDialog from './ChangePasswordDialog';
 
 const drawerWidth = 240;
 
@@ -35,12 +35,14 @@ const AdminLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, isLoading } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth);
+  const [forceChangeOpen, setForceChangeOpen] = useState(false);
+
+  useEffect(() => {
+    // 移除強制改密；改為由使用者自行打開對話框（此處保留對話框元件供後續手動觸發）
+    setForceChangeOpen(false);
+  }, [user]);
   const { alert } = useSelector((state) => state.ui);
-  const [pwdOpen, setPwdOpen] = useState(false);
-  const [oldPwd, setOldPwd] = useState('');
-  const [newPwd, setNewPwd] = useState('');
-  const mustChange = useMemo(() => !!user?.mustChangePassword, [user]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -49,16 +51,6 @@ const AdminLayout = () => {
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
-  };
-
-  const handleSubmitPassword = async () => {
-    if (!oldPwd || !newPwd) return;
-    try {
-      await dispatch(changePassword({ oldPassword: oldPwd, newPassword: newPwd })).unwrap();
-      setPwdOpen(false);
-      setOldPwd('');
-      setNewPwd('');
-    } catch (_) {}
   };
 
   const handleCloseAlert = (event, reason) => {
@@ -134,7 +126,7 @@ const AdminLayout = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             線上候位系統
           </Typography>
-          <Button color="inherit" onClick={() => navigate('/')}>
+          <Button color="inherit" onClick={() => navigate('/') }>
             返回前台
           </Button>
         </Toolbar>
@@ -186,37 +178,10 @@ const AdminLayout = () => {
       >
         <Toolbar />
         <Outlet />
-        {/* 首次登入強制修改密碼 */}
-        <Dialog open={mustChange || pwdOpen} disableEscapeKeyDown={mustChange}>
-          <DialogTitle>請變更您的密碼</DialogTitle>
-          <DialogContent>
-            <TextField
-              fullWidth
-              label="原密碼"
-              type="password"
-              value={oldPwd}
-              onChange={(e) => setOldPwd(e.target.value)}
-              margin="dense"
-            />
-            <TextField
-              fullWidth
-              label="新密碼（至少10字元，含字母與數字）"
-              type="password"
-              value={newPwd}
-              onChange={(e) => setNewPwd(e.target.value)}
-              margin="dense"
-            />
-          </DialogContent>
-          <DialogActions>
-            {!mustChange && (
-              <Button onClick={() => setPwdOpen(false)} disabled={isLoading}>取消</Button>
-            )}
-            <Button onClick={handleSubmitPassword} disabled={isLoading || !oldPwd || !newPwd} variant="contained">
-              儲存
-            </Button>
-          </DialogActions>
-        </Dialog>
       </Box>
+
+      {/* 強制修改密碼對話框（阻擋其他操作）*/}
+      <ChangePasswordDialog open={forceChangeOpen} />
 
       <Snackbar
         open={alert.open}
