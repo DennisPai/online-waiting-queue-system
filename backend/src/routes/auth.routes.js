@@ -39,8 +39,8 @@ router.put(
   '/change-password',
   protect,
   [
-    body('oldPassword').notEmpty().withMessage('原密碼不能為空'),
-    body('newPassword').notEmpty().isLength({ min: 10 }).withMessage('新密碼至少10字元')
+    body('oldPassword').notEmpty().withMessage('舊密碼不能為空'),
+    body('newPassword').notEmpty().isLength({ min: 10 }).withMessage('新密碼需至少10位')
   ],
   validateRequest,
   authController.changePassword

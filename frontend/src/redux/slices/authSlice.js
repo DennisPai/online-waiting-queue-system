@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authService from '../../services/authService';
-import axios from 'axios';
-import { API_ENDPOINTS } from '../../config/api';
 
 const initialState = {
   user: null,
@@ -46,20 +44,16 @@ export const getCurrentUser = createAsyncThunk(
   }
 );
 
-// 變更密碼（登入後）
+// 修改密碼（登入後）
 export const changePassword = createAsyncThunk(
   'auth/changePassword',
   async ({ oldPassword, newPassword }, { rejectWithValue, getState }) => {
     try {
       const { token } = getState().auth;
-      const { data } = await axios.put(
-        `${API_ENDPOINTS.AUTH}/change-password`,
-        { oldPassword, newPassword },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      return data;
+      const response = await authService.changePassword(oldPassword, newPassword, token);
+      return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || '變更密碼失敗');
+      return rejectWithValue(error.response?.data?.message || '修改密碼失敗');
     }
   }
 );
@@ -104,7 +98,14 @@ const authSlice = createSlice({
         state.user = action.payload;
         state.isAuthenticated = true;
       })
-      // 變更密碼
+      .addCase(getCurrentUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+        state.isAuthenticated = false;
+        state.token = null;
+        localStorage.removeItem('token');
+      });
+      // 修改密碼
       .addCase(changePassword.pending, (state) => {
         state.isLoading = true;
       })
@@ -117,13 +118,6 @@ const authSlice = createSlice({
       .addCase(changePassword.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
-      });
-      .addCase(getCurrentUser.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-        state.isAuthenticated = false;
-        state.token = null;
-        localStorage.removeItem('token');
       });
   }
 });

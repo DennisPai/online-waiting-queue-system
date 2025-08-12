@@ -53,43 +53,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// 修改密碼（登入後）
-exports.changePassword = async (req, res) => {
-  try {
-    const { oldPassword, newPassword } = req.body;
-
-    if (!oldPassword || !newPassword) {
-      return res.status(400).json({ success: false, message: '缺少必要欄位' });
-    }
-
-    // 基本強度檢查（至少10字元，含字母與數字）
-    const strongEnough = typeof newPassword === 'string' &&
-      newPassword.length >= 10 && /[A-Za-z]/.test(newPassword) && /\d/.test(newPassword);
-    if (!strongEnough) {
-      return res.status(400).json({ success: false, message: '新密碼需至少10字元並且含字母與數字' });
-    }
-
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: '用戶不存在' });
-    }
-
-    const ok = await user.comparePassword(oldPassword);
-    if (!ok) {
-      return res.status(401).json({ success: false, message: '原密碼不正確' });
-    }
-
-    user.password = newPassword;
-    user.mustChangePassword = false;
-    await user.save();
-
-    return res.status(200).json({ success: true, message: '密碼已更新', data: { updatedAt: user.updatedAt } });
-  } catch (error) {
-    console.error('修改密碼錯誤:', error);
-    res.status(500).json({ success: false, message: '伺服器內部錯誤' });
-  }
-};
-
 // 創建用戶（僅限管理員）
 exports.register = async (req, res) => {
   try {
@@ -125,7 +88,8 @@ exports.register = async (req, res) => {
         id: newUser._id,
         username: newUser.username,
         email: newUser.email,
-        role: newUser.role
+        role: newUser.role,
+        mustChangePassword: !!newUser.mustChangePassword
       }
     });
   } catch (error) {
@@ -163,3 +127,53 @@ exports.getMe = async (req, res) => {
     });
   }
 }; 
+
+// 修改密碼（登入後）
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: '請提供舊密碼與新密碼'
+      });
+    }
+
+    // 密碼強度簡單校驗：至少10字元，包含字母與數字
+    const strong = typeof newPassword === 'string' && newPassword.length >= 10 && /[A-Za-z]/.test(newPassword) && /\d/.test(newPassword);
+    if (!strong) {
+      return res.status(400).json({
+        success: false,
+        message: '新密碼需至少10位，且包含字母與數字'
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: '用戶不存在' });
+    }
+
+    const validOld = await user.comparePassword(oldPassword);
+    if (!validOld) {
+      return res.status(401).json({ success: false, message: '舊密碼不正確' });
+    }
+
+    user.password = newPassword; // 將由 pre('save') 自動加密
+    user.mustChangePassword = false;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: '密碼已更新',
+      data: { updatedAt: user.updatedAt }
+    });
+  } catch (error) {
+    console.error('修改密碼錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器內部錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};

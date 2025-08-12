@@ -44,10 +44,20 @@ const register = async (userData, token) => {
   }
 };
 
+// 登入後修改密碼
+const changePassword = async (oldPassword, newPassword, token) => {
+  const config = {
+    headers: { Authorization: `Bearer ${token}` }
+  };
+  const response = await axios.put(`${API_ENDPOINTS.AUTH}/change-password`, { oldPassword, newPassword }, config);
+  return response.data;
+};
+
 const authService = {
   login,
   getMe,
-  register
+  register,
+  changePassword
 };
 
 export default authService; 
