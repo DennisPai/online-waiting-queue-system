@@ -4,6 +4,9 @@ const mongoose = require('mongoose');
 const http = require('http');
 const socketIo = require('socket.io');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 
 // 載入環境變數
 dotenv.config();
@@ -34,6 +37,16 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:3100',
   credentials: true
 }));
+
+// 安全與日誌
+app.use(helmet());
+app.use(morgan('combined'));
+
+// 速率限制（登入與登記）
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const registerLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
+app.use('/api/auth', authLimiter);
+app.use('/api/queue/register', registerLimiter);
 
 // 添加健康檢查端點
 app.get('/health', (req, res) => {
