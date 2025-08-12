@@ -20,9 +20,9 @@
 - [x] 管理端 UI：取消「首次登入強制改密」，改為手動使用變更密碼
 
 ## Docs（文件與流程）
-- [ ] 精煉 `DEPLOYMENT.md`（必要步驟 + 常見錯誤；其餘移附錄）
-- [ ] `AI_DEVELOPMENT_GUIDE.md` → `CONTRIBUTING.md`（提交規範、分支策略、開發流程）
-- [ ] `管理員使用教學.md` → `docs/USER_GUIDE_ADMIN.md`（任務導向、附圖）
+- [x] 精煉 `DEPLOYMENT.md`（補充 Zeabur PORT 與環境變數重點、部署後檢查清單）
+- [x] `AI_DEVELOPMENT_GUIDE.md` 內容已涵蓋，新增 `CONTRIBUTING.md`（提交規範、分支策略、流程）
+- [x] `管理員使用教學.md` → `docs/USER_GUIDE_ADMIN.md`（任務導向）
 - [ ] `線上候位系統開發文檔.md` → `docs/archive/…` 歸檔；將有效內容合併至 PRD/API/Rules
 - [x] 在 `PRD.md` 更新改密策略（改為手動，不強制首次登入）
 
