@@ -2,19 +2,21 @@
 alwaysApply: true
 ---
 
-# Frontend 開發規範（本專案）
+# Frontend 開發規範（僅重點補充，搭配全域 `engineering-rules.mdc`）
 
-## API 版本與端點
-- 使用 `API_VERSION`（預設 `v1`），端點以 `API_PREFIX=/api/${API_VERSION}` 統一。
-- `services/*` 一律回傳 `response.data`；Slice 層不應再解 `.data.data`。
+## API 存取
+- `API_VERSION` 預設 `v1`，統一使用 `frontend/src/config/api.js` 提供的 `API_ENDPOINTS`。
+- `services/*` 一律回傳單層 `response.data`，Redux slice 只解一次。
+- 若需切回舊端點，可在 `.env` 設 `REACT_APP_API_VERSION=""`（僅灰度、短期）。
 
-## 變更密碼流程
-- 非強制：登入後不自動彈窗，由管理員於設定或個人選單自行開啟對話框。
+## 狀態管理
+- Redux Toolkit：所有 asyncThunk 以 `services/*` 的單層 `data` 為準則；禁止 `.data.data`。
+- Error 處理：以 `error.response?.data?.message` 為主，必要時回退為字串。
 
-## 組件與狀態
-- 巨型頁拆分元件與 hooks；表單驗證以 `yup/zod` 集中管理。
-- Redux Toolkit 以 slice 管狀態，避免存入不可序列化值。
+## UI/UX
+- 管理端「變更密碼」改為自主操作，不強制首次登入彈窗。
+- 大型頁面拆為元件與 hooks；表單驗證抽離 schema（yup/zod 皆可）。
 
-## 錯誤顯示
-- 後端錯誤碼（UNAUTHORIZED/…）映射為友善提示；表單錯誤使用欄位高亮與協助文字。
+## Socket
+- `socketService` 僅負責事件橋接與通知；不要在服務內寫業務邏輯。
 

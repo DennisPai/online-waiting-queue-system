@@ -2,29 +2,34 @@
 alwaysApply: true
 ---
 
-# Backend 開發規範（本專案）
+# Backend 開發規範（僅重點補充，搭配全域 `engineering-rules.mdc`）
 
-## 版本與路由
-- 新增與重構均走 `/api/v1/*`；舊 `/api/*` 保留相容期，於回應加 `Deprecation: true`（待導入）。
-- v1 路由入口：`backend/src/routes/v1/index.js`，已全局套用回應封裝中介層。
+## v1 API 原則
+- 路徑：一律置於 `/api/v1/*`，舊端點保留相容期。
+- 回應：統一 `{ success, code, message, data }`。所有有效載荷歸入 `data`，不要在頂層再放 `token`、`pagination` 等鍵。
+- 錯誤碼：UNAUTHORIZED/FORBIDDEN/NOT_FOUND/CONFLICT/VALIDATION_ERROR/INTERNAL_ERROR。
+- 中介層：`backend/src/routes/v1/index.js` 內已掛載封裝；controller 仍須主動輸出 `{ success, data, message? }`。
 
-## 統一回應
-- 成功：`{ success: true, code: 'OK', message: 'OK', data }`
-- 失敗：`{ success: false, code, message, errors? }`
-- 若 controller 直接回原物件，封裝層會自動包成成功格式；4xx/5xx 會自動包成失敗格式。
+## 認證與安全
+- JWT：以 `Authorization: Bearer <token>` 驗證；`protect` 作為路由守衛。
+- 密碼變更：`PUT /api/v1/auth/change-password`；不強制首次登入改密，由管理員自行操作。
+- 安全：`helmet`、`express-rate-limit` 用於 `/auth/*`、`/queue/register`。
 
-## 安全
-- `helmet` 全局啟用；`express-rate-limit` 針對 `/auth/*` 與 `/queue/register`。
-- CORS 使用環境變數控制允許來源（`CORS_ORIGIN`、`SOCKET_CORS_ORIGIN`）。
+## 控制器輸出
+- 成功時：`{ success: true, data: <object|array>, message?: string }`。
+- 失敗時：`{ success: false, message, errors? }`（必要時帶 `code`）。
+- Login 例：`data` 內須包含 `token` 與使用者欄位，以利前端 services 單層回傳。
 
-## 就緒與健康
-- `/health`：靜態健康。
-- `/ready`：包含 Mongo `readyState`；連線成功回 200，否則 503。
+## 索引與遷移
+- 目標索引：`status`、`orderIndex`、`phone`、`queueNumber`（普通索引）。
+- 遷移腳本：`backend/scripts/migrations/001_add_indexes.js`。
 
-## 索引與 Migration
-- 腳本：`backend/scripts/migrations/001_add_indexes.js`，建立 `status/orderIndex/phone/queueNumber` 普通索引。
-- 後續 migration 請新增檔名遞增腳本，保持可重入（多次執行不報錯）。
+## 健康檢查
+- `/health`：服務活性。
+- `/ready`：含 MongoDB 連線狀態（`readyState===1` 回 200；否則 503）。
 
-## 測試
-- 推薦 Jest + supertest 覆蓋 Auth（login/change-password）、Queue（register/status/number）。
+## 目錄約定
+- `backend/src/routes/v1/*`：v1 路由，僅轉發到 controller；不要在路由內組 payload。
+- `backend/src/controllers/*`：商業邏輯與回應組裝（遵循 v1 回應規範）。
+- `backend/src/utils/v1-response.js`：回應封裝。
 

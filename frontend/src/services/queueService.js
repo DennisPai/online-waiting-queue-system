@@ -39,11 +39,18 @@ const registerQueue = async (queueData) => {
   }
 };
 
-// 獲取特定候位號碼的狀態
+// 獲取特定候位號碼的狀態（支援 v1 正式路由 /number/:queueNumber 與相容路由 /status/:queueNumber）
 const getQueueNumberStatus = async (queueNumber) => {
   try {
-    const response = await axios.get(`${API_ENDPOINTS.QUEUE}/status/${queueNumber}`);
-    return response.data;
+    // 先嘗試 v1 正式路由
+    try {
+      const resV1 = await axios.get(`${API_ENDPOINTS.QUEUE}/number/${queueNumber}`);
+      return resV1.data;
+    } catch (e) {
+      // 回退至相容路由
+      const resCompat = await axios.get(`${API_ENDPOINTS.QUEUE}/status/${queueNumber}`);
+      return resCompat.data;
+    }
   } catch (error) {
     console.error('獲取候位號碼狀態錯誤:', error);
     throw error;
