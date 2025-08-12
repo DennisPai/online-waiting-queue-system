@@ -14,7 +14,7 @@ import {
   Remove as RemoveIcon,
   Add as AddIcon
 } from '@mui/icons-material';
-import { useFontSize } from '../contexts/FontSizeContext';
+import { useFontSize } from '../../contexts/FontSizeContext';
 
 const FontSizeSelector = ({ variant = 'select', showLabel = true }) => {
   const { fontSize, changeFontSize, fontSizeOptions } = useFontSize();

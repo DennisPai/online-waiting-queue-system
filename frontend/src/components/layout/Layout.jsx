@@ -25,9 +25,9 @@ import {
   Logout as LogoutIcon
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
-import { hideAlert } from '../redux/slices/uiSlice';
-import { logout } from '../redux/slices/authSlice';
-import FontSizeSelector from './FontSizeSelector';
+import { hideAlert } from '../../redux/slices/uiSlice';
+import { logout } from '../../redux/slices/authSlice';
+import { FontSizeSelector } from '../common';
 
 const Layout = () => {
   const dispatch = useDispatch();

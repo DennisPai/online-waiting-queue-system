@@ -26,6 +26,26 @@
 - [ ] **結構化日誌**：實作 JSON 格式日誌（traceId + latency + route）
 - [ ] **單元測試**：Auth 和 Queue 核心功能測試（Jest + supertest）
 
+## 架構優化階段（新增）
+
+### 階段一：代碼清理與標準化（立即執行）
+- [x] **清理重複文件**：移除重複的 RegisterForm、備份文件、冗餘文檔
+- [x] **統一工具函數庫**：建立 utils/index.js 統一匯出
+- [x] **標準化目錄結構**：重組 backend services/repositories，前端 components 分類
+- [x] **文檔整合**：移除 docs/ENGINEERING_RULES.md，統一使用 .cursor/rules
+
+### 階段二：後端服務層重構
+- [ ] **建立 Service 層**：抽取業務邏輯到 services/，controllers 僅處理 HTTP
+- [ ] **Repository 模式**：建立數據訪問層，分離 Models 和業務邏輯
+- [ ] **統一錯誤處理**：建立 ApiError 類和全局錯誤處理中間件
+- [ ] **請求驗證器**：統一的 validators/ 目錄和驗證邏輯
+
+### 階段三：前端架構優化
+- [ ] **拆分複雜 Hooks**：將 useQueueManagement(745行) 拆分為專門 hooks
+- [ ] **統一表單驗證**：建立 yup/zod schemas 和 useFormValidation hook
+- [ ] **通用組件庫**：建立 FormField、DataTable、ConfirmDialog 等通用組件
+- [ ] **前端工具重組**：validation/、formatting/、constants/ 分類整理
+
 ## 文檔維護
 - [x] 建立 README 同步更新工作流程（已加入 engineering-rules.mdc）
 - [x] 確認需求開發流程（PRD 先行規劃機制已建立）  

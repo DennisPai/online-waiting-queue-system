@@ -32,7 +32,7 @@ import { DragDropContext } from 'react-beautiful-dnd';
 import QueueTable from '../../components/admin/QueueTable';
 import CustomerDetailDialog from '../../components/admin/CustomerDetailDialog';
 import ExportDialog from '../../components/ExportDialog';
-import RegisterForm from '../RegisterForm';
+import RegisterForm from '../../components/RegisterForm';
 import { useQueueManagement } from '../../hooks/useQueueManagement';
 
 // 定義可顯示的欄位配置
