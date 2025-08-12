@@ -104,7 +104,7 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.token = null;
         localStorage.removeItem('token');
-      });
+      })
       // 修改密碼
       .addCase(changePassword.pending, (state) => {
         state.isLoading = true;
