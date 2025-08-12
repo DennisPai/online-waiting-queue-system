@@ -14,9 +14,9 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await authService.login(credentials);
-      localStorage.setItem('token', response.token);
-      return response;
+      const loginData = await authService.login(credentials); // { user, token }
+      localStorage.setItem('token', loginData.token);
+      return loginData;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '登入失敗');
     }
@@ -36,8 +36,8 @@ export const getCurrentUser = createAsyncThunk(
     try {
       const { token } = getState().auth;
       if (!token) return rejectWithValue('未登入');
-      const response = await authService.getMe(token);
-      return response.data;
+      const me = await authService.getMe(token);
+      return me;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '獲取用戶資料失敗');
     }
@@ -50,8 +50,8 @@ export const changePassword = createAsyncThunk(
   async ({ oldPassword, newPassword }, { rejectWithValue, getState }) => {
     try {
       const { token } = getState().auth;
-      const response = await authService.changePassword(oldPassword, newPassword, token);
-      return response;
+      const result = await authService.changePassword(oldPassword, newPassword, token);
+      return result;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '修改密碼失敗');
     }
@@ -76,7 +76,7 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.data;
+        state.user = action.payload.user;
         state.token = action.payload.token;
       })
       .addCase(login.rejected, (state, action) => {

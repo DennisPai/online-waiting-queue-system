@@ -31,17 +31,20 @@ exports.login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
-    // 回傳用戶資訊和令牌
+    // 回傳用戶資訊與令牌（令牌放入 data 內，符合 v1 單層 data 規範）
     res.status(200).json({
       success: true,
+      message: '登入成功',
       data: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        mustChangePassword: !!user.mustChangePassword
-      },
-      token
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          mustChangePassword: !!user.mustChangePassword
+        },
+        token
+      }
     });
   } catch (error) {
     console.error('登入錯誤:', error);
@@ -116,7 +119,13 @@ exports.getMe = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: user
+      data: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        mustChangePassword: !!user.mustChangePassword
+      }
     });
   } catch (error) {
     console.error('獲取用戶資訊錯誤:', error);
