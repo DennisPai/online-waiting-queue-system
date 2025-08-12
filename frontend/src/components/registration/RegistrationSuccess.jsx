@@ -89,49 +89,27 @@ const RegistrationSuccess = ({
               </Typography>
             </Box>
 
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="body2" color="text.secondary">
-                  目前等待組數
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              <Grid item xs={12} sm={3}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  您的叫號順序
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {waitingCount !== undefined ? `${Math.max(0, (registeredOrderIndex || 1) - 1)} 組` : '計算中...'}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="body2" color="text.secondary">
-                  預估結束時間
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {formatEstimatedTime(estimatedEndTime)}
-                </Typography>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-
-        {/* 等待資訊 */}
-        <Card variant="outlined" sx={{ mb: 3, bgcolor: 'info.light', color: 'info.contrastText' }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <InfoIcon sx={{ mr: 1 }} />
-              <Typography variant="h6" component="div">
-                候位提醒
-              </Typography>
-            </Box>
-            
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <Typography variant="body2" gutterBottom>
-                  前方等待組數
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {waitingCount !== undefined ? `${Math.max(0, (registeredOrderIndex || 1) - 1)} 組` : '計算中...'}
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                  第 {registeredOrderIndex || '?'} 號
                 </Typography>
               </Grid>
               
-              <Grid item xs={12} sm={4}>
-                <Typography variant="body2" gutterBottom>
+              <Grid item xs={12} sm={3}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  前方等待組數
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                  {registeredOrderIndex ? `${Math.max(0, registeredOrderIndex - 1)} 組` : '計算中...'}
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} sm={3}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
                   預估等待時間
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
@@ -139,8 +117,8 @@ const RegistrationSuccess = ({
                 </Typography>
               </Grid>
               
-              <Grid item xs={12} sm={4}>
-                <Typography variant="body2" gutterBottom>
+              <Grid item xs={12} sm={3}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
                   預估叫號時間
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
@@ -150,8 +128,8 @@ const RegistrationSuccess = ({
             </Grid>
 
             {maxOrderMessage && (
-              <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 1 }}>
-                <Typography variant="body2">
+              <Box sx={{ mt: 3, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+                <Typography variant="body2" color="info.contrastText">
                   💡 {maxOrderMessage}
                 </Typography>
               </Box>

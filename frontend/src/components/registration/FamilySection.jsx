@@ -194,7 +194,7 @@ const FamilySection = ({
                       </Typography>
                       {member.convertedLunarYear && (
                         <Typography variant="body2">
-                          農曆：{formatMinguoYear(member.convertedLunarYear)}年{member.convertedLunarMonth}月{member.convertedLunarDay}日
+                          農曆：{formatMinguoYear(member.convertedLunarYear)}{member.convertedLunarMonth}月{member.convertedLunarDay}日
                           {member.convertedLunarIsLeapMonth && ' (閏月)'}
                         </Typography>
                       )}

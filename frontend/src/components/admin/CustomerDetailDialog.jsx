@@ -68,10 +68,14 @@ const CustomerDetailDialog = ({
     if (!topics || topics.length === 0) return '無';
     
     const topicMap = {
-      'business_registration': '商業登記',
-      'tax_consultation': '稅務諮詢',
-      'legal_consultation': '法律諮詢',
-      'license_application': '證照申請',
+      'body': '身體',
+      'fate': '運途',
+      'karma': '因果',
+      'family': '家運/祖先',
+      'career': '事業',
+      'relationship': '婚姻感情',
+      'study': '學業',
+      'blessing': '收驚/加持',
       'other': '其他'
     };
     
@@ -102,7 +106,7 @@ const CustomerDetailDialog = ({
     if (!addresses || addresses.length === 0) return '無';
     
     return addresses.map(addr => 
-      `${addr.address} (${formatAddressType(addr.type)})`
+      `${addr.address} (${formatAddressType(addr.addressType)})`
     ).join('; ');
   };
 
@@ -142,7 +146,7 @@ const CustomerDetailDialog = ({
       const genderText = member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : '';
       const genderInfo = genderText ? ` (${genderText})` : '';
       
-      return `${member.name}${genderInfo}${ageInfo} - ${birthInfo}`;
+      return `${member.name}${genderInfo}${ageInfo} - ${birthInfo} - ${member.address || '未填寫地址'} (${formatAddressType(member.addressType)})`;
     }).join('; ');
   };
 
@@ -582,8 +586,8 @@ const CustomerDetailDialog = ({
                         <FormControl fullWidth size="small">
                           <InputLabel>地址類型</InputLabel>
                           <Select
-                            value={address.type || 'home'}
-                            onChange={(e) => onAddressChange(index, 'type', e.target.value)}
+                            value={address.addressType || 'home'}
+                            onChange={(e) => onAddressChange(index, 'addressType', e.target.value)}
                             label="地址類型"
                           >
                             <MenuItem value="home">住家</MenuItem>

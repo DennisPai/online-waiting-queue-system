@@ -192,7 +192,7 @@ const BasicInfoSection = ({
             </Typography>
             {formData.convertedLunarYear && (
               <Typography variant="body2">
-                農曆：{formatMinguoYear(formData.convertedLunarYear)}年{formData.convertedLunarMonth}月{formData.convertedLunarDay}日
+                農曆：{formatMinguoYear(formData.convertedLunarYear)}{formData.convertedLunarMonth}月{formData.convertedLunarDay}日
                 {formData.convertedLunarIsLeapMonth && ' (閏月)'}
               </Typography>
             )}
