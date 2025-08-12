@@ -41,10 +41,10 @@
 - [x] **請求驗證器**：統一的 validators/ 目錄和驗證邏輯
 
 ### 階段三：前端架構優化
-- [ ] **拆分複雜 Hooks**：將 useQueueManagement(745行) 拆分為專門 hooks
-- [ ] **統一表單驗證**：建立 yup/zod schemas 和 useFormValidation hook
-- [ ] **通用組件庫**：建立 FormField、DataTable、ConfirmDialog 等通用組件
-- [ ] **前端工具重組**：validation/、formatting/、constants/ 分類整理
+- [x] **拆分複雜 Hooks**：將 useQueueManagement(745行) 拆分為專門 hooks
+- [x] **統一表單驗證**：建立原生 JS schemas 和 useFormValidation hook
+- [x] **通用組件庫**：建立 FormField、DataTable、ConfirmDialog 等通用組件
+- [x] **前端工具重組**：validation/、formatting/、constants/ 分類整理
 
 ## 文檔維護
 - [x] 建立 README 同步更新工作流程（已加入 engineering-rules.mdc）

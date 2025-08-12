@@ -4,11 +4,11 @@
 // 日曆轉換相關
 export * from './calendarConverter';
 
+// 驗證相關
+export * from './validation/schemas';
+
 // 格式化相關 (預留)
 // export * from './formatting';
-
-// 驗證相關 (預留)
-// export * from './validation';
 
 // 常數定義 (預留)
 // export * from './constants';
