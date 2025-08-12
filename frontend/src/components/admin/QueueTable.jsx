@@ -219,23 +219,63 @@ const QueueTable = ({
               {currentTab === 0 && (
                 <TableCell style={{ width: 50 }}></TableCell>
               )}
-              {visibleColumns.map((column) => (
-                <TableCell
-                  key={column}
-                  style={{
-                    fontWeight: 'bold',
-                    ...(column === 'actions' ? { 
-                      width: 200, 
-                      position: 'sticky', 
-                      right: 0, 
-                      backgroundColor: 'white',
-                      zIndex: 1
-                    } : {})
-                  }}
-                >
-                  {availableColumns[column]?.label || column}
-                </TableCell>
-              ))}
+              {visibleColumns.map((column) => {
+                // 定義各欄位的樣式配置
+                const getColumnStyle = (columnKey) => {
+                  const baseStyle = { fontWeight: 'bold' };
+                  
+                  switch (columnKey) {
+                    case 'actions':
+                      return {
+                        ...baseStyle,
+                        width: 160, // 減少操作欄位寬度
+                        position: 'sticky',
+                        right: 0,
+                        backgroundColor: 'white',
+                        zIndex: 1
+                      };
+                    case 'orderIndex':
+                      return {
+                        ...baseStyle,
+                        width: 90, // 加寬叫號順序欄位
+                        fontSize: '0.85rem' // 縮小字體
+                      };
+                    case 'queueNumber':
+                      return {
+                        ...baseStyle,
+                        width: 80, // 加寬號碼欄位
+                        fontSize: '0.85rem' // 縮小字體
+                      };
+                    case 'totalPeople':
+                      return {
+                        ...baseStyle,
+                        width: 80, // 加寬人數欄位
+                        fontSize: '0.85rem' // 縮小字體
+                      };
+                    case 'status':
+                      return {
+                        ...baseStyle,
+                        width: 100 // 狀態欄位寬度
+                      };
+                    case 'name':
+                      return {
+                        ...baseStyle,
+                        width: 100 // 姓名欄位與狀態一樣寬
+                      };
+                    default:
+                      return baseStyle;
+                  }
+                };
+
+                return (
+                  <TableCell
+                    key={column}
+                    style={getColumnStyle(column)}
+                  >
+                    {availableColumns[column]?.label || column}
+                  </TableCell>
+                );
+              })}
             </TableRow>
           </TableHead>
           <Droppable droppableId="queue-table" isDropDisabled={currentTab !== 0}>
@@ -283,7 +323,8 @@ const QueueTable = ({
                                     right: 0,
                                     backgroundColor: 'white',
                                     zIndex: 1,
-                                    minWidth: 200
+                                    width: 160,
+                                    minWidth: 160
                                   }}
                                 >
                                   {currentTab === 0 ? (
