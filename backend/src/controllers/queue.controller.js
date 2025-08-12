@@ -391,6 +391,7 @@ exports.registerQueue = async (req, res) => {
       message: '候位登記成功',
       data: {
         queueNumber: newRecord.queueNumber,
+        orderIndex: newRecord.orderIndex,
         waitingCount,
         estimatedWaitTime,
         estimatedEndTime: estimatedEndTime.toISOString(),
