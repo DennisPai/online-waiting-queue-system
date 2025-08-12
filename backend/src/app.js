@@ -40,7 +40,7 @@ app.use(cors({
 
 // 安全與日誌
 app.use(helmet());
-app.use(morgan('combined'));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // 速率限制（登入與登記）
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
@@ -78,6 +78,8 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/admin', adminRoutes);
+// v1 版本路由（逐步遷移到此）
+app.use('/api/v1', require('./routes/v1'));
 
 // 錯誤處理中間件
 app.use((err, req, res, next) => {
