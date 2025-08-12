@@ -59,7 +59,9 @@ app.get('/health', (req, res) => {
 
 // 就緒檢查端點（簡化版，可擴充檢查 DB 連線狀態）
 app.get('/ready', (req, res) => {
-  res.status(200).json({ ready: true, ts: new Date().toISOString() });
+  const mongoState = mongoose.connection && mongoose.connection.readyState;
+  const ready = mongoState === 1; // 1 = connected
+  res.status(ready ? 200 : 503).json({ ready, mongoState, ts: new Date().toISOString() });
 });
 
 app.use(express.json());

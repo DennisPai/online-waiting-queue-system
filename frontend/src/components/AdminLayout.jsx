@@ -39,11 +39,8 @@ const AdminLayout = () => {
   const [forceChangeOpen, setForceChangeOpen] = useState(false);
 
   useEffect(() => {
-    if (user && user.mustChangePassword) {
-      setForceChangeOpen(true);
-    } else {
-      setForceChangeOpen(false);
-    }
+    // 移除強制改密；改為由使用者自行打開對話框（此處保留對話框元件供後續手動觸發）
+    setForceChangeOpen(false);
   }, [user]);
   const { alert } = useSelector((state) => state.ui);
 
@@ -129,7 +126,7 @@ const AdminLayout = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             線上候位系統
           </Typography>
-          <Button color="inherit" onClick={() => navigate('/')} disabled={forceChangeOpen}>
+          <Button color="inherit" onClick={() => navigate('/') }>
             返回前台
           </Button>
         </Toolbar>
