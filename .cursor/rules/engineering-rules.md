@@ -19,6 +19,13 @@
 ## 文件與提交
 - 每次功能變更同步更新 `docs/PRD.md`（背景/AC）與 `docs/API_SPEC.md`
 - PR 必附：變更摘要、驗收清單、回滾方式
+  - 工程規範全文：`docs/ENGINEERING_RULES.md`（交接/新工程師請先閱讀此檔）
 
 ## To-Do 單一來源
-- 所有重構任務請以 `docs/TODO.md` 為權威清單，並同步到 Cursor 的 To-Do。Cursor Agent 執行時，請優先讀取 `docs/TODO.md` 來決定當前任務。
+- 所有重構任務以 `docs/TODO.md` 為權威清單，並同步到 Cursor 的 To-Do。
+- Cursor/Agent 執行時，先讀 `docs/TODO.md` 確認當前任務，再動手改。
+
+## 重構期間暫時規則（完成後可移除）
+- 一律優先補齊 v1 端點與回應格式，舊端點保持相容，不做破壞性修改。
+- 前端預設 `API_VERSION=v1`，如需回退以 `.env` 覆蓋。
+- 變更密碼流程為強制流程（mustChangePassword=true 時鎖住所有管理端操作）。

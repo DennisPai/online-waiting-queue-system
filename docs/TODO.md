@@ -37,3 +37,4 @@
 - [ ] 文件：PRD/API_SPEC/ENGINEERING_RULES 完整；DEPLOYMENT/USER_GUIDE 已精煉
 - [ ] CI 綠燈；手動驗證 `healthy/ready`、註冊/查詢/叫號/排序/編輯/刪除/匯出
 
+

@@ -79,8 +79,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/admin', adminRoutes);
 // v1 版本路由（逐步遷移到此）
-const v1Response = require('./utils/v1-response');
-app.use('/api/v1', v1Response, require('./routes/v1'));
+app.use('/api/v1', require('./routes/v1'));
 
 // 錯誤處理中間件
 app.use((err, req, res, next) => {
