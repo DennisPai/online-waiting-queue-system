@@ -22,11 +22,12 @@ alwaysApply: true
 
 ## 文件與提交（全域）
 - 每次功能變更同步更新 `docs/PRD.md`（背景/AC）與 `docs/API_SPEC.md`
+- **文檔同步工作流**：當 `docs/TODO.md` 任務狀態變更時，同步更新 `README.md` 的相關功能說明。特別是新功能開發或重構完成時，確保 README 反映最新的系統狀態。
+- **需求開發流程**：新需求必須先在 `docs/PRD.md` 進行規劃與溝通確認後，再進行技術開發（API 設計、實作、測試）。Agent 須先更新 PRD 並等待確認，再執行後續開發任務。
+- **任務確認機制**：TODO.md 任務標記完成前，需等用戶確認實際效果滿足需求，避免過早標記完成。
 - PR 必附：變更摘要、驗收清單、回滾方式
   - 工程規範全文：即本檔（取代 `docs/ENGINEERING_RULES.md`）
   - 子領域規範：`backend-rules.mdc`、`frontend-rules.mdc`（位於 `.cursor/rules/`）
-  - README 同步原則：當 `docs/TODO.md` 勾選完成或內容更新、且影響對外說明時，務必同步更新 `README.md` 的對應章節（特性/部署/變更摘要）。
-  - 狀態更新節奏：由使用者確認本次任務完成後，再勾選 `docs/TODO.md`，並同時更新 `README.md`（避免未驗收先標示完成）。
 
 ## To-Do 單一來源（全域）
 - 所有重構任務以 `docs/TODO.md` 為權威清單，並同步到 Cursor 的 To-Do。

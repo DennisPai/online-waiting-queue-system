@@ -32,6 +32,3 @@ alwaysApply: true
 - `backend/src/controllers/*`：商業邏輯與回應組裝（遵循 v1 回應規範）。
 - `backend/src/utils/v1-response.js`：回應封裝。
 
-## 文件同步（README）
-- 若 API 行為/端點/健康檢查有變更，並已在 `docs/TODO.md` 標示完成，需同步在 `README.md` 的「重要功能變更」更新摘要。
-
