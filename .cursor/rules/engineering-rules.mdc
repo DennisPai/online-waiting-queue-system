@@ -25,6 +25,8 @@ alwaysApply: true
 - PR 必附：變更摘要、驗收清單、回滾方式
   - 工程規範全文：即本檔（取代 `docs/ENGINEERING_RULES.md`）
   - 子領域規範：`backend-rules.mdc`、`frontend-rules.mdc`（位於 `.cursor/rules/`）
+  - README 同步原則：當 `docs/TODO.md` 勾選完成或內容更新、且影響對外說明時，務必同步更新 `README.md` 的對應章節（特性/部署/變更摘要）。
+  - 狀態更新節奏：由使用者確認本次任務完成後，再勾選 `docs/TODO.md`，並同時更新 `README.md`（避免未驗收先標示完成）。
 
 ## To-Do 單一來源（全域）
 - 所有重構任務以 `docs/TODO.md` 為權威清單，並同步到 Cursor 的 To-Do。

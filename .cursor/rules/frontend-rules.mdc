@@ -9,6 +9,9 @@ alwaysApply: true
 - `services/*` 一律回傳單層 `response.data`，Redux slice 只解一次。
 - 若需切回舊端點，可在 `.env` 設 `REACT_APP_API_VERSION=""`（僅灰度、短期）。
 
+## 文件同步（README）
+- 當 `docs/TODO.md` 勾選完成或有影響使用者的變更時，更新 `README.md` 的「重要功能變更/部署」段落。
+
 ## 狀態管理
 - Redux Toolkit：所有 asyncThunk 以 `services/*` 的單層 `data` 為準則；禁止 `.data.data`。
 - Error 處理：以 `error.response?.data?.message` 為主，必要時回退為字串。
