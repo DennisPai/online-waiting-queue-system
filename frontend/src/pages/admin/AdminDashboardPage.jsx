@@ -321,7 +321,7 @@ const AdminDashboardPage = () => {
                 control={
                   <Checkbox
                     checked={visibleColumns.includes(key)}
-                    onChange={() => handleColumnToggle(key)}
+                    onChange={() => handleColumnToggle(key, AVAILABLE_COLUMNS)}
                     disabled={config.alwaysVisible}
                   />
                 }

@@ -76,10 +76,6 @@ const RegistrationSuccess = ({
         {/* 候位資訊卡片 */}
         <Card>
           <CardContent>
-            <Typography variant="h5" component="div" align="center" gutterBottom>
-              候位登記成功！
-            </Typography>
-            
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
               <Typography variant="h6" color="text.secondary">
                 您的候位號碼：
@@ -126,14 +122,6 @@ const RegistrationSuccess = ({
                 </Typography>
               </Grid>
             </Grid>
-
-            {maxOrderMessage && (
-              <Box sx={{ mt: 3, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
-                <Typography variant="body2" color="info.contrastText">
-                  💡 {maxOrderMessage}
-                </Typography>
-              </Box>
-            )}
           </CardContent>
         </Card>
 

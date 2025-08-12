@@ -642,12 +642,21 @@ export const useQueueManagement = () => {
     setColumnMenuOpen(false);
   }, []);
 
-  const handleColumnToggle = useCallback((columnKey) => {
+  const handleColumnToggle = useCallback((columnKey, availableColumns) => {
     if (columnKey === 'actions') return; // 操作欄不允許隱藏
 
-    const newVisibleColumns = visibleColumns.includes(columnKey)
-      ? visibleColumns.filter(key => key !== columnKey)
-      : [...visibleColumns, columnKey];
+    let newVisibleColumns;
+    if (visibleColumns.includes(columnKey)) {
+      // 隱藏欄位
+      newVisibleColumns = visibleColumns.filter(key => key !== columnKey);
+    } else {
+      // 顯示欄位，需要按照原始順序插入
+      const allColumnKeys = Object.keys(availableColumns);
+      const tempColumns = [...visibleColumns, columnKey];
+      
+      // 根據原始欄位定義順序重新排序
+      newVisibleColumns = allColumnKeys.filter(key => tempColumns.includes(key));
+    }
     
     setVisibleColumns(newVisibleColumns);
     localStorage.setItem('queueTableColumns', JSON.stringify(newVisibleColumns));
