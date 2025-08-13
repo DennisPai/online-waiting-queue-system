@@ -78,15 +78,17 @@ export const useRegistrationForm = (embedded = false) => {
   // 自動轉換日期的功能函數
   const autoConvertDate = useCallback((newFormData) => {
     if (newFormData.birthYear && newFormData.birthMonth && newFormData.birthDay) {
-      const year = parseInt(newFormData.birthYear);
+      const inputYear = parseInt(newFormData.birthYear);
       const month = parseInt(newFormData.birthMonth);
       const day = parseInt(newFormData.birthDay);
 
-      if (year && month && day) {
+      if (inputYear && month && day) {
         try {
           if (newFormData.calendarType === 'gregorian') {
-            // 國曆轉農曆
-            const lunarDate = gregorianToLunar(year, month, day);
+            // 國曆：先轉換為西元年，再進行轉換
+            const { minguoYear } = autoConvertToMinguo(inputYear);
+            const gregorianYear = convertMinguoForStorage(minguoYear);
+            const lunarDate = gregorianToLunar(gregorianYear, month, day);
             if (lunarDate) {
               newFormData.convertedLunarYear = lunarDate.year;
               newFormData.convertedLunarMonth = lunarDate.month;
@@ -94,8 +96,10 @@ export const useRegistrationForm = (embedded = false) => {
               newFormData.convertedLunarIsLeapMonth = lunarDate.isLeapMonth;
             }
           } else {
-            // 農曆轉國曆
-            const gregorianDate = lunarToGregorian(year, month, day, newFormData.lunarIsLeapMonth);
+            // 農曆：先轉換為西元年，再進行轉換
+            const { minguoYear } = autoConvertToMinguo(inputYear);
+            const lunarYear = convertMinguoForStorage(minguoYear);
+            const gregorianDate = lunarToGregorian(lunarYear, month, day, newFormData.lunarIsLeapMonth);
             if (gregorianDate) {
               newFormData.convertedGregorianYear = gregorianDate.year;
               newFormData.convertedGregorianMonth = gregorianDate.month;
@@ -113,14 +117,17 @@ export const useRegistrationForm = (embedded = false) => {
   // 家人自動轉換日期
   const autoConvertFamilyMemberDate = useCallback((member) => {
     if (member.birthYear && member.birthMonth && member.birthDay) {
-      const year = parseInt(member.birthYear);
+      const inputYear = parseInt(member.birthYear);
       const month = parseInt(member.birthMonth);
       const day = parseInt(member.birthDay);
 
-      if (year && month && day) {
+      if (inputYear && month && day) {
         try {
           if (member.calendarType === 'gregorian') {
-            const lunarDate = gregorianToLunar(year, month, day);
+            // 國曆：先轉換為西元年，再進行轉換
+            const { minguoYear } = autoConvertToMinguo(inputYear);
+            const gregorianYear = convertMinguoForStorage(minguoYear);
+            const lunarDate = gregorianToLunar(gregorianYear, month, day);
             if (lunarDate) {
               member.convertedLunarYear = lunarDate.year;
               member.convertedLunarMonth = lunarDate.month;
@@ -128,7 +135,10 @@ export const useRegistrationForm = (embedded = false) => {
               member.convertedLunarIsLeapMonth = lunarDate.isLeapMonth;
             }
           } else {
-            const gregorianDate = lunarToGregorian(year, month, day, member.lunarIsLeapMonth);
+            // 農曆：先轉換為西元年，再進行轉換
+            const { minguoYear } = autoConvertToMinguo(inputYear);
+            const lunarYear = convertMinguoForStorage(minguoYear);
+            const gregorianDate = lunarToGregorian(lunarYear, month, day, member.lunarIsLeapMonth);
             if (gregorianDate) {
               member.convertedGregorianYear = gregorianDate.year;
               member.convertedGregorianMonth = gregorianDate.month;

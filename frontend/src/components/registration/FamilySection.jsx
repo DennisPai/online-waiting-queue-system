@@ -9,6 +9,7 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
+  Checkbox,
   IconButton,
   Accordion,
   AccordionSummary,
@@ -167,7 +168,7 @@ const FamilySection = ({
                     <FormControl component="fieldset">
                       <FormControlLabel
                         control={
-                          <Radio
+                          <Checkbox
                             checked={member.lunarIsLeapMonth || false}
                             onChange={(e) => onFamilyMemberChange(index, 'lunarIsLeapMonth', e.target.checked)}
                             name="lunarIsLeapMonth"

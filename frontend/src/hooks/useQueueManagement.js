@@ -394,13 +394,35 @@ export const useQueueManagement = () => {
       // 處理家人年份轉換
       if (processedData.familyMembers) {
         processedData.familyMembers.forEach(member => {
-          if (member.gregorianBirthYear) {
-            const { minguoYear } = autoConvertToMinguo(member.gregorianBirthYear);
+          // 只有當年份是字串或需要轉換時才進行轉換
+          if (member.gregorianBirthYear && typeof member.gregorianBirthYear === 'string') {
+            const { minguoYear } = autoConvertToMinguo(parseInt(member.gregorianBirthYear));
             member.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+          } else if (member.gregorianBirthYear && typeof member.gregorianBirthYear === 'number') {
+            // 確保數值型別
+            member.gregorianBirthYear = parseInt(member.gregorianBirthYear);
           }
-          if (member.lunarBirthYear) {
-            const { minguoYear } = autoConvertToMinguo(member.lunarBirthYear);
+          
+          if (member.lunarBirthYear && typeof member.lunarBirthYear === 'string') {
+            const { minguoYear } = autoConvertToMinguo(parseInt(member.lunarBirthYear));
             member.lunarBirthYear = convertMinguoForStorage(minguoYear);
+          } else if (member.lunarBirthYear && typeof member.lunarBirthYear === 'number') {
+            // 確保數值型別
+            member.lunarBirthYear = parseInt(member.lunarBirthYear);
+          }
+
+          // 確保月份和日期是數值型別
+          if (member.gregorianBirthMonth) {
+            member.gregorianBirthMonth = parseInt(member.gregorianBirthMonth);
+          }
+          if (member.gregorianBirthDay) {
+            member.gregorianBirthDay = parseInt(member.gregorianBirthDay);
+          }
+          if (member.lunarBirthMonth) {
+            member.lunarBirthMonth = parseInt(member.lunarBirthMonth);
+          }
+          if (member.lunarBirthDay) {
+            member.lunarBirthDay = parseInt(member.lunarBirthDay);
           }
         });
 

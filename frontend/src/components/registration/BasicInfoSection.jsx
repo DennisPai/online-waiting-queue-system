@@ -8,6 +8,7 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
+  Checkbox,
   Box
 } from '@mui/material';
 import { 
@@ -166,7 +167,7 @@ const BasicInfoSection = ({
           <FormControl component="fieldset" sx={{ mt: 2 }}>
             <FormControlLabel
               control={
-                <Radio
+                <Checkbox
                   checked={formData.lunarIsLeapMonth || false}
                   onChange={(e) => onChange('lunarIsLeapMonth', e.target.checked)}
                   name="lunarIsLeapMonth"
