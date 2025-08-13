@@ -292,12 +292,14 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
       ...formData,
       familyMembers: [...formData.familyMembers, {
         name: '',
+        gender: 'male',
         birthYear: '',
         birthMonth: '',
         birthDay: '',
         calendarType: 'gregorian',
         lunarIsLeapMonth: false,
-        address: ''
+        address: '',
+        addressType: 'home'
       }]
     });
   };
@@ -727,6 +729,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                   </AccordionSummary>
                   <AccordionDetails>
                     <Grid container spacing={2}>
+                      {/* 姓名 */}
                       <Grid item xs={12} sm={6}>
                         <TextField
                           fullWidth
@@ -737,17 +740,50 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                           helperText={formErrors[`familyMembers.${index}.name`]}
                         />
                       </Grid>
-                      <Grid item xs={12} sm={2}>
+
+                      {/* 性別 */}
+                      <Grid item xs={12} sm={6}>
+                        <FormControl component="fieldset">
+                          <FormLabel component="legend">性別</FormLabel>
+                          <RadioGroup
+                            row
+                            value={member.gender || 'male'}
+                            onChange={(e) => handleFamilyMemberChange(index, 'gender', e.target.value)}
+                          >
+                            <FormControlLabel value="male" control={<Radio size="small" />} label="男" />
+                            <FormControlLabel value="female" control={<Radio size="small" />} label="女" />
+                          </RadioGroup>
+                        </FormControl>
+                      </Grid>
+
+                      {/* 生日曆法選擇 */}
+                      <Grid item xs={12}>
+                        <FormControl component="fieldset">
+                          <FormLabel component="legend">生日曆法</FormLabel>
+                          <RadioGroup
+                            row
+                            value={member.calendarType || 'gregorian'}
+                            onChange={(e) => handleFamilyMemberChange(index, 'calendarType', e.target.value)}
+                          >
+                            <FormControlLabel value="gregorian" control={<Radio size="small" />} label="國曆（西元/民國）" />
+                            <FormControlLabel value="lunar" control={<Radio size="small" />} label="農曆" />
+                          </RadioGroup>
+                        </FormControl>
+                      </Grid>
+
+                      {/* 出生年月日 */}
+                      <Grid item xs={4}>
                         <TextField
                           fullWidth
-                          label="出生年"
+                          label={`出生年 (${(member.calendarType || 'gregorian') === 'gregorian' ? '西元' : '民國'})`}
+                          type="number"
                           value={member.birthYear}
                           onChange={(e) => handleFamilyMemberChange(index, 'birthYear', e.target.value)}
                           error={Boolean(formErrors[`familyMembers.${index}.birthYear`])}
                           helperText={formErrors[`familyMembers.${index}.birthYear`]}
                         />
                       </Grid>
-                      <Grid item xs={12} sm={2}>
+                      <Grid item xs={4}>
                         <TextField
                           fullWidth
                           label="出生月"
@@ -759,7 +795,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                           helperText={formErrors[`familyMembers.${index}.birthMonth`]}
                         />
                       </Grid>
-                      <Grid item xs={12} sm={2}>
+                      <Grid item xs={4}>
                         <TextField
                           fullWidth
                           label="出生日"
@@ -771,7 +807,24 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                           helperText={formErrors[`familyMembers.${index}.birthDay`]}
                         />
                       </Grid>
-                      <Grid item xs={12}>
+
+                      {/* 農曆閏月選項 */}
+                      {(member.calendarType || 'gregorian') === 'lunar' && (
+                        <Grid item xs={12}>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={member.lunarIsLeapMonth || false}
+                                onChange={(e) => handleFamilyMemberChange(index, 'lunarIsLeapMonth', e.target.checked)}
+                              />
+                            }
+                            label="閏月"
+                          />
+                        </Grid>
+                      )}
+
+                      {/* 地址 */}
+                      <Grid item xs={12} sm={8}>
                         <TextField
                           fullWidth
                           label="地址"
@@ -779,7 +832,30 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                           onChange={(e) => handleFamilyMemberChange(index, 'address', e.target.value)}
                           error={Boolean(formErrors[`familyMembers.${index}.address`])}
                           helperText={formErrors[`familyMembers.${index}.address`]}
+                          placeholder="請輸入完整住址"
                         />
+                      </Grid>
+
+                      {/* 地址類型 */}
+                      <Grid item xs={12} sm={4}>
+                        <FormControl fullWidth>
+                          <FormLabel component="legend">地址類別</FormLabel>
+                          <RadioGroup
+                            row
+                            value={member.addressType || 'home'}
+                            onChange={(e) => handleFamilyMemberChange(index, 'addressType', e.target.value)}
+                          >
+                            {addressTypeOptions.map((option) => (
+                              <FormControlLabel
+                                key={option.value}
+                                value={option.value}
+                                control={<Radio size="small" />}
+                                label={option.label}
+                                sx={{ minWidth: 'auto', mr: 1 }}
+                              />
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
                       </Grid>
                     </Grid>
                   </AccordionDetails>

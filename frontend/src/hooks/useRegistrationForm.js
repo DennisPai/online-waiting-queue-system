@@ -278,7 +278,7 @@ export const useRegistrationForm = (embedded = false) => {
           ...prev.familyMembers,
           {
             name: '',
-            gender: '',
+            gender: 'male',
             birthYear: '',
             birthMonth: '',
             birthDay: '',

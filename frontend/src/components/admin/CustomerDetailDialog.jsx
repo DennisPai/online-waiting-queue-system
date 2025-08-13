@@ -761,6 +761,41 @@ const CustomerDetailDialog = ({
                           </Grid>
                         </Grid>
                       </Grid>
+
+                      {/* 家人住址資訊 */}
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          住址資訊
+                        </Typography>
+                        <Grid container spacing={1}>
+                          <Grid item xs={8}>
+                            <TextField
+                              fullWidth
+                              label="住址"
+                              value={member.address || ''}
+                              onChange={(e) => onFamilyMemberChange(index, 'address', e.target.value)}
+                              variant="outlined"
+                              size="small"
+                              placeholder="請輸入完整住址"
+                            />
+                          </Grid>
+                          <Grid item xs={4}>
+                            <FormControl fullWidth size="small">
+                              <InputLabel>地址類型</InputLabel>
+                              <Select
+                                value={member.addressType || 'home'}
+                                onChange={(e) => onFamilyMemberChange(index, 'addressType', e.target.value)}
+                                label="地址類型"
+                              >
+                                <MenuItem value="home">住家</MenuItem>
+                                <MenuItem value="work">工作場所</MenuItem>
+                                <MenuItem value="hospital">醫院</MenuItem>
+                                <MenuItem value="other">其他</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                        </Grid>
+                      </Grid>
                     </Grid>
                   </AccordionDetails>
                 </Accordion>
@@ -786,10 +821,14 @@ const CustomerDetailDialog = ({
               </Typography>
               <FormGroup>
                 {[
-                  { value: 'business_registration', label: '商業登記' },
-                  { value: 'tax_consultation', label: '稅務諮詢' },
-                  { value: 'legal_consultation', label: '法律諮詢' },
-                  { value: 'license_application', label: '證照申請' },
+                  { value: 'body', label: '身體' },
+                  { value: 'fate', label: '運途' },
+                  { value: 'karma', label: '因果' },
+                  { value: 'family', label: '家運/祖先' },
+                  { value: 'career', label: '事業' },
+                  { value: 'relationship', label: '婚姻感情' },
+                  { value: 'study', label: '學業' },
+                  { value: 'blessing', label: '收驚/加持' },
                   { value: 'other', label: '其他' }
                 ].map((topic) => (
                   <FormControlLabel

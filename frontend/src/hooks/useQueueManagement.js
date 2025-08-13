@@ -337,14 +337,16 @@ export const useQueueManagement = () => {
           ...prev.familyMembers,
           {
             name: '',
-            gender: '',
+            gender: 'male',
             gregorianBirthYear: '',
             gregorianBirthMonth: '',
             gregorianBirthDay: '',
             lunarBirthYear: '',
             lunarBirthMonth: '',
             lunarBirthDay: '',
-            lunarIsLeapMonth: false
+            lunarIsLeapMonth: false,
+            address: '',
+            addressType: 'home'
           }
         ]
       }));
