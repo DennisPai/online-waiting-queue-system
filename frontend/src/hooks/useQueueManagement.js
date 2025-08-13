@@ -432,7 +432,7 @@ export const useQueueManagement = () => {
 
       const updatedData = autoFillDates(processedData);
 
-      dispatch(updateQueueData({ queueId: selectedRecord._id, data: updatedData }))
+      dispatch(updateQueueData({ queueId: selectedRecord._id, customerData: updatedData }))
         .unwrap()
         .then(() => {
           handleCloseDialog();

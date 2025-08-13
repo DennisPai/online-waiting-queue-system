@@ -456,6 +456,9 @@ exports.updateQueueData = async (req, res) => {
     const { queueId } = req.params;
     let updateData = req.body;
     
+    console.log('管理員更新客戶資料 - queueId:', queueId);
+    console.log('管理員更新客戶資料 - 收到的數據:', JSON.stringify(updateData, null, 2));
+    
     // 查找候位記錄
     const record = await WaitingRecord.findById(queueId);
     
@@ -466,6 +469,8 @@ exports.updateQueueData = async (req, res) => {
       });
     }
     
+    console.log('管理員更新客戶資料 - 原始記錄 familyMembers:', JSON.stringify(record.familyMembers, null, 2));
+    
     // 允許重複號碼，不進行檢查 - 由前端視覺提醒處理
     
     // 仿效登記候位的處理流程：前端已處理年份轉換，後端只需進行日期轉換
@@ -475,12 +480,21 @@ exports.updateQueueData = async (req, res) => {
     
         // 處理家人資料的日期轉換
     if (updateData.familyMembers && updateData.familyMembers.length > 0) {
+      // 清理家人資料中的 _id 欄位（如果存在）
+      updateData.familyMembers = updateData.familyMembers.map(member => {
+        const cleanMember = { ...member };
+        delete cleanMember._id; // 移除可能干擾更新的 _id
+        return cleanMember;
+      });
+      
       const familyData = autoFillFamilyMembersDates({ familyMembers: updateData.familyMembers });
       updateData.familyMembers = familyData.familyMembers;
     }
 
     // 計算虛歲
     updateData = addVirtualAge(updateData);
+
+    console.log('管理員更新客戶資料 - 處理後的數據:', JSON.stringify(updateData, null, 2));
 
     // 更新允許的欄位
     const allowedFields = [
@@ -493,11 +507,16 @@ exports.updateQueueData = async (req, res) => {
 
     allowedFields.forEach(field => {
       if (updateData[field] !== undefined) {
+        console.log(`管理員更新客戶資料 - 更新欄位 ${field}:`, updateData[field]);
         record[field] = updateData[field];
       }
     });
 
+    console.log('管理員更新客戶資料 - 準備保存的 familyMembers:', JSON.stringify(record.familyMembers, null, 2));
+
     await record.save();
+    
+    console.log('管理員更新客戶資料 - 保存後的 familyMembers:', JSON.stringify(record.familyMembers, null, 2));
     
     res.status(200).json({
       success: true,
