@@ -33,6 +33,42 @@ alwaysApply: true
 - 所有重構任務以 `docs/TODO.md` 為權威清單，並同步到 Cursor 的 To-Do。
 - Cursor/Agent 執行時，先讀 `docs/TODO.md` 確認當前任務，再動手改。
 
+## 檔案定位與探索指南（Agent 必讀）
+### 🔍 初次接觸或不熟悉功能時的探索順序：
+1. **需求了解**：`docs/PRD.md` → 了解功能背景與驗收條件
+2. **API 規格**：`docs/API_SPEC.md` → 確認端點、請求/回應格式
+3. **前端入口**：`frontend/src/pages/*` → 找到頁面主要元件
+4. **後端入口**：`backend/src/routes/v1/*` → 找到對應路由與控制器
+
+### 📂 關鍵檔案速查表：
+**前端核心結構：**
+- 頁面：`frontend/src/pages/` (AdminDashboardPage, RegisterPage 等)
+- 元件：`frontend/src/components/` (按功能模組分組：admin/, registration/, common/, layout/)
+- 狀態：`frontend/src/redux/slices/` (authSlice, queueSlice, adminSlice, uiSlice)
+- 服務：`frontend/src/services/` (authService, queueService, adminService)
+- Hooks：`frontend/src/hooks/` (useQueueManagement 及其拆分版本在 hooks/admin/)
+
+**後端核心結構：**
+- 路由：`backend/src/routes/v1/` (auth, queue, admin)
+- 控制器：`backend/src/controllers/` (auth, queue, admin)
+- 模型：`backend/src/models/` (user, queue)
+- 中介層：`backend/src/middleware/` (auth, validation)
+- 工具：`backend/src/utils/` (v1-response, validation)
+
+### 🔎 常見問題的定位策略：
+- **登入/認證問題**：authService → authSlice → auth.controller → user.model
+- **候位功能問題**：queueService → queueSlice → queue.controller → queue.model
+- **管理面板問題**：AdminDashboardPage → useQueueManagement → adminService → admin.controller
+- **API 回應格式問題**：v1-response.js → 對應 controller → API_SPEC.md
+- **前端元件問題**：從 pages/ 開始，追蹤到 components/ 和 hooks/
+- **Socket 即時更新**：socketService → 對應元件的 useEffect → backend socket 事件
+
+### 💡 探索技巧：
+- 使用 `codebase_search` 進行語意搜尋，如「用戶登入流程」、「候位狀態更新」
+- 使用 `grep` 精確搜尋函式名、變數名、錯誤訊息
+- 從錯誤訊息或 console.log 開始反向追蹤
+- 檢查 import/export 關係來理解檔案間的依賴
+
 ## 重構期間暫時規則（完成後可移除）
 - 一律優先補齊 v1 端點與回應格式，舊端點保持相容，不做破壞性修改。
 - 前端預設 `API_VERSION=v1`，如需回退以 `.env` 覆蓋。
