@@ -457,7 +457,7 @@ exports.updateQueueData = async (req, res) => {
     let updateData = req.body;
     
     console.log('管理員更新客戶資料 - queueId:', queueId);
-    console.log('管理員更新客戶資料 - 收到的數據:', JSON.stringify(updateData, null, 2));
+    console.log('管理員更新客戶資料 - 收到數據欄位:', Object.keys(updateData));
     
     // 查找候位記錄
     const record = await WaitingRecord.findById(queueId);
@@ -469,7 +469,7 @@ exports.updateQueueData = async (req, res) => {
       });
     }
     
-    console.log('管理員更新客戶資料 - 原始記錄 familyMembers:', JSON.stringify(record.familyMembers, null, 2));
+    console.log('管理員更新客戶資料 - 原始記錄 familyMembers 數量:', record.familyMembers?.length || 0);
     
     // 允許重複號碼，不進行檢查 - 由前端視覺提醒處理
     
@@ -494,7 +494,7 @@ exports.updateQueueData = async (req, res) => {
     // 計算虛歲
     updateData = addVirtualAge(updateData);
 
-    console.log('管理員更新客戶資料 - 處理後的數據:', JSON.stringify(updateData, null, 2));
+    console.log('管理員更新客戶資料 - 更新欄位數量:', Object.keys(updateData).length);
 
     // 更新允許的欄位
     const allowedFields = [
@@ -507,16 +507,16 @@ exports.updateQueueData = async (req, res) => {
 
     allowedFields.forEach(field => {
       if (updateData[field] !== undefined) {
-        console.log(`管理員更新客戶資料 - 更新欄位 ${field}:`, updateData[field]);
+        console.log(`管理員更新客戶資料 - 更新欄位 ${field}`);
         record[field] = updateData[field];
       }
     });
 
-    console.log('管理員更新客戶資料 - 準備保存的 familyMembers:', JSON.stringify(record.familyMembers, null, 2));
+    console.log('管理員更新客戶資料 - 準備保存的 familyMembers 數量:', record.familyMembers?.length || 0);
 
     await record.save();
     
-    console.log('管理員更新客戶資料 - 保存後的 familyMembers:', JSON.stringify(record.familyMembers, null, 2));
+    console.log('管理員更新客戶資料 - 保存成功');
     
     res.status(200).json({
       success: true,
