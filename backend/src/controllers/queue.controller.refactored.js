@@ -1,6 +1,7 @@
 const queueService = require('../services/QueueService');
 const { catchAsync } = require('../utils/errorHandler');
 const ApiError = require('../utils/ApiError');
+const WaitingRecord = require('../models/waiting-record.model');
 
 /**
  * 重構後的候位系統控制器
@@ -137,12 +138,41 @@ const callNextQueue = catchAsync(async (req, res) => {
 const searchQueue = catchAsync(async (req, res) => {
   const { name, phone } = req.query;
   
-  const result = await queueService.searchQueueByNameAndPhone(name, phone);
+  console.log('搜索請求參數:', { name, phone });
+  
+  try {
+    const result = await queueService.searchQueueByNameAndPhone(name, phone);
+    
+    console.log('搜索結果:', result);
+    
+    res.status(200).json({
+      success: true,
+      data: result.records,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('搜索過程中發生錯誤:', error);
+    throw error;
+  }
+});
+
+/**
+ * 調試端點：直接查詢所有候位記錄
+ */
+const debugRecords = catchAsync(async (req, res) => {
+  const allRecords = await WaitingRecord.find({}).limit(10);
+  const totalCount = await WaitingRecord.countDocuments({});
+  
+  console.log('資料庫中的候位記錄數量:', totalCount);
+  console.log('前10筆記錄:', allRecords);
   
   res.status(200).json({
     success: true,
-    data: result.records,
-    message: result.message
+    data: {
+      totalCount,
+      records: allRecords
+    },
+    message: `資料庫中共有 ${totalCount} 筆候位記錄`
   });
 });
 
@@ -155,5 +185,6 @@ module.exports = {
   deleteQueue,
   getMaxOrderIndex,
   callNextQueue,
-  searchQueue
+  searchQueue,
+  debugRecords
 };
