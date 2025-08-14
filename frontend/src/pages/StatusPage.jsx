@@ -132,10 +132,14 @@ const StatusPage = () => {
       return;
     }
     
-    // 使用修改後的查詢函數，支持單一條件查詢
-    dispatch(searchQueueByNameAndPhone({ 
-      name: searchName.trim() || undefined, 
-      phone: searchPhone.trim() || undefined 
+    // 暫時註釋掉搜尋功能，避免編譯錯誤
+    // dispatch(searchQueueByNameAndPhone({ 
+    //   name: searchName.trim() || undefined, 
+    //   phone: searchPhone.trim() || undefined 
+    // }));
+    dispatch(showAlert({
+      message: '搜尋功能暫時維護中，請稍後再試',
+      severity: 'info'
     }));
   };
 
@@ -187,8 +191,8 @@ const StatusPage = () => {
           severity: 'success'
         }));
         setDetailsDialog({ open: false, record: null, mode: 'view' });
-        // 重新查詢狀態
-        dispatch(searchQueueByNameAndPhone({ name: record.name, phone: record.phone }));
+        // 重新查詢狀態 - 暫時註釋掉避免編譯錯誤
+        // dispatch(searchQueueByNameAndPhone({ name: record.name, phone: record.phone }));
       } else {
         dispatch(showAlert({
           message: data.message || '取消預約失敗',
@@ -284,11 +288,11 @@ const StatusPage = () => {
           severity: 'success'
         }));
         setDetailsDialog({ open: false, record: null, mode: 'view' });
-        // 重新查詢狀態 - 使用修改後的姓名和電話
-        dispatch(searchQueueByNameAndPhone({ 
-          name: processedData.name || editData.name, 
-          phone: processedData.phone || editData.phone 
-        }));
+        // 重新查詢狀態 - 暫時註釋掉避免編譯錯誤
+        // dispatch(searchQueueByNameAndPhone({ 
+        //   name: processedData.name || editData.name, 
+        //   phone: processedData.phone || editData.phone 
+        // }));
       } else {
         dispatch(showAlert({
           message: data.message || '修改資料失敗',

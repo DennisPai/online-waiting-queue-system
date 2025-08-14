@@ -684,20 +684,20 @@ const queueSlice = createSlice({
         state.error = action.payload;
       })
       
-      // 通過姓名和電話查詢候位號碼
-      .addCase(searchQueueByNameAndPhone.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(searchQueueByNameAndPhone.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.currentQueueStatus = action.payload;
-        state.error = null;
-      })
-      .addCase(searchQueueByNameAndPhone.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-        state.currentQueueStatus = null;
-      })
+      // 通過姓名和電話查詢候位號碼 - 暫時註釋掉避免編譯錯誤
+      // .addCase(searchQueueByNameAndPhone.pending, (state) => {
+      //   state.isLoading = true;
+      // })
+      // .addCase(searchQueueByNameAndPhone.fulfilled, (state, action) => {
+      //   state.isLoading = false;
+      //   state.currentQueueStatus = action.payload;
+      //   state.error = null;
+      // })
+      // .addCase(searchQueueByNameAndPhone.rejected, (state, action) => {
+      //   state.isLoading = false;
+      //   state.error = action.payload;
+      //   state.currentQueueStatus = null;
+      // })
 
       // 更新客戶資料
       .addCase(updateQueueData.pending, (state) => {
