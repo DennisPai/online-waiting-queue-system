@@ -50,6 +50,7 @@ export const useQueueManagement = () => {
   const [totalCustomerCountInput, setTotalCustomerCountInput] = useState('');
   const [lastCompletedTimeInput, setLastCompletedTimeInput] = useState('');
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [isQueueStatusLoaded, setIsQueueStatusLoaded] = useState(false);
 
   // 欄位顯示控制
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -104,18 +105,32 @@ export const useQueueManagement = () => {
 
   // 初始化載入系統設定
   useEffect(() => {
-    dispatch(getQueueStatus());
+    dispatch(getQueueStatus())
+      .unwrap()
+      .then(() => {
+        setIsQueueStatusLoaded(true);
+      })
+      .catch((error) => {
+        console.error('載入系統設定失敗:', error);
+        setIsQueueStatusLoaded(true); // 即使失敗也標記為已載入，避免無限等待
+      });
   }, [dispatch]);
 
   // 當系統設定載入時，僅在輸入欄位為空時才設定初始值
   useEffect(() => {
-    if (queueStatus) {
-      // 只在輸入欄位為空時才從後端設定初始值，避免覆蓋用戶輸入
-      if (queueStatus.totalCustomerCount !== undefined && totalCustomerCountInput === '') {
-        setTotalCustomerCountInput(queueStatus.totalCustomerCount.toString());
+    // 確保 queueStatus 已載入且輸入欄位尚未初始化
+    if (queueStatus && isQueueStatusLoaded && !hasInitialized) {
+      console.log('初始化輸入欄位 - queueStatus:', queueStatus);
+      
+      // 設定客戶總數初始值
+      if (queueStatus.totalCustomerCount !== undefined) {
+        const initialCount = queueStatus.totalCustomerCount.toString();
+        setTotalCustomerCountInput(initialCount);
+        console.log('設定客戶總數初始值:', initialCount);
       }
       
-      if (queueStatus.lastCompletedTime && lastCompletedTimeInput === '') {
+      // 設定上一位辦完時間初始值
+      if (queueStatus.lastCompletedTime) {
         // 格式化時間為 datetime-local 格式
         const date = new Date(queueStatus.lastCompletedTime);
         const year = date.getFullYear();
@@ -123,14 +138,15 @@ export const useQueueManagement = () => {
         const day = String(date.getDate()).padStart(2, '0');
         const hour = String(date.getHours()).padStart(2, '0');
         const minute = String(date.getMinutes()).padStart(2, '0');
-        setLastCompletedTimeInput(`${year}-${month}-${day}T${hour}:${minute}`);
+        const initialTime = `${year}-${month}-${day}T${hour}:${minute}`;
+        setLastCompletedTimeInput(initialTime);
+        console.log('設定上一位辦完時間初始值:', initialTime);
       }
       
-      if (!hasInitialized) {
-        setHasInitialized(true);
-      }
+      setHasInitialized(true);
+      console.log('輸入欄位初始化完成');
     }
-  }, [queueStatus, totalCustomerCountInput, lastCompletedTimeInput, hasInitialized]);
+  }, [queueStatus, isQueueStatusLoaded, hasInitialized]);
 
   // 載入候位列表
   const loadQueueList = useCallback(() => {
