@@ -418,13 +418,8 @@ const queueSlice = createSlice({
       })
       .addCase(updateQueueStatus.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 更新列表中的狀態
-        state.queueList = state.queueList.map(item => {
-          if (item._id === action.payload._id) {
-            return action.payload;
-          }
-          return item;
-        });
+        // 不在這裡更新 queueList，讓前端重新載入對應分頁的資料
+        // 這樣可以確保每個分頁只顯示正確狀態的客戶
       })
       .addCase(updateQueueStatus.rejected, (state, action) => {
         state.isLoading = false;
