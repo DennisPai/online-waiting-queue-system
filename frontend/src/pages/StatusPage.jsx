@@ -46,7 +46,7 @@ import {
 } from '@mui/icons-material';
 import {
   getQueueNumberStatus,
-  searchQueueByNameAndPhone,
+  // searchQueueByNameAndPhone, // 暫時註釋掉以排查白屏問題
   clearQueueSearch,
   getQueueStatus
 } from '../redux/slices/queueSlice';
