@@ -71,7 +71,8 @@ export const getQueueList = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.getQueueList(params, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '獲取候位列表失敗');
     }
@@ -85,7 +86,8 @@ export const callNextQueue = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.callNextQueue(token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '呼叫下一位失敗');
     }
@@ -99,7 +101,8 @@ export const updateQueueStatus = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.updateQueueStatus(queueId, status, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '更新候位狀態失敗');
     }
@@ -113,7 +116,8 @@ export const updateQueueOrder = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.updateQueueOrder(queueId, newOrder, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '更新候位順序失敗');
     }
@@ -266,7 +270,8 @@ export const searchQueueByNameAndPhone = createAsyncThunk(
   async ({ name, phone }, { rejectWithValue }) => {
     try {
       const response = await queueService.searchQueueByNameAndPhone(name, phone);
-      return response.data;
+      // v1 API 回應格式：{success, code, message, data}，需要取 data 屬性
+      return response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '查詢候位號碼失敗');
     }

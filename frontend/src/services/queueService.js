@@ -21,7 +21,8 @@ const ADMIN_API_URL = `${API_BASE_URL}/api/admin`;
 const getQueueStatus = async () => {
   try {
     const response = await axios.get(`${API_ENDPOINTS.QUEUE}/status`);
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('獲取候位狀態錯誤:', error);
     throw error;
@@ -132,7 +133,8 @@ const getQueueList = async (params = {}, token) => {
       params
     };
     const response = await axios.get(`${API_ENDPOINTS.ADMIN}/queue/list`, config);
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('獲取候位列表錯誤:', error);
     throw error;
@@ -148,7 +150,8 @@ const callNextQueue = async (token) => {
       }
     };
     const response = await axios.put(`${API_ENDPOINTS.ADMIN}/queue/next`, {}, config);
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('呼叫下一位錯誤:', error);
     throw error;
@@ -168,7 +171,8 @@ const updateQueueStatus = async (queueId, status, token) => {
       { status },
       config
     );
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('更新候位狀態錯誤:', error);
     throw error;
@@ -195,7 +199,8 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
       throw new Error('API回應格式不正確');
     }
     
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('更新順序服務錯誤:', error);
     throw error.response?.data || error;

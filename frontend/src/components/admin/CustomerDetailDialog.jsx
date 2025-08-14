@@ -35,7 +35,8 @@ import {
   Add as AddIcon,
   Remove as RemoveIcon,
   ExpandMore as ExpandMoreIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { 
   autoFillDates, 
@@ -62,7 +63,8 @@ const CustomerDetailDialog = ({
   onAddFamilyMember,
   onRemoveFamilyMember,
   onTopicChange,
-  onCompleteFromDialog
+  onCompleteFromDialog,
+  onDeleteCustomer
 }) => {
   const formatConsultationTopics = (topics, otherDetails = '') => {
     if (!topics || topics.length === 0) return '無';
@@ -890,6 +892,17 @@ const CustomerDetailDialog = ({
                 startIcon={<CheckCircleIcon />}
               >
                 標記為已完成
+              </Button>
+            )}
+            {onDeleteCustomer && (
+              <Button
+                onClick={() => onDeleteCustomer(selectedRecord._id, selectedRecord.name)}
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon />}
+                sx={{ ml: 1 }}
+              >
+                刪除客戶
               </Button>
             )}
           </>

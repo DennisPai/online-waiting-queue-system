@@ -337,6 +337,7 @@ const AdminDashboardPage = () => {
         onRemoveFamilyMember={removeFamilyMember}
         onTopicChange={handleTopicChange}
         onCompleteFromDialog={handleCompleteFromDialog}
+        onDeleteCustomer={handleDeleteCustomer}
       />
 
       {/* 確認對話框 */}
