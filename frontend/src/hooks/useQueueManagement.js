@@ -470,21 +470,11 @@ export const useQueueManagement = () => {
       dispatch(updateQueueStatus({ queueId, status: 'completed' }))
         .unwrap()
         .then(() => {
-          const record = localQueueList.find(item => item._id === queueId);
-          if (record) {
-            const maxOrderIndex = Math.max(...localQueueList.map(item => item.orderIndex || 0));
-            const newOrderIndex = maxOrderIndex + 1;
-            
-            dispatch(updateQueueOrder({ queueId, newOrder: newOrderIndex }))
-              .unwrap()
-              .then(() => {
-                loadQueueList();
-                dispatch(showAlert({
-                  message: '客戶已標記為完成！',
-                  severity: 'success'
-                }));
-              });
-          }
+          loadQueueList();
+          dispatch(showAlert({
+            message: '客戶已標記為完成！已移至「已完成客戶」分頁',
+            severity: 'success'
+          }));
         })
         .catch((error) => {
           dispatch(showAlert({
