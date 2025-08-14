@@ -43,6 +43,8 @@ exports.getQueueList = async (req, res) => {
     
     // 獲取過濾參數
     const { status, page, limit } = req.query;
+    console.log('=== getQueueList Debug ===');
+    console.log('收到的參數:', { status, page, limit });
     
     // 構建查詢條件
     const query = {};
@@ -54,19 +56,14 @@ exports.getQueueList = async (req, res) => {
         // 支援逗號分隔的狀態字串
         const statusArray = status.split(',').map(s => s.trim());
         query.status = { $in: statusArray };
-        console.log(`查詢多狀態: ${statusArray.join(', ')}`);
       } else {
         // 單一狀態查詢
         query.status = status;
-        console.log(`查詢單一狀態: ${status}`);
       }
     } else {
       // 如果沒有指定狀態，則排除已取消和已完成的記錄（主列表）
       query.status = { $in: ['waiting', 'processing'] };
-      console.log('查詢預設狀態: waiting, processing');
     }
-    
-    console.log('最終查詢條件:', JSON.stringify(query));
     
     // 使用聚合管道，主要按orderIndex排序
     const pipeline = [
@@ -90,13 +87,16 @@ exports.getQueueList = async (req, res) => {
     // 計算總記錄數
     const total = await WaitingRecord.countDocuments(query);
     
-    console.log(`查詢結果: 找到 ${records.length} 筆記錄，總計 ${total} 筆`);
+    console.log('查詢條件:', JSON.stringify(query));
+    console.log('找到記錄數:', records.length);
     if (records.length > 0) {
       console.log('記錄狀態分佈:', records.reduce((acc, record) => {
         acc[record.status] = (acc[record.status] || 0) + 1;
         return acc;
       }, {}));
+      console.log('前3筆記錄的狀態:', records.slice(0, 3).map(r => ({ id: r._id, status: r.status, queueNumber: r.queueNumber })));
     }
+    console.log('========================');
     
     // 構建響應數據
     const responseData = {
