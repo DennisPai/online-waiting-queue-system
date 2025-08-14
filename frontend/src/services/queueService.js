@@ -74,8 +74,6 @@ const searchQueueByNameOrPhone = async (name, phone) => {
       params
     });
     
-    console.log('搜尋API回應:', response.data); // 調試日誌
-    
     // v1 API 回應格式：{success, code, message, data}，回傳實際候位記錄陣列
     return response.data.data || response.data;
   } catch (error) {
