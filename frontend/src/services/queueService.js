@@ -75,12 +75,17 @@ const searchQueueByNameOrPhone = async (name, phone) => {
     });
     
     // v1 API 回應格式：{success, code, message, data}
+    // 調試：記錄後端實際回應
+    console.log('Backend response:', response.data);
+    
     // 後端返回的 data 已經是 records 陣列，我們需要重新包裝成期望的格式
     if (response.data.success) {
-      return {
+      const result = {
         records: response.data.data || [],
         message: response.data.message || '查詢完成'
       };
+      console.log('Service returning:', result);
+      return result;
     } else {
       throw new Error(response.data.message || '查詢失敗');
     }
