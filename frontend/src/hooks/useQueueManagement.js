@@ -94,7 +94,18 @@ export const useQueueManagement = () => {
 
   // 載入候位列表
   const loadQueueList = useCallback(() => {
-    const status = currentTab === 0 ? undefined : 'cancelled';
+    let status;
+    if (currentTab === 0) {
+      // 候位列表：顯示 waiting 和 processing 狀態
+      status = 'waiting,processing';
+    } else if (currentTab === 1) {
+      // 已完成客戶：顯示 completed 狀態
+      status = 'completed';
+    } else if (currentTab === 2) {
+      // 已取消客戶：顯示 cancelled 狀態
+      status = 'cancelled';
+    }
+    
     dispatch(
       getQueueList({
         status,
