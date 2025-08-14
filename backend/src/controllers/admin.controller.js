@@ -52,15 +52,21 @@ exports.getQueueList = async (req, res) => {
         query.status = { $in: status };
       } else if (typeof status === 'string' && status.includes(',')) {
         // 支援逗號分隔的狀態字串
-        query.status = { $in: status.split(',').map(s => s.trim()) };
+        const statusArray = status.split(',').map(s => s.trim());
+        query.status = { $in: statusArray };
+        console.log(`查詢多狀態: ${statusArray.join(', ')}`);
       } else {
         // 單一狀態查詢
         query.status = status;
+        console.log(`查詢單一狀態: ${status}`);
       }
     } else {
       // 如果沒有指定狀態，則排除已取消和已完成的記錄（主列表）
       query.status = { $in: ['waiting', 'processing'] };
+      console.log('查詢預設狀態: waiting, processing');
     }
+    
+    console.log('最終查詢條件:', JSON.stringify(query));
     
     // 使用聚合管道，主要按orderIndex排序
     const pipeline = [
@@ -83,6 +89,14 @@ exports.getQueueList = async (req, res) => {
     
     // 計算總記錄數
     const total = await WaitingRecord.countDocuments(query);
+    
+    console.log(`查詢結果: 找到 ${records.length} 筆記錄，總計 ${total} 筆`);
+    if (records.length > 0) {
+      console.log('記錄狀態分佈:', records.reduce((acc, record) => {
+        acc[record.status] = (acc[record.status] || 0) + 1;
+        return acc;
+      }, {}));
+    }
     
     // 構建響應數據
     const responseData = {
