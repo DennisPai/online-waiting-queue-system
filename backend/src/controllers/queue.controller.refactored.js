@@ -148,11 +148,27 @@ const searchQueue = catchAsync(async (req, res) => {
     recordsLength: result?.records?.length
   });
   
-  res.status(200).json({
+  // 更詳細的調試：檢查 result.records 的內容
+  console.log('result.records detailed:', {
+    records: result.records,
+    recordsKeys: result.records ? Object.keys(result.records) : 'undefined',
+    firstRecordType: result.records?.[0] ? typeof result.records[0] : 'undefined'
+  });
+  
+  const responseData = {
     success: true,
     data: result.records,
     message: result.message
+  };
+  
+  // 調試：檢查最終要發送的數據
+  console.log('Final response data:', {
+    dataType: typeof responseData.data,
+    dataIsArray: Array.isArray(responseData.data),
+    dataKeys: responseData.data ? Object.keys(responseData.data) : 'undefined'
   });
+  
+  res.status(200).json(responseData);
 });
 
 module.exports = {

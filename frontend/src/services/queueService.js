@@ -97,11 +97,28 @@ const searchQueueByNameOrPhone = async (name, phone) => {
             message: response.data.data.message || response.data.message || '查詢完成'
           };
         } else {
-          // data 是物件但沒有 records：當作單筆記錄
-          result = {
-            records: [response.data.data],
-            message: response.data.message || '查詢完成'
-          };
+          // 檢查是否是類似陣列的物件 (有數字索引的物件)
+          const keys = Object.keys(response.data.data);
+          const isArrayLikeObject = keys.every(key => /^\d+$/.test(key));
+          
+          if (isArrayLikeObject && keys.length > 0) {
+            // 將類似陣列的物件轉換為真正的陣列
+            const recordsArray = keys
+              .map(key => parseInt(key))
+              .sort((a, b) => a - b)
+              .map(index => response.data.data[index]);
+            
+            result = {
+              records: recordsArray,
+              message: response.data.message || '查詢完成'
+            };
+          } else {
+            // data 是一般物件：當作單筆記錄
+            result = {
+              records: [response.data.data],
+              message: response.data.message || '查詢完成'
+            };
+          }
         }
       } else {
         // data 為空或其他格式
