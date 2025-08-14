@@ -547,22 +547,12 @@ export const useQueueManagement = () => {
     dispatch(updateQueueStatus({ queueId, status: 'completed' }))
       .unwrap()
       .then(() => {
-        const record = localQueueList.find(item => item._id === queueId);
-        if (record) {
-          const maxOrderIndex = Math.max(...localQueueList.map(item => item.orderIndex || 0));
-          const newOrderIndex = maxOrderIndex + 1;
-          
-          dispatch(updateQueueOrder({ queueId, newOrder: newOrderIndex }))
-            .unwrap()
-            .then(() => {
-              handleCloseDialog();
-              loadQueueList();
-              dispatch(showAlert({
-                message: '客戶已標記為完成！',
-                severity: 'success'
-              }));
-            });
-        }
+        handleCloseDialog();
+        loadQueueList();
+        dispatch(showAlert({
+          message: '客戶已標記為完成！已移至「已完成客戶」分頁',
+          severity: 'success'
+        }));
       })
       .catch((error) => {
         dispatch(showAlert({
@@ -570,7 +560,7 @@ export const useQueueManagement = () => {
           severity: 'error'
         }));
       });
-  }, [dispatch, localQueueList, loadQueueList, handleCloseDialog]);
+  }, [dispatch, loadQueueList, handleCloseDialog]);
 
   // Tab 切換
   const handleTabChange = useCallback((event, newValue) => {

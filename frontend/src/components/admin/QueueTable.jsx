@@ -328,6 +328,7 @@ const QueueTable = ({
                                   }}
                                 >
                                   {currentTab === 0 ? (
+                                    // 候位列表：顯示完成勾選框、編輯、取消按鈕
                                     <>
                                       <Checkbox
                                         checked={row.status === 'completed'}
@@ -356,7 +357,8 @@ const QueueTable = ({
                                         </IconButton>
                                       </Tooltip>
                                     </>
-                                  ) : (
+                                  ) : currentTab === 1 ? (
+                                    // 已完成客戶：顯示編輯、恢復按鈕
                                     <>
                                       <Tooltip title="查看詳細資料">
                                         <IconButton
@@ -367,7 +369,29 @@ const QueueTable = ({
                                           <EditIcon fontSize="small" />
                                         </IconButton>
                                       </Tooltip>
-                                      <Tooltip title="復原客戶">
+                                      <Tooltip title="恢復到候位列表">
+                                        <IconButton
+                                          size="small"
+                                          color="primary"
+                                          onClick={() => onRestoreCustomer(row._id, row.name)}
+                                        >
+                                          <RestoreIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </>
+                                  ) : (
+                                    // 已取消客戶：顯示編輯、恢復按鈕
+                                    <>
+                                      <Tooltip title="查看詳細資料">
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => onOpenDetails(row)}
+                                          sx={{ mr: 1 }}
+                                        >
+                                          <EditIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                      <Tooltip title="恢復到候位列表">
                                         <IconButton
                                           size="small"
                                           color="success"

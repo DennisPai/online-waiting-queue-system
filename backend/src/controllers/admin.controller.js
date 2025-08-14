@@ -47,11 +47,19 @@ exports.getQueueList = async (req, res) => {
     // 構建查詢條件
     const query = {};
     if (status) {
-      // 如果明確指定狀態，則查詢該狀態
-      query.status = status;
+      // 支援多狀態查詢
+      if (Array.isArray(status)) {
+        query.status = { $in: status };
+      } else if (typeof status === 'string' && status.includes(',')) {
+        // 支援逗號分隔的狀態字串
+        query.status = { $in: status.split(',').map(s => s.trim()) };
+      } else {
+        // 單一狀態查詢
+        query.status = status;
+      }
     } else {
-      // 如果沒有指定狀態，則排除已取消的記錄（主列表）
-      query.status = { $ne: 'cancelled' };
+      // 如果沒有指定狀態，則排除已取消和已完成的記錄（主列表）
+      query.status = { $in: ['waiting', 'processing'] };
     }
     
     // 使用聚合管道，主要按orderIndex排序
@@ -173,12 +181,26 @@ exports.updateQueueStatus = async (req, res) => {
       });
     }
     
+    // 記錄原始狀態
+    const originalStatus = record.status;
+    
     // 更新狀態
     record.status = status;
     
     // 如果標記為完成，設置完成時間
     if (status === 'completed') {
       record.completedAt = new Date();
+    }
+    
+    // 如果恢復到等待狀態，需要重新分配 orderIndex
+    if (status === 'waiting' && ['completed', 'cancelled'].includes(originalStatus)) {
+      // 獲取目前最大的 orderIndex
+      const maxOrderRecord = await WaitingRecord.findOne({
+        status: { $in: ['waiting', 'processing'] }
+      }).sort({ orderIndex: -1 });
+      
+      const newOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
+      record.orderIndex = newOrderIndex;
     }
     
     await record.save();

@@ -198,6 +198,7 @@ const AdminDashboardPage = () => {
       <Paper sx={{ width: '100%', mb: 2 }}>
         <Tabs value={currentTab} onChange={handleTabChange} aria-label="候位管理分頁">
           <Tab label="候位列表" />
+          <Tab label="已完成客戶" />
           <Tab label="已取消客戶" />
         </Tabs>
       </Paper>
@@ -206,7 +207,9 @@ const AdminDashboardPage = () => {
       <Paper sx={{ width: '100%', mb: 2 }}>
         <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
           <Typography variant="h6" component="div">
-            {currentTab === 0 ? `目前叫號: ${currentQueue || 0}` : '已取消的客戶列表'}
+            {currentTab === 0 && `目前叫號: ${currentQueue || 0}`}
+            {currentTab === 1 && '已完成的客戶列表'}
+            {currentTab === 2 && '已取消的客戶列表'}
           </Typography>
         </Box>
 
