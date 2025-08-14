@@ -110,7 +110,16 @@ const AdminDashboardPage = () => {
     handleResetColumns,
     handleOpenRegisterDialog,
     handleCloseRegisterDialog,
-    handleRegisterSuccess
+    handleRegisterSuccess,
+    queueStatus,
+    totalCustomerCountInput,
+    lastCompletedTimeInput,
+    handleTotalCustomerCountChange,
+    handleSetTotalCustomerCount,
+    handleResetTotalCustomerCount,
+    handleLastCompletedTimeChange,
+    handleSetLastCompletedTime,
+    handleResetLastCompletedTime
   } = useQueueManagement();
 
   // 初始載入
@@ -219,6 +228,14 @@ const AdminDashboardPage = () => {
                 <input
                   type="number"
                   min="0"
+                  value={totalCustomerCountInput}
+                  onChange={handleTotalCustomerCountChange}
+                  onBlur={handleSetTotalCustomerCount}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSetTotalCustomerCount();
+                    }
+                  }}
                   style={{
                     width: '80px',
                     padding: '4px 8px',
@@ -232,6 +249,8 @@ const AdminDashboardPage = () => {
                   variant="outlined"
                   size="small"
                   sx={{ minWidth: '60px' }}
+                  onClick={handleResetTotalCustomerCount}
+                  disabled={isLoading}
                 >
                   重設
                 </Button>
@@ -243,6 +262,14 @@ const AdminDashboardPage = () => {
                 </Typography>
                 <input
                   type="datetime-local"
+                  value={lastCompletedTimeInput}
+                  onChange={handleLastCompletedTimeChange}
+                  onBlur={handleSetLastCompletedTime}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSetLastCompletedTime();
+                    }
+                  }}
                   style={{
                     padding: '4px 8px',
                     border: '1px solid #ccc',
@@ -254,6 +281,8 @@ const AdminDashboardPage = () => {
                   variant="outlined"
                   size="small"
                   sx={{ minWidth: '60px' }}
+                  onClick={handleResetLastCompletedTime}
+                  disabled={isLoading}
                 >
                   重設
                 </Button>

@@ -25,7 +25,7 @@ import {
 
 export const useQueueManagement = () => {
   const dispatch = useDispatch();
-  const { queueList, pagination, currentQueue, isLoading, error } = useSelector(
+  const { queueList, queueStatus, pagination, currentQueue, isLoading, error } = useSelector(
     (state) => state.queue
   );
 
@@ -101,6 +101,31 @@ export const useQueueManagement = () => {
     }
   }, [queueList, detectDuplicateNumbers]);
 
+  // 初始化載入系統設定
+  useEffect(() => {
+    dispatch(getQueueStatus());
+  }, [dispatch]);
+
+  // 當系統設定更新時，同步更新輸入欄位
+  useEffect(() => {
+    if (queueStatus) {
+      setTotalCustomerCountInput(queueStatus.totalCustomerCount?.toString() || '');
+      
+      if (queueStatus.lastCompletedTime) {
+        // 格式化時間為 datetime-local 格式
+        const date = new Date(queueStatus.lastCompletedTime);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hour = String(date.getHours()).padStart(2, '0');
+        const minute = String(date.getMinutes()).padStart(2, '0');
+        setLastCompletedTimeInput(`${year}-${month}-${day}T${hour}:${minute}`);
+      } else {
+        setLastCompletedTimeInput('');
+      }
+    }
+  }, [queueStatus]);
+
   // 載入候位列表
   const loadQueueList = useCallback(() => {
     let status;
@@ -165,38 +190,26 @@ export const useQueueManagement = () => {
     }
   }, [dispatch, localQueueList]);
 
-  // 叫號下一位
+  // 叫號下一位（使用新的一鍵完成邏輯）
   const handleCallNext = useCallback(() => {
-    const currentProcessingRecord = localQueueList.find(
-      item => item.orderIndex === 1 && (item.status === 'waiting' || item.status === 'processing')
-    );
-
-    if (currentProcessingRecord) {
-      dispatch(updateQueueStatus({ 
-        queueId: currentProcessingRecord._id, 
-        status: 'completed' 
-      }))
-        .unwrap()
-        .then(() => {
-          dispatch(showAlert({
-            message: '叫號完成！',
-            severity: 'success'
-          }));
-          loadQueueList();
-        })
-        .catch((error) => {
-          dispatch(showAlert({
-            message: `叫號失敗: ${error}`,
-            severity: 'error'
-          }));
-        });
-    } else {
-      dispatch(showAlert({
-        message: '目前沒有可以叫號的客戶',
-        severity: 'warning'
-      }));
-    }
-  }, [dispatch, localQueueList, loadQueueList]);
+    dispatch(callNextQueue())
+      .unwrap()
+      .then((response) => {
+        dispatch(showAlert({
+          message: response.message || '叫號完成！',
+          severity: 'success'
+        }));
+        // 重新載入列表和系統狀態
+        loadQueueList();
+        dispatch(getQueueStatus());
+      })
+      .catch((error) => {
+        dispatch(showAlert({
+          message: `叫號失敗: ${error}`,
+          severity: 'error'
+        }));
+      });
+  }, [dispatch, loadQueueList]);
 
   // 更新狀態
   const handleUpdateStatus = useCallback((queueId, status) => {
@@ -704,11 +717,122 @@ export const useQueueManagement = () => {
   const handleRegisterSuccess = useCallback(() => {
     setRegisterDialogOpen(false);
     loadQueueList();
+    
+    // 如果系統處於非辦事狀態，自動更新客戶總數
+    if (queueStatus && !queueStatus.isQueueOpen) {
+      dispatch(resetTotalCustomerCount());
+    }
+    
     dispatch(showAlert({
       message: '候位登記成功！',
       severity: 'success'
     }));
-  }, [dispatch, loadQueueList]);
+  }, [dispatch, loadQueueList, queueStatus]);
+
+  // 處理客戶總數輸入變更
+  const handleTotalCustomerCountChange = useCallback((event) => {
+    setTotalCustomerCountInput(event.target.value);
+  }, []);
+
+  // 處理客戶總數設定
+  const handleSetTotalCustomerCount = useCallback(() => {
+    const count = parseInt(totalCustomerCountInput);
+    if (isNaN(count) || count < 0) {
+      dispatch(showAlert({
+        message: '請輸入有效的客戶總數（大於等於0的整數）',
+        severity: 'warning'
+      }));
+      return;
+    }
+
+    dispatch(setTotalCustomerCount(count))
+      .unwrap()
+      .then(() => {
+        dispatch(showAlert({
+          message: `客戶總數已設定為 ${count}`,
+          severity: 'success'
+        }));
+        dispatch(getQueueStatus()); // 重新獲取狀態
+      })
+      .catch((error) => {
+        dispatch(showAlert({
+          message: `設定失敗: ${error}`,
+          severity: 'error'
+        }));
+      });
+  }, [dispatch, totalCustomerCountInput]);
+
+  // 處理客戶總數重設
+  const handleResetTotalCustomerCount = useCallback(() => {
+    dispatch(resetTotalCustomerCount())
+      .unwrap()
+      .then((response) => {
+        dispatch(showAlert({
+          message: response.message || '客戶總數已重設',
+          severity: 'success'
+        }));
+        dispatch(getQueueStatus()); // 重新獲取狀態
+      })
+      .catch((error) => {
+        dispatch(showAlert({
+          message: `重設失敗: ${error}`,
+          severity: 'error'
+        }));
+      });
+  }, [dispatch]);
+
+  // 處理上一位辦完時間輸入變更
+  const handleLastCompletedTimeChange = useCallback((event) => {
+    setLastCompletedTimeInput(event.target.value);
+  }, []);
+
+  // 處理上一位辦完時間設定
+  const handleSetLastCompletedTime = useCallback(() => {
+    if (!lastCompletedTimeInput) {
+      dispatch(showAlert({
+        message: '請輸入有效的時間',
+        severity: 'warning'
+      }));
+      return;
+    }
+
+    const timeString = new Date(lastCompletedTimeInput).toISOString();
+    
+    dispatch(setLastCompletedTime(timeString))
+      .unwrap()
+      .then(() => {
+        dispatch(showAlert({
+          message: '上一位辦完時間設置成功',
+          severity: 'success'
+        }));
+        dispatch(getQueueStatus()); // 重新獲取狀態
+      })
+      .catch((error) => {
+        dispatch(showAlert({
+          message: `設定失敗: ${error}`,
+          severity: 'error'
+        }));
+      });
+  }, [dispatch, lastCompletedTimeInput]);
+
+  // 處理上一位辦完時間重設
+  const handleResetLastCompletedTime = useCallback(() => {
+    dispatch(resetLastCompletedTime())
+      .unwrap()
+      .then((response) => {
+        dispatch(showAlert({
+          message: response.message || '上一位辦完時間已重設',
+          severity: 'success'
+        }));
+        dispatch(getQueueStatus()); // 重新獲取狀態
+      })
+      .catch((error) => {
+        dispatch(showAlert({
+          message: `重設失敗: ${error}`,
+          severity: 'error'
+        }));
+      });
+  }, [dispatch]);
 
   return {
     // 狀態
@@ -729,6 +853,9 @@ export const useQueueManagement = () => {
     visibleColumns,
     columnMenuAnchor,
     columnMenuOpen,
+    queueStatus,
+    totalCustomerCountInput,
+    lastCompletedTimeInput,
 
     // 方法
     loadQueueList,
@@ -764,6 +891,12 @@ export const useQueueManagement = () => {
     handleResetColumns,
     handleOpenRegisterDialog,
     handleCloseRegisterDialog,
-    handleRegisterSuccess
+    handleRegisterSuccess,
+    handleTotalCustomerCountChange,
+    handleSetTotalCustomerCount,
+    handleResetTotalCustomerCount,
+    handleLastCompletedTimeChange,
+    handleSetLastCompletedTime,
+    handleResetLastCompletedTime
   };
 };

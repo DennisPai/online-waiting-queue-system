@@ -12,15 +12,16 @@ import { format, addMinutes } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 
 const QueueStatusDisplay = ({ queueStatus, isLoading }) => {
-  // 計算預估結束時間
+  // 計算預估結束時間（基於新邏輯：totalCustomerCount * minutesPerCustomer）
   const calculateEstimatedEndTime = () => {
-    if (!queueStatus || !queueStatus.nextSessionDate) return null;
+    if (!queueStatus || !queueStatus.nextSessionDate || !queueStatus.isQueueOpen) return null;
     
-    // 從下次辦事時間開始計算
+    // 使用新邏輯：nextSessionDate + (totalCustomerCount * minutesPerCustomer)
     const nextSessionDate = new Date(queueStatus.nextSessionDate);
-    // 使用estimatedWaitTime（已經是所有客戶總人數 * 每位客戶預估處理時間）
-    const waitTimeInMinutes = queueStatus.estimatedWaitTime || 0;
-    const endTime = addMinutes(nextSessionDate, waitTimeInMinutes);
+    const totalCustomerCount = queueStatus.totalCustomerCount || 0;
+    const minutesPerCustomer = queueStatus.minutesPerCustomer || 13;
+    const totalEstimatedMinutes = totalCustomerCount * minutesPerCustomer;
+    const endTime = addMinutes(nextSessionDate, totalEstimatedMinutes);
     
     // 格式化時間，顯示上下午
     return format(endTime, 'aah點mm分', { locale: zhTW });

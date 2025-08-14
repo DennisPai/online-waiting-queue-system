@@ -343,7 +343,7 @@ const setPublicRegistrationEnabled = async (publicRegistrationEnabled, token) =>
 // 設定客戶總數
 const setTotalCustomerCount = async (totalCustomerCount, token) => {
   const response = await axios.put(
-    `${API_ENDPOINTS.ADMIN}/settings/totalCustomerCount`,
+    `${API_ENDPOINTS.ADMIN}/settings/total-customer-count`,
     { totalCustomerCount },
     {
       headers: {
@@ -357,7 +357,7 @@ const setTotalCustomerCount = async (totalCustomerCount, token) => {
 // 重設客戶總數
 const resetTotalCustomerCount = async (token) => {
   const response = await axios.post(
-    `${API_ENDPOINTS.ADMIN}/settings/resetCustomerCount`,
+    `${API_ENDPOINTS.ADMIN}/settings/reset-customer-count`,
     {},
     {
       headers: {
@@ -371,7 +371,7 @@ const resetTotalCustomerCount = async (token) => {
 // 設定上一位辦完時間
 const setLastCompletedTime = async (lastCompletedTime, token) => {
   const response = await axios.put(
-    `${API_ENDPOINTS.ADMIN}/settings/lastCompletedTime`,
+    `${API_ENDPOINTS.ADMIN}/settings/last-completed-time`,
     { lastCompletedTime },
     {
       headers: {
@@ -385,7 +385,7 @@ const setLastCompletedTime = async (lastCompletedTime, token) => {
 // 重設上一位辦完時間
 const resetLastCompletedTime = async (token) => {
   const response = await axios.post(
-    `${API_ENDPOINTS.ADMIN}/settings/resetCompletedTime`,
+    `${API_ENDPOINTS.ADMIN}/settings/reset-completed-time`,
     {},
     {
       headers: {
