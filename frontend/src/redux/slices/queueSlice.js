@@ -283,8 +283,8 @@ export const searchQueueByNameAndPhone = createAsyncThunk(
   async ({ name, phone }, { rejectWithValue }) => {
     try {
       const response = await queueService.searchQueueByNameAndPhone(name, phone);
-      // v1 API 回應格式：{success, code, message, data}，需要取 data 屬性
-      return response.data || response;
+      // queueService 已經處理了 v1 格式，直接回傳實際候位記錄陣列
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '查詢候位號碼失敗');
     }

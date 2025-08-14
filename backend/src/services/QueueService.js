@@ -427,6 +427,161 @@ class QueueService {
       estimatedEndTime: estimatedEndTime.toISOString()
     };
   }
+
+  /**
+   * 通過姓名或電話查詢候位記錄（支持家人姓名搜尋）
+   */
+  async searchQueueByNameAndPhone(name, phone) {
+    const SystemSetting = require('../models/system-setting.model');
+    
+    if (!name && !phone) {
+      throw ApiError.badRequest('請提供姓名或電話其中一個');
+    }
+    
+    console.log(`查詢條件 - 姓名: ${name || '未提供'}, 電話: ${phone || '未提供'}`);
+    
+    let searchQuery = {};
+    
+    // 構建查詢條件
+    if (name && phone) {
+      // 同時提供姓名和電話：精確匹配主客戶或家人姓名匹配
+      searchQuery = {
+        $and: [
+          { phone: phone },
+          {
+            $or: [
+              { name: name }, // 主客戶姓名匹配
+              { 'familyMembers.name': name } // 家人姓名匹配
+            ]
+          }
+        ]
+      };
+    } else if (name) {
+      // 只提供姓名：匹配主客戶或家人姓名
+      searchQuery = {
+        $or: [
+          { name: name }, // 主客戶姓名匹配
+          { 'familyMembers.name': name } // 家人姓名匹配
+        ]
+      };
+    } else if (phone) {
+      // 只提供電話：匹配主客戶電話
+      searchQuery = { phone: phone };
+    }
+    
+    // 查找所有匹配的候位記錄
+    const records = await queueRepository.findByQuery(searchQuery, { queueNumber: 1 });
+    
+    // 如果沒有找到記錄
+    if (!records || records.length === 0) {
+      let errorMessage = '查無候位記錄';
+      if (name && phone) {
+        errorMessage += '，請確認姓名和電話是否正確';
+      } else if (name) {
+        errorMessage += '，請確認姓名是否正確（包含本人或家人姓名）';
+      } else if (phone) {
+        errorMessage += '，請確認電話是否正確';
+      }
+      
+      throw ApiError.notFound(errorMessage);
+    }
+    
+    // 獲取系統設定
+    const settings = await SystemSetting.getSettings();
+    
+    // 為每條記錄計算相關資訊
+    const recordsWithDetails = await Promise.all(records.map(async (record) => {
+      return await this.calculateDetailedQueueInfo(record, settings);
+    }));
+    
+    return {
+      records: recordsWithDetails,
+      message: `找到 ${recordsWithDetails.length} 筆候位記錄`
+    };
+  }
+
+  /**
+   * 計算詳細的候位資訊（用於搜尋結果）
+   */
+  async calculateDetailedQueueInfo(record, settings) {
+    // 確定實際狀態：如果候位號碼等於目前叫號且原狀態不是已完成或已取消，則為處理中
+    let actualStatus = record.status;
+    if (record.queueNumber === settings.currentQueueNumber && 
+        !['completed', 'cancelled'].includes(record.status)) {
+      actualStatus = 'processing';
+    }
+    
+    // 計算前面等待的筆數（用於估算時間）
+    const recordsAheadCount = await queueRepository.count({
+      status: 'waiting',
+      queueNumber: { $gt: settings.currentQueueNumber, $lt: record.queueNumber }
+    });
+    
+    // 獲取前面的所有記錄來計算實際人數
+    const recordsAhead = await queueRepository.findByQuery({
+      status: 'waiting',
+      queueNumber: { $gt: settings.currentQueueNumber, $lt: record.queueNumber }
+    });
+    
+    // 計算前面的總人數（包含本人和家人）
+    const peopleAheadCount = recordsAhead.reduce((total, aheadRecord) => {
+      const familyMemberCount = aheadRecord.familyMembers ? aheadRecord.familyMembers.length : 0;
+      return total + 1 + familyMemberCount; // 1(本人) + 家人數量
+    }, 0);
+    
+    // 計算預估等待時間
+    const estimatedWaitTime = peopleAheadCount * settings.minutesPerCustomer;
+    
+    // 計算預估開始辦事時間
+    let estimatedStartTime = null;
+    if (actualStatus === 'waiting' && settings.nextSessionDate) {
+      estimatedStartTime = new Date(settings.nextSessionDate);
+      estimatedStartTime.setMinutes(estimatedStartTime.getMinutes() + estimatedWaitTime);
+    }
+    
+    // 依據候位狀態返回不同的訊息
+    let statusMessage = '';
+    switch(actualStatus) {
+      case 'waiting':
+        statusMessage = `您的號碼還在等待中，前面還有 ${recordsAheadCount} 筆資料（共 ${peopleAheadCount} 人）`;
+        break;
+      case 'processing':
+        statusMessage = '您的號碼正在處理中';
+        break;
+      case 'completed':
+        statusMessage = '您的號碼已完成服務';
+        break;
+      case 'cancelled':
+        statusMessage = '您的號碼已被取消';
+        break;
+      default:
+        statusMessage = '未知狀態';
+    }
+    
+    return {
+      _id: record._id,
+      queueNumber: record.queueNumber,
+      orderIndex: record.orderIndex,
+      name: record.name,
+      phone: record.phone,
+      email: record.email,
+      gender: record.gender,
+      status: actualStatus,
+      statusMessage,
+      peopleAhead: peopleAheadCount,
+      recordsAhead: recordsAheadCount,
+      estimatedWaitTime: actualStatus === 'waiting' ? estimatedWaitTime : 0,
+      estimatedStartTime: estimatedStartTime ? estimatedStartTime.toISOString() : null,
+      currentQueueNumber: settings.currentQueueNumber,
+      addresses: record.addresses,
+      familyMembers: record.familyMembers,
+      consultationTopics: record.consultationTopics,
+      otherDetails: record.otherDetails,
+      remarks: record.remarks,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt
+    };
+  }
 }
 
 module.exports = new QueueService();

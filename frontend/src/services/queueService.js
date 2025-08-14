@@ -73,7 +73,8 @@ const searchQueueByNameOrPhone = async (name, phone) => {
     const response = await axios.get(`${API_ENDPOINTS.QUEUE}/search`, {
       params
     });
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('查詢候位號碼錯誤:', error);
     throw error;
