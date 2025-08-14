@@ -340,6 +340,62 @@ const setPublicRegistrationEnabled = async (publicRegistrationEnabled, token) =>
     return response.data;
 };
 
+// 設定客戶總數
+const setTotalCustomerCount = async (totalCustomerCount, token) => {
+  const response = await axios.put(
+    `${API_ENDPOINTS.ADMIN}/settings/totalCustomerCount`,
+    { totalCustomerCount },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+  return response.data;
+};
+
+// 重設客戶總數
+const resetTotalCustomerCount = async (token) => {
+  const response = await axios.post(
+    `${API_ENDPOINTS.ADMIN}/settings/resetCustomerCount`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+  return response.data;
+};
+
+// 設定上一位辦完時間
+const setLastCompletedTime = async (lastCompletedTime, token) => {
+  const response = await axios.put(
+    `${API_ENDPOINTS.ADMIN}/settings/lastCompletedTime`,
+    { lastCompletedTime },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+  return response.data;
+};
+
+// 重設上一位辦完時間
+const resetLastCompletedTime = async (token) => {
+  const response = await axios.post(
+    `${API_ENDPOINTS.ADMIN}/settings/resetCompletedTime`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+  return response.data;
+};
+
 // 清空所有候位
 const clearAllQueue = async (token) => {
   try {
@@ -379,6 +435,10 @@ const queueService = {
   setMinutesPerCustomer,
   setSimplifiedMode,
   setPublicRegistrationEnabled,
+  setTotalCustomerCount,
+  resetTotalCustomerCount,
+  setLastCompletedTime,
+  resetLastCompletedTime,
   clearAllQueue,
   getOrderedQueueNumbers
 };

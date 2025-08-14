@@ -110,7 +110,7 @@ exports.getQueueList = async (req, res) => {
   }
 };
 
-// 呼叫下一位
+// 呼叫下一位（一鍵完成：標記完成 + 更新時間 + orderIndex遞補）
 exports.callNext = async (req, res) => {
   try {
     // 確保 orderIndex 的一致性
@@ -119,37 +119,69 @@ exports.callNext = async (req, res) => {
     // 獲取系統設定
     const settings = await SystemSetting.getSettings();
     
-    // 查找下一個可用的號碼，按照orderIndex排序（排除已完成或取消的記錄）
-    const nextRecord = await WaitingRecord.findOne({
-      status: { $nin: ['completed', 'cancelled'] }
-    }).sort({ orderIndex: 1 });
+    // 查找 orderIndex=1 的客戶（第一位候位客戶）
+    const firstRecord = await WaitingRecord.findOne({
+      orderIndex: 1,
+      status: { $in: ['waiting', 'processing'] }
+    });
     
-    if (!nextRecord) {
+    if (!firstRecord) {
       return res.status(404).json({
         success: false,
-        message: '目前沒有可用的候位號碼'
+        message: '目前沒有可叫號的客戶'
       });
     }
     
-    // 更新系統當前叫號
-    settings.currentQueueNumber = nextRecord.queueNumber;
+    // 設置完成時間
+    const now = new Date();
+    firstRecord.status = 'completed';
+    firstRecord.completedAt = now;
+    await firstRecord.save();
+    
+    // 更新系統設定：當前叫號和上一位辦完時間
+    settings.currentQueueNumber = firstRecord.queueNumber;
+    settings.lastCompletedTime = now;
     await settings.save();
     
-    // 更新候位記錄狀態
-    nextRecord.status = 'processing';
-    await nextRecord.save();
+    // 批量更新其他客戶的 orderIndex（所有活躍客戶 orderIndex - 1）
+    await WaitingRecord.updateMany(
+      { 
+        status: { $in: ['waiting', 'processing'] },
+        _id: { $ne: firstRecord._id }  // 排除已完成的客戶
+      },
+      { $inc: { orderIndex: -1 } }
+    );
     
-    // 返回已呼叫的候位資訊
+    // 重新確保 orderIndex 一致性
+    await ensureOrderIndexConsistency();
+    
+    // 查找新的第一位客戶（用於返回資訊）
+    const newFirstRecord = await WaitingRecord.findOne({
+      orderIndex: 1,
+      status: { $in: ['waiting', 'processing'] }
+    });
+    
+    // 返回叫號結果
     res.status(200).json({
       success: true,
-      message: `已呼叫 ${nextRecord.queueNumber} 號`,
+      message: `已完成 ${firstRecord.queueNumber} 號，移至已完成分頁`,
       data: {
-        queueNumber: nextRecord.queueNumber,
-        record: nextRecord
+        completedCustomer: {
+          queueNumber: firstRecord.queueNumber,
+          name: firstRecord.name,
+          completedAt: now
+        },
+        nextCustomer: newFirstRecord ? {
+          queueNumber: newFirstRecord.queueNumber,
+          name: newFirstRecord.name,
+          orderIndex: newFirstRecord.orderIndex
+        } : null,
+        currentQueueNumber: firstRecord.queueNumber,
+        lastCompletedTime: now
       }
     });
   } catch (error) {
-    console.error('呼叫下一位錯誤:', error);
+    console.error('叫號下一位錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',
@@ -188,9 +220,20 @@ exports.updateQueueStatus = async (req, res) => {
     // 更新狀態
     record.status = status;
     
-    // 如果標記為完成，設置完成時間
+    // 如果標記為完成，設置完成時間並更新系統設定
     if (status === 'completed') {
-      record.completedAt = new Date();
+      const now = new Date();
+      record.completedAt = now;
+      
+      // 同時更新系統設定中的上一位辦完時間
+      const settings = await SystemSetting.getSettings();
+      settings.lastCompletedTime = now;
+      await settings.save();
+    }
+    
+    // 如果從已完成狀態變為其他狀態，清空完成時間
+    if (originalStatus === 'completed' && status !== 'completed') {
+      record.completedAt = null;
     }
     
     // 如果恢復到等待狀態，需要重新分配 orderIndex
@@ -828,6 +871,179 @@ exports.clearAllQueue = async (req, res) => {
     });
   } catch (error) {
     console.error('清除所有候位資料錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器內部錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};
+
+// 設定客戶總數
+exports.setTotalCustomerCount = async (req, res) => {
+  try {
+    const { totalCustomerCount } = req.body;
+    
+    if (!Number.isInteger(totalCustomerCount) || totalCustomerCount < 0) {
+      return res.status(400).json({
+        success: false,
+        message: '客戶總數必須是大於等於0的整數'
+      });
+    }
+    
+    // 獲取系統設定
+    const settings = await SystemSetting.getSettings();
+    
+    // 更新客戶總數
+    settings.totalCustomerCount = totalCustomerCount;
+    settings.updatedBy = req.user.id;
+    
+    await settings.save();
+    
+    res.status(200).json({
+      success: true,
+      message: `客戶總數已設定為 ${totalCustomerCount}`,
+      data: {
+        totalCustomerCount: settings.totalCustomerCount
+      }
+    });
+  } catch (error) {
+    console.error('設定客戶總數錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器內部錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};
+
+// 重設客戶總數（自動計算）
+exports.resetTotalCustomerCount = async (req, res) => {
+  try {
+    // 計算當前總客戶數（等待中 + 處理中 + 已完成）
+    const waitingCount = await WaitingRecord.countDocuments({ status: 'waiting' });
+    const processingCount = await WaitingRecord.countDocuments({ status: 'processing' });
+    const completedCount = await WaitingRecord.countDocuments({ status: 'completed' });
+    const totalCount = waitingCount + processingCount + completedCount;
+    
+    // 獲取系統設定
+    const settings = await SystemSetting.getSettings();
+    
+    // 更新客戶總數
+    settings.totalCustomerCount = totalCount;
+    settings.updatedBy = req.user.id;
+    
+    await settings.save();
+    
+    res.status(200).json({
+      success: true,
+      message: `客戶總數已重設為 ${totalCount}（等待中: ${waitingCount}，處理中: ${processingCount}，已完成: ${completedCount}）`,
+      data: {
+        totalCustomerCount: settings.totalCustomerCount,
+        breakdown: {
+          waiting: waitingCount,
+          processing: processingCount,
+          completed: completedCount
+        }
+      }
+    });
+  } catch (error) {
+    console.error('重設客戶總數錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器內部錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};
+
+// 設定上一位辦完時間
+exports.setLastCompletedTime = async (req, res) => {
+  try {
+    const { lastCompletedTime } = req.body;
+    
+    // 驗證時間格式
+    if (!lastCompletedTime || isNaN(new Date(lastCompletedTime).getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: '無效的時間格式'
+      });
+    }
+    
+    // 獲取系統設定
+    const settings = await SystemSetting.getSettings();
+    
+    // 更新上一位辦完時間
+    settings.lastCompletedTime = new Date(lastCompletedTime);
+    settings.updatedBy = req.user.id;
+    
+    await settings.save();
+    
+    res.status(200).json({
+      success: true,
+      message: '上一位辦完時間設置成功',
+      data: {
+        lastCompletedTime: settings.lastCompletedTime
+      }
+    });
+  } catch (error) {
+    console.error('設置上一位辦完時間錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器內部錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};
+
+// 重設上一位辦完時間（自動查找）
+exports.resetLastCompletedTime = async (req, res) => {
+  try {
+    // 查找最後一位已完成的客戶
+    const lastCompleted = await WaitingRecord.findOne(
+      { status: 'completed', completedAt: { $exists: true, $ne: null } },
+      {},
+      { sort: { completedAt: -1 } }
+    );
+    
+    // 獲取系統設定
+    const settings = await SystemSetting.getSettings();
+    
+    let newLastCompletedTime;
+    let message;
+    
+    if (lastCompleted) {
+      newLastCompletedTime = lastCompleted.completedAt;
+      message = `上一位辦完時間已重設為最後一位已完成客戶的時間: ${newLastCompletedTime}`;
+    } else {
+      // 如果沒有已完成客戶，使用 nextSessionDate 或當前時間
+      newLastCompletedTime = settings.nextSessionDate || new Date();
+      message = `沒有已完成客戶記錄，上一位辦完時間已重設為: ${newLastCompletedTime}`;
+    }
+    
+    // 檢查是否早於 nextSessionDate
+    if (settings.nextSessionDate && newLastCompletedTime < settings.nextSessionDate) {
+      newLastCompletedTime = settings.nextSessionDate;
+      message = `上一位辦完時間已重設為下次辦事時間: ${newLastCompletedTime}（因早於開始辦事時間）`;
+    }
+    
+    // 更新上一位辦完時間
+    settings.lastCompletedTime = newLastCompletedTime;
+    settings.updatedBy = req.user.id;
+    
+    await settings.save();
+    
+    res.status(200).json({
+      success: true,
+      message: message,
+      data: {
+        lastCompletedTime: settings.lastCompletedTime,
+        hasCompletedCustomers: !!lastCompleted,
+        nextSessionDate: settings.nextSessionDate
+      }
+    });
+  } catch (error) {
+    console.error('重設上一位辦完時間錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',

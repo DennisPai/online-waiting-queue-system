@@ -84,20 +84,13 @@ exports.getQueueStatus = async (req, res) => {
       status: { $in: ['waiting', 'processing', 'completed'] }
     });
     
-    // 計算總人數：每筆資料的本人(1) + 家人數量
-    const totalPeopleCount = allActiveRecords.reduce((total, record) => {
-      const familyMemberCount = record.familyMembers ? record.familyMembers.length : 0;
-      return total + 1 + familyMemberCount; // 1(本人) + 家人數量
-    }, 0);
-    
-    // 計算預估等待時間（所有客戶總人數 * 每位客戶預估處理時間）
-    const estimatedWaitTime = totalPeopleCount * settings.minutesPerCustomer;
-    
-    // 計算預估結束時間
+    // 計算預估結束時間（基於新邏輯：totalCustomerCount * minutesPerCustomer）
     let estimatedEndTime = null;
-    if (settings.nextSessionDate) {
+    if (settings.nextSessionDate && settings.isQueueOpen) {
+      // 開始辦事時：使用 totalCustomerCount 計算固定的預估結束時間
+      const totalEstimatedTime = (settings.totalCustomerCount || 0) * settings.minutesPerCustomer;
       estimatedEndTime = new Date(settings.nextSessionDate);
-      estimatedEndTime.setMinutes(estimatedEndTime.getMinutes() + estimatedWaitTime);
+      estimatedEndTime.setMinutes(estimatedEndTime.getMinutes() + totalEstimatedTime);
     }
     
     res.status(200).json({
@@ -110,7 +103,8 @@ exports.getQueueStatus = async (req, res) => {
         simplifiedMode: settings.simplifiedMode,
         publicRegistrationEnabled: settings.publicRegistrationEnabled,
         waitingCount,
-        estimatedWaitTime,
+        totalCustomerCount: settings.totalCustomerCount || 0,
+        lastCompletedTime: settings.lastCompletedTime,
         nextSessionDate: settings.nextSessionDate,
         estimatedEndTime: estimatedEndTime ? estimatedEndTime.toISOString() : null,
         message: `目前叫號: ${currentQueueNumber}, 等待組數: ${waitingCount}`
@@ -354,36 +348,22 @@ exports.registerQueue = async (req, res) => {
     // 新客戶的等待組數應該等於目前等待中和處理中的客戶總數
     const waitingCount = waitingAndProcessingCount;
     
-    // 計算預估等待時間 - 根據在該客戶前面的所有人數計算
-    // 獲取排在該客戶前面的所有記錄
-    const recordsAhead = await WaitingRecord.find({
-      orderIndex: { $lt: newOrderIndex },
-      status: { $in: ['waiting', 'processing'] }
-    });
+    // 計算預估輪到時間（基於新邏輯：lastCompletedTime + (orderIndex-1) * minutesPerCustomer）
+    let estimatedEndTime = null;
+    const estimatedWaitTime = (newOrderIndex - 1) * settings.minutesPerCustomer;
     
-    // 計算前面的總人數（包含本人和家人）
-    const peopleAheadCount = recordsAhead.reduce((total, record) => {
-      const familyMemberCount = record.familyMembers ? record.familyMembers.length : 0;
-      return total + 1 + familyMemberCount; // 1(本人) + 家人數量
-    }, 0);
-    
-    // 計算新客戶自己的總人數
-    const newCustomerPeopleCount = 1 + (recordData.familyMembers ? recordData.familyMembers.length : 0);
-    
-    // 總預估等待時間 = (前面的總人數 + 本客戶總人數) * 每位客戶預估處理時間
-    const estimatedWaitTime = (peopleAheadCount + newCustomerPeopleCount) * settings.minutesPerCustomer;
-    
-    // 計算預估結束時間
-    const now = new Date();
-    let estimatedEndTime;
-    
-    if (settings.nextSessionDate) {
-      // 從下次辦事時間開始計算：開科時間 + (候位號碼 * 每位客戶預估處理時間)
+    if (settings.lastCompletedTime) {
+      // 使用 lastCompletedTime + (orderIndex-1) * minutesPerCustomer
+      estimatedEndTime = new Date(settings.lastCompletedTime);
+      estimatedEndTime.setMinutes(estimatedEndTime.getMinutes() + estimatedWaitTime);
+    } else if (settings.nextSessionDate) {
+      // 如果沒有 lastCompletedTime，使用 nextSessionDate
       estimatedEndTime = new Date(settings.nextSessionDate);
       estimatedEndTime.setMinutes(estimatedEndTime.getMinutes() + estimatedWaitTime);
     } else {
-      // 如果沒有設定下次辦事時間，則從當前時間計算
-      estimatedEndTime = new Date(now.getTime() + estimatedWaitTime * 60000);
+      // 最後備案：使用當前時間
+      estimatedEndTime = new Date();
+      estimatedEndTime.setMinutes(estimatedEndTime.getMinutes() + estimatedWaitTime);
     }
     
     res.status(201).json({
@@ -392,9 +372,10 @@ exports.registerQueue = async (req, res) => {
       data: {
         queueNumber: newRecord.queueNumber,
         orderIndex: newRecord.orderIndex,
+        registeredOrderIndex: newRecord.orderIndex,  // 前端需要此欄位
         waitingCount,
         estimatedWaitTime,
-        estimatedEndTime: estimatedEndTime.toISOString(),
+        estimatedEndTime: estimatedEndTime ? estimatedEndTime.toISOString() : null,
         registeredAt: newRecord.createdAt,
         recordDetails: {
           name: newRecord.name,
@@ -596,21 +577,25 @@ exports.getQueueByNameAndPhone = async (req, res) => {
         }
       }
       
-      // 計算預估等待時間（前面的總人數 * 每位客戶預估處理時間）
-      const estimatedWaitTime = peopleAheadCount * settings.minutesPerCustomer;
+      // 計算預估輪到時間（基於新邏輯：lastCompletedTime + (orderIndex-1) * minutesPerCustomer）
+      let estimatedStartTime = null;
       
-      // 計算預估開始時間
-      const now = new Date();
-      let estimatedStartTime;
-      
-      if (settings.nextSessionDate) {
-        // 從下次辦事時間開始計算
-        estimatedStartTime = new Date(settings.nextSessionDate);
-        estimatedStartTime.setMinutes(estimatedStartTime.getMinutes() + estimatedWaitTime);
-      } else {
-        // 如果沒有設定下次辦事時間，則從當前時間計算
-        estimatedStartTime = new Date(now.getTime() + estimatedWaitTime * 60000);
+      if (actualStatus === 'waiting' || actualStatus === 'processing') {
+        if (settings.lastCompletedTime && record.orderIndex) {
+          // 使用新公式：lastCompletedTime + ((orderIndex - 1) * minutesPerCustomer)
+          estimatedStartTime = new Date(settings.lastCompletedTime);
+          const waitingMinutes = (record.orderIndex - 1) * settings.minutesPerCustomer;
+          estimatedStartTime.setMinutes(estimatedStartTime.getMinutes() + waitingMinutes);
+        } else if (settings.nextSessionDate && record.orderIndex) {
+          // 如果沒有 lastCompletedTime，使用 nextSessionDate
+          estimatedStartTime = new Date(settings.nextSessionDate);
+          const waitingMinutes = (record.orderIndex - 1) * settings.minutesPerCustomer;
+          estimatedStartTime.setMinutes(estimatedStartTime.getMinutes() + waitingMinutes);
+        }
       }
+      
+      // 計算預估等待時間（分鐘數）
+      const estimatedWaitTime = actualStatus === 'processing' ? 0 : (record.orderIndex - 1) * settings.minutesPerCustomer;
       
       // 依據實際狀態返回不同的訊息
       let statusMessage = '';

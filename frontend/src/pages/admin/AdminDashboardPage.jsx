@@ -206,11 +206,65 @@ const AdminDashboardPage = () => {
       {/* 主要內容區域 */}
       <Paper sx={{ width: '100%', mb: 2 }}>
         <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
-          <Typography variant="h6" component="div">
-            {currentTab === 0 && `目前叫號: ${currentQueue || 0}`}
-            {currentTab === 1 && '已完成的客戶列表'}
-            {currentTab === 2 && '已取消的客戶列表'}
-          </Typography>
+          {currentTab === 0 ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+              <Typography variant="h6" component="div">
+                目前叫號: {currentQueue || 0}
+              </Typography>
+              {/* 客戶總數控制項 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body1">
+                  客戶總數:
+                </Typography>
+                <input
+                  type="number"
+                  min="0"
+                  style={{
+                    width: '80px',
+                    padding: '4px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                  placeholder="0"
+                />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  sx={{ minWidth: '60px' }}
+                >
+                  重設
+                </Button>
+              </Box>
+              {/* 上一位辦完時間控制項 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body1">
+                  上一位辦完時間:
+                </Typography>
+                <input
+                  type="datetime-local"
+                  style={{
+                    padding: '4px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  sx={{ minWidth: '60px' }}
+                >
+                  重設
+                </Button>
+              </Box>
+            </Box>
+          ) : (
+            <Typography variant="h6" component="div">
+              {currentTab === 1 && '已完成的客戶列表'}
+              {currentTab === 2 && '已取消的客戶列表'}
+            </Typography>
+          )}
         </Box>
 
         {/* 載入中顯示 */}

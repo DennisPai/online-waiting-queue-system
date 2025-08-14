@@ -51,6 +51,14 @@ router.put('/settings/minutes-per-customer', [body('minutesPerCustomer').isInt({
 router.put('/settings/simplified-mode', [body('simplifiedMode').isBoolean()], validateRequest, adminController.setSimplifiedMode);
 router.put('/settings/public-registration-enabled', [body('publicRegistrationEnabled').isBoolean()], validateRequest, adminController.setPublicRegistrationEnabled);
 
+// 新增：客戶總數管理
+router.put('/settings/total-customer-count', [body('totalCustomerCount').isInt({ min: 0 })], validateRequest, adminController.setTotalCustomerCount);
+router.post('/settings/reset-customer-count', adminController.resetTotalCustomerCount);
+
+// 新增：上一位辦完時間管理
+router.put('/settings/last-completed-time', [body('lastCompletedTime').notEmpty()], validateRequest, adminController.setLastCompletedTime);
+router.post('/settings/reset-completed-time', adminController.resetLastCompletedTime);
+
 router.delete('/queue/clear-all', adminController.clearAllQueue);
 
 module.exports = router;

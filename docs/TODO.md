@@ -61,6 +61,43 @@
 - [x] 文檔精煉：DEPLOYMENT/CONTRIBUTING/USER_GUIDE_ADMIN 完成
 - [x] Zeabur 自動部署追蹤 `main` 確認
 
+## 候位預估時間優化（高優先）
+
+> **詳細規劃文檔**：`docs/QUEUE_TIME_ESTIMATION_PLAN.md`
+
+### 階段一：後端資料結構調整
+- [ ] **擴展 SystemSetting 模型**：新增 `totalCustomerCount`、`lastCompletedTime` 欄位
+- [ ] **擴展 WaitingRecord 模型**：新增 `completedAt` 欄位  
+- [ ] **資料庫遷移腳本**：建立欄位遷移和預設值設定
+- [ ] **驗證資料結構**：確保新欄位正確儲存和讀取
+
+### 階段二：後端 API 功能擴展
+- [ ] **擴展系統設定 API**：基於現有 admin.controller.js 新增客戶總數和完成時間管理
+- [ ] **修改狀態更新邏輯**：updateQueueStatus 增加 completedAt 自動設定
+- [ ] **實作 orderIndex 遞補**：叫號完成後自動更新所有客戶排序
+- [ ] **建立重設功能 API**：客戶總數重設和完成時間重設
+- [ ] **修改預估時間計算**：基於 lastCompletedTime 和 orderIndex 的新邏輯
+
+### 階段三：前端管理介面優化  
+- [ ] **擴展候位管理頁面**：在 AdminDashboardPage 新增客戶總數和完成時間控制項
+- [ ] **修改叫號邏輯**：保持一鍵操作，整合標記完成和時間更新
+- [ ] **實作重設按鈕**：客戶總數重設和上一位辦完時間重設功能
+- [ ] **優化 UI 佈局**：確保新控制項與現有介面協調
+- [ ] **整合自動更新機制**：基於 isQueueOpen 狀態的智能更新
+
+### 階段四：前端預估時間顯示
+- [ ] **修改首頁邏輯**：基於 totalCustomerCount 的固定預估結束時間
+- [ ] **優化客戶查詢**：基於 lastCompletedTime 和 orderIndex 的動態預估時間  
+- [ ] **更新狀態管理**：Redux slice 支援新的系統設定欄位
+- [ ] **改進即時更新**：叫號後所有相關顯示自動刷新
+
+### 階段五：整合測試與優化
+- [ ] **功能測試**：叫號流程、預估時間準確性、重設功能
+- [ ] **邊界測試**：無客戶、模式切換、大量操作等情境
+- [ ] **UI/UX 優化**：確保操作流暢和資訊清晰
+- [ ] **文檔更新**：更新 API_SPEC.md 和 PRD.md
+- [ ] **清理暫時文檔**：刪除 `docs/QUEUE_TIME_ESTIMATION_PLAN.md`
+
 ## 延後項目（非核心）
 - 安全策略調參：rate-limit 白名單/滑動窗口；Helmet policy 依部署域名調整
 - GitHub Actions：前後端分 job（lint/test/build），報告覆蓋率  

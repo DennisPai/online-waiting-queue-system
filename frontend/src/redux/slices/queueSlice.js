@@ -204,6 +204,62 @@ export const setPublicRegistrationEnabled = createAsyncThunk(
   }
 );
 
+// 設定客戶總數（管理員）
+export const setTotalCustomerCount = createAsyncThunk(
+  'queue/setTotalCustomerCount',
+  async (totalCustomerCount, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.setTotalCustomerCount(totalCustomerCount, token);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '設定客戶總數失敗');
+    }
+  }
+);
+
+// 重設客戶總數（管理員）
+export const resetTotalCustomerCount = createAsyncThunk(
+  'queue/resetTotalCustomerCount',
+  async (_, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.resetTotalCustomerCount(token);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '重設客戶總數失敗');
+    }
+  }
+);
+
+// 設定上一位辦完時間（管理員）
+export const setLastCompletedTime = createAsyncThunk(
+  'queue/setLastCompletedTime',
+  async (lastCompletedTime, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.setLastCompletedTime(lastCompletedTime, token);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '設定上一位辦完時間失敗');
+    }
+  }
+);
+
+// 重設上一位辦完時間（管理員）
+export const resetLastCompletedTime = createAsyncThunk(
+  'queue/resetLastCompletedTime',
+  async (_, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.resetLastCompletedTime(token);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '重設上一位辦完時間失敗');
+    }
+  }
+);
+
 // 通過姓名和電話查詢候位號碼
 export const searchQueueByNameAndPhone = createAsyncThunk(
   'queue/searchByNameAndPhone',
@@ -542,6 +598,70 @@ const queueSlice = createSlice({
         };
       })
       .addCase(setPublicRegistrationEnabled.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // 設定客戶總數（管理員）
+      .addCase(setTotalCustomerCount.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(setTotalCustomerCount.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.queueStatus = {
+          ...state.queueStatus,
+          totalCustomerCount: action.payload.totalCustomerCount
+        };
+      })
+      .addCase(setTotalCustomerCount.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // 重設客戶總數（管理員）
+      .addCase(resetTotalCustomerCount.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(resetTotalCustomerCount.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.queueStatus = {
+          ...state.queueStatus,
+          totalCustomerCount: action.payload.totalCustomerCount
+        };
+      })
+      .addCase(resetTotalCustomerCount.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // 設定上一位辦完時間（管理員）
+      .addCase(setLastCompletedTime.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(setLastCompletedTime.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.queueStatus = {
+          ...state.queueStatus,
+          lastCompletedTime: action.payload.lastCompletedTime
+        };
+      })
+      .addCase(setLastCompletedTime.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // 重設上一位辦完時間（管理員）
+      .addCase(resetLastCompletedTime.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(resetLastCompletedTime.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.queueStatus = {
+          ...state.queueStatus,
+          lastCompletedTime: action.payload.lastCompletedTime
+        };
+      })
+      .addCase(resetLastCompletedTime.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })

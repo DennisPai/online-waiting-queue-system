@@ -8,7 +8,12 @@ import {
   updateOrderLocal,
   updateQueueData,
   deleteCustomer,
-  clearAllQueue
+  clearAllQueue,
+  setTotalCustomerCount,
+  resetTotalCustomerCount,
+  setLastCompletedTime,
+  resetLastCompletedTime,
+  getQueueStatus
 } from '../redux/slices/queueSlice';
 import { showAlert } from '../redux/slices/uiSlice';
 import { 
@@ -40,6 +45,10 @@ export const useQueueManagement = () => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
   const [duplicateNumbers, setDuplicateNumbers] = useState([]);
+  
+  // 系統設定相關狀態
+  const [totalCustomerCountInput, setTotalCustomerCountInput] = useState('');
+  const [lastCompletedTimeInput, setLastCompletedTimeInput] = useState('');
 
   // 欄位顯示控制
   const [visibleColumns, setVisibleColumns] = useState(() => {
