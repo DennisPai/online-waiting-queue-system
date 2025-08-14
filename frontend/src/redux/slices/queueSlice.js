@@ -134,7 +134,8 @@ export const setNextSessionDate = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.setNextSessionDate(nextSessionDate, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '設置下次辦事時間失敗');
     }
@@ -148,7 +149,8 @@ export const toggleQueueStatus = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.toggleQueueStatus(isOpen, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '開關候位功能失敗');
     }
@@ -162,7 +164,8 @@ export const setMaxQueueNumber = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.setMaxQueueNumber(maxQueueNumber, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '設定最大候位上限失敗');
     }
@@ -176,7 +179,8 @@ export const setMinutesPerCustomer = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.setMinutesPerCustomer(minutesPerCustomer, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '設定每位客戶預估處理時間失敗');
     }
@@ -190,7 +194,8 @@ export const setSimplifiedMode = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.setSimplifiedMode(simplifiedMode, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '設定簡化模式失敗');
     }
@@ -204,7 +209,8 @@ export const setPublicRegistrationEnabled = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.setPublicRegistrationEnabled(publicRegistrationEnabled, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '設定公開候位登記功能失敗');
     }
@@ -218,7 +224,8 @@ export const setTotalCustomerCount = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.setTotalCustomerCount(totalCustomerCount, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '設定客戶總數失敗');
     }
@@ -232,7 +239,8 @@ export const resetTotalCustomerCount = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.resetTotalCustomerCount(token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '重設客戶總數失敗');
     }
@@ -246,7 +254,8 @@ export const setLastCompletedTime = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.setLastCompletedTime(lastCompletedTime, token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '設定上一位辦完時間失敗');
     }
@@ -260,7 +269,8 @@ export const resetLastCompletedTime = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.resetLastCompletedTime(token);
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '重設上一位辦完時間失敗');
     }
