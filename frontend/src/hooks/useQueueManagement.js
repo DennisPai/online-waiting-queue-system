@@ -49,6 +49,7 @@ export const useQueueManagement = () => {
   // 系統設定相關狀態
   const [totalCustomerCountInput, setTotalCustomerCountInput] = useState('');
   const [lastCompletedTimeInput, setLastCompletedTimeInput] = useState('');
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // 欄位顯示控制
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -106,13 +107,16 @@ export const useQueueManagement = () => {
     dispatch(getQueueStatus());
   }, [dispatch]);
 
-  // 當系統設定更新時，同步更新輸入欄位（只在初始載入時）
+  // 當系統設定初次載入時，設定輸入欄位初始值
+  
   useEffect(() => {
-    if (queueStatus && !totalCustomerCountInput && !lastCompletedTimeInput) {
-      // 只在輸入欄位為空時才設定初始值，避免覆蓋用戶正在編輯的值
-      setTotalCustomerCountInput(queueStatus.totalCustomerCount?.toString() || '');
+    if (queueStatus && !hasInitialized) {
+      // 只在第一次載入時設定初始值
+      if (queueStatus.totalCustomerCount !== undefined && !totalCustomerCountInput) {
+        setTotalCustomerCountInput(queueStatus.totalCustomerCount.toString());
+      }
       
-      if (queueStatus.lastCompletedTime) {
+      if (queueStatus.lastCompletedTime && !lastCompletedTimeInput) {
         // 格式化時間為 datetime-local 格式
         const date = new Date(queueStatus.lastCompletedTime);
         const year = date.getFullYear();
@@ -121,11 +125,11 @@ export const useQueueManagement = () => {
         const hour = String(date.getHours()).padStart(2, '0');
         const minute = String(date.getMinutes()).padStart(2, '0');
         setLastCompletedTimeInput(`${year}-${month}-${day}T${hour}:${minute}`);
-      } else {
-        setLastCompletedTimeInput('');
       }
+      
+      setHasInitialized(true);
     }
-  }, [queueStatus, totalCustomerCountInput, lastCompletedTimeInput]);
+  }, [queueStatus, hasInitialized, totalCustomerCountInput, lastCompletedTimeInput]);
 
   // 載入候位列表
   const loadQueueList = useCallback(() => {
@@ -725,8 +729,8 @@ export const useQueueManagement = () => {
         .unwrap()
         .then((response) => {
           // 直接更新本地輸入值，避免清空
-          if (response.data && response.data.totalCustomerCount !== undefined) {
-            setTotalCustomerCountInput(response.data.totalCustomerCount.toString());
+          if (response && response.totalCustomerCount !== undefined) {
+            setTotalCustomerCountInput(response.totalCustomerCount.toString());
           }
         })
         .catch((error) => {
@@ -779,12 +783,12 @@ export const useQueueManagement = () => {
       .unwrap()
       .then((response) => {
         dispatch(showAlert({
-          message: response.message || '客戶總數已重設',
+          message: '客戶總數已重設',
           severity: 'success'
         }));
         // 直接更新本地輸入值
-        if (response.data && response.data.totalCustomerCount !== undefined) {
-          setTotalCustomerCountInput(response.data.totalCustomerCount.toString());
+        if (response && response.totalCustomerCount !== undefined) {
+          setTotalCustomerCountInput(response.totalCustomerCount.toString());
         }
       })
       .catch((error) => {
@@ -835,12 +839,12 @@ export const useQueueManagement = () => {
       .unwrap()
       .then((response) => {
         dispatch(showAlert({
-          message: response.message || '上一位辦完時間已重設',
+          message: '上一位辦完時間已重設',
           severity: 'success'
         }));
         // 直接更新本地輸入值
-        if (response.data && response.data.lastCompletedTime) {
-          const date = new Date(response.data.lastCompletedTime);
+        if (response && response.lastCompletedTime) {
+          const date = new Date(response.lastCompletedTime);
           const year = date.getFullYear();
           const month = String(date.getMonth() + 1).padStart(2, '0');
           const day = String(date.getDate()).padStart(2, '0');
