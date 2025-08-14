@@ -56,6 +56,8 @@ exports.getQueueStatus = async (req, res) => {
           nextSessionDate: settings.nextSessionDate,
           currentQueueNumber: 0,
           waitingCount: 0,
+          totalCustomerCount: settings.totalCustomerCount || 0,
+          lastCompletedTime: settings.lastCompletedTime,
           message: '辦事服務目前已停止'
         }
       });
