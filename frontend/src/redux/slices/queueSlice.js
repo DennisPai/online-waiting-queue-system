@@ -712,42 +712,24 @@ const queueSlice = createSlice({
         state.isLoading = false;
         state.error = null;
         
-        // 調試：記錄實際收到的payload
-        console.log('Redux received payload:', action.payload);
-        
-        // 安全地處理搜尋結果
+        // Service層已經標準化了數據格式，這裡可以安全地處理
         const payload = action.payload;
         
-        // 檢查payload是否為正確格式
-        if (!payload) {
-          state.currentQueueStatus = null;
-          state.error = '搜尋結果為空';
-          return;
-        }
-        
-        // 檢查records字段
-        if (!payload.hasOwnProperty('records')) {
-          state.currentQueueStatus = null;
-          state.error = `搜尋結果缺少records字段，實際格式：${JSON.stringify(Object.keys(payload))}`;
-          return;
-        }
-        
-        if (!Array.isArray(payload.records)) {
-          state.currentQueueStatus = null;
-          state.error = `records不是陣列格式，實際類型：${typeof payload.records}`;
-          return;
-        }
-        
-        // 正常處理records
-        if (payload.records.length === 1) {
-          // 單筆記錄：直接設為currentQueueStatus
-          state.currentQueueStatus = payload.records[0];
-        } else if (payload.records.length > 1) {
-          // 多筆記錄：設為陣列格式，UI需要處理顯示邏輯
-          state.currentQueueStatus = payload.records;
+        if (payload && payload.records && Array.isArray(payload.records)) {
+          if (payload.records.length === 1) {
+            // 單筆記錄：直接設為currentQueueStatus
+            state.currentQueueStatus = payload.records[0];
+          } else if (payload.records.length > 1) {
+            // 多筆記錄：設為陣列格式，UI需要處理顯示邏輯
+            state.currentQueueStatus = payload.records;
+          } else {
+            // 空結果
+            state.currentQueueStatus = null;
+          }
         } else {
-          // 空結果
+          // 異常情況
           state.currentQueueStatus = null;
+          state.error = '搜尋結果格式異常';
         }
       })
       .addCase(searchQueueByNameAndPhone.rejected, (state, action) => {

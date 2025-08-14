@@ -78,12 +78,39 @@ const searchQueueByNameOrPhone = async (name, phone) => {
     // 調試：記錄後端實際回應
     console.log('Backend response:', response.data);
     
-    // 後端返回的 data 已經是 records 陣列，我們需要重新包裝成期望的格式
+    // 檢查後端實際返回的數據格式
     if (response.data.success) {
-      const result = {
-        records: response.data.data || [],
-        message: response.data.message || '查詢完成'
-      };
+      let result;
+      
+      // 檢查 data 是陣列還是物件
+      if (Array.isArray(response.data.data)) {
+        // data 是陣列：直接使用
+        result = {
+          records: response.data.data,
+          message: response.data.message || '查詢完成'
+        };
+      } else if (response.data.data && typeof response.data.data === 'object') {
+        // data 是物件：檢查是否有 records 屬性
+        if (response.data.data.records && Array.isArray(response.data.data.records)) {
+          result = {
+            records: response.data.data.records,
+            message: response.data.data.message || response.data.message || '查詢完成'
+          };
+        } else {
+          // data 是物件但沒有 records：當作單筆記錄
+          result = {
+            records: [response.data.data],
+            message: response.data.message || '查詢完成'
+          };
+        }
+      } else {
+        // data 為空或其他格式
+        result = {
+          records: [],
+          message: response.data.message || '查詢完成'
+        };
+      }
+      
       console.log('Service returning:', result);
       return result;
     } else {
