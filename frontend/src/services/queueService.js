@@ -74,8 +74,16 @@ const searchQueueByNameOrPhone = async (name, phone) => {
       params
     });
     
-    // v1 API 回應格式：{success, code, message, data}，回傳實際候位記錄陣列
-    return response.data.data || response.data;
+    // v1 API 回應格式：{success, code, message, data}
+    // 後端返回的 data 已經是 records 陣列，我們需要重新包裝成期望的格式
+    if (response.data.success) {
+      return {
+        records: response.data.data || [],
+        message: response.data.message || '查詢完成'
+      };
+    } else {
+      throw new Error(response.data.message || '查詢失敗');
+    }
   } catch (error) {
     console.error('查詢候位號碼錯誤:', error);
     throw error;
