@@ -22,13 +22,28 @@
 
 ## Queue（公開）
 - GET `/api/v1/queue/status`
+  - 200: `{ success, code, data: { isOpen, currentQueueNumber, waitingCount, nextSessionDate, ... } }`
 - POST `/api/v1/queue/register`
+  - body: `{ name, phone, email?, gender, addresses, familyMembers?, consultationTopics?, ... }`
+  - 201: `{ success, code, data: { queueNumber, orderIndex, waitingCount, estimatedWaitTime, ... } }`
 - GET `/api/v1/queue/number/:queueNumber`
+  - 200: `{ success, code, data: { queueNumber, status, orderIndex, statusMessage, ... } }`
 - GET `/api/v1/queue/search?name&phone`
+  - query: `name` (string, optional) - 客戶姓名（支持家人姓名搜尋）
+  - query: `phone` (string, optional) - 客戶電話
+  - 注意：name 和 phone 至少須提供一個
+  - 200: `{ success, code, data: [{ queueNumber, orderIndex, status, statusMessage, peopleAhead, estimatedStartTime, name, phone, ... }], message }`
+  - 404: `{ success: false, code: 'NOT_FOUND', message: '查無候位記錄，請確認姓名和電話是否正確' }`
 - GET `/api/v1/queue/ordered-numbers`
+  - 200: `{ success, code, data: { currentProcessingNumber, nextWaitingNumber } }`
 - GET `/api/v1/queue/max-order`
+  - 200: `{ success, code, data: { maxOrderIndex, message } }`
 - POST `/api/v1/queue/cancel`
+  - body: `{ queueNumber, phone }`
+  - 200: `{ success, code, message: '取消成功' }`
 - PUT `/api/v1/queue/update`
+  - body: `{ queueNumber, phone, ...updateData }`
+  - 200: `{ success, code, message: '更新成功', data: updatedRecord }`
 
 ## Admin（需 Bearer）
 - GET `/api/v1/admin/queue/list?status=&page=&limit=`

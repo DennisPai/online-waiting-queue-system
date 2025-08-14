@@ -46,7 +46,7 @@ import {
 } from '@mui/icons-material';
 import {
   getQueueNumberStatus,
-  // searchQueueByNameAndPhone, // 暫時註釋掉以排查白屏問題
+  searchQueueByNameAndPhone,
   clearQueueSearch,
   getQueueStatus
 } from '../redux/slices/queueSlice';
@@ -132,14 +132,10 @@ const StatusPage = () => {
       return;
     }
     
-    // 暫時註釋掉搜尋功能，避免編譯錯誤
-    // dispatch(searchQueueByNameAndPhone({ 
-    //   name: searchName.trim() || undefined, 
-    //   phone: searchPhone.trim() || undefined 
-    // }));
-    dispatch(showAlert({
-      message: '搜尋功能暫時維護中，請稍後再試',
-      severity: 'info'
+    // 執行搜尋，支持姓名、電話或兩者同時查詢
+    dispatch(searchQueueByNameAndPhone({ 
+      name: searchName.trim() || undefined, 
+      phone: searchPhone.trim() || undefined 
     }));
   };
 
@@ -191,8 +187,13 @@ const StatusPage = () => {
           severity: 'success'
         }));
         setDetailsDialog({ open: false, record: null, mode: 'view' });
-        // 重新查詢狀態 - 暫時註釋掉避免編譯錯誤
-        // dispatch(searchQueueByNameAndPhone({ name: record.name, phone: record.phone }));
+        // 重新查詢狀態以更新顯示
+        if (searchName || searchPhone) {
+          dispatch(searchQueueByNameAndPhone({ 
+            name: searchName.trim() || undefined, 
+            phone: searchPhone.trim() || undefined 
+          }));
+        }
       } else {
         dispatch(showAlert({
           message: data.message || '取消預約失敗',
@@ -288,11 +289,13 @@ const StatusPage = () => {
           severity: 'success'
         }));
         setDetailsDialog({ open: false, record: null, mode: 'view' });
-        // 重新查詢狀態 - 暫時註釋掉避免編譯錯誤
-        // dispatch(searchQueueByNameAndPhone({ 
-        //   name: processedData.name || editData.name, 
-        //   phone: processedData.phone || editData.phone 
-        // }));
+        // 重新查詢狀態以顯示更新後的資料
+        if (searchName || searchPhone) {
+          dispatch(searchQueueByNameAndPhone({ 
+            name: searchName.trim() || undefined, 
+            phone: searchPhone.trim() || undefined 
+          }));
+        }
       } else {
         dispatch(showAlert({
           message: data.message || '修改資料失敗',

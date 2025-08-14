@@ -277,19 +277,37 @@ export const resetLastCompletedTime = createAsyncThunk(
   }
 );
 
-// 通過姓名和電話查詢候位號碼 - 暫時註釋掉以排查白屏問題
-// export const searchQueueByNameAndPhone = createAsyncThunk(
-//   'queue/searchByNameAndPhone',
-//   async ({ name, phone }, { rejectWithValue }) => {
-//     try {
-//       const response = await queueService.searchQueueByNameAndPhone(name, phone);
-//       // queueService 已經處理了 v1 格式，直接回傳候位記錄陣列
-//       return response;
-//     } catch (error) {
-//       return rejectWithValue(error.response?.data?.message || '查詢候位號碼失敗');
-//     }
-//   }
-// );
+// 通過姓名和電話查詢候位號碼（支持家人姓名搜尋）
+export const searchQueueByNameAndPhone = createAsyncThunk(
+  'queue/searchByNameAndPhone',
+  async ({ name, phone }, { rejectWithValue }) => {
+    try {
+      // 參數驗證
+      if (!name && !phone) {
+        return rejectWithValue('請提供姓名或電話其中一個');
+      }
+
+      const response = await queueService.searchQueueByNameAndPhone(name, phone);
+      
+      // 確保回傳格式正確，包含錯誤處理
+      if (!response || (!response.records && !Array.isArray(response))) {
+        return rejectWithValue('搜尋結果格式錯誤');
+      }
+      
+      // queueService 已經處理了 v1 格式，回傳結構為 {records: [...], message: "..."}
+      return response;
+    } catch (error) {
+      // 統一錯誤處理，支援多種錯誤類型
+      if (error.response?.data?.message) {
+        return rejectWithValue(error.response.data.message);
+      } else if (error.message) {
+        return rejectWithValue(error.message);
+      } else {
+        return rejectWithValue('查詢候位號碼失敗，請稍後再試');
+      }
+    }
+  }
+);
 
 // 更新客戶資料（管理員）
 export const updateQueueData = createAsyncThunk(
@@ -684,20 +702,40 @@ const queueSlice = createSlice({
         state.error = action.payload;
       })
       
-      // 通過姓名和電話查詢候位號碼 - 暫時註釋掉避免編譯錯誤
-      // .addCase(searchQueueByNameAndPhone.pending, (state) => {
-      //   state.isLoading = true;
-      // })
-      // .addCase(searchQueueByNameAndPhone.fulfilled, (state, action) => {
-      //   state.isLoading = false;
-      //   state.currentQueueStatus = action.payload;
-      //   state.error = null;
-      // })
-      // .addCase(searchQueueByNameAndPhone.rejected, (state, action) => {
-      //   state.isLoading = false;
-      //   state.error = action.payload;
-      //   state.currentQueueStatus = null;
-      // })
+      // 通過姓名和電話查詢候位號碼（支持家人姓名搜尋）
+      .addCase(searchQueueByNameAndPhone.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+        // 保留之前的搜尋結果，避免UI閃爍
+      })
+      .addCase(searchQueueByNameAndPhone.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.error = null;
+        
+        // 安全地處理搜尋結果
+        const payload = action.payload;
+        if (payload && payload.records && Array.isArray(payload.records)) {
+          if (payload.records.length === 1) {
+            // 單筆記錄：直接設為currentQueueStatus
+            state.currentQueueStatus = payload.records[0];
+          } else if (payload.records.length > 1) {
+            // 多筆記錄：設為陣列格式，UI需要處理顯示邏輯
+            state.currentQueueStatus = payload.records;
+          } else {
+            // 空結果
+            state.currentQueueStatus = null;
+          }
+        } else {
+          // 格式異常
+          state.currentQueueStatus = null;
+          state.error = '搜尋結果格式異常';
+        }
+      })
+      .addCase(searchQueueByNameAndPhone.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || '搜尋失敗';
+        state.currentQueueStatus = null;
+      })
 
       // 更新客戶資料
       .addCase(updateQueueData.pending, (state) => {
