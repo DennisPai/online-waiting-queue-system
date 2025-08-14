@@ -106,9 +106,10 @@ export const useQueueManagement = () => {
     dispatch(getQueueStatus());
   }, [dispatch]);
 
-  // 當系統設定更新時，同步更新輸入欄位
+  // 當系統設定更新時，同步更新輸入欄位（只在初始載入時）
   useEffect(() => {
-    if (queueStatus) {
+    if (queueStatus && !totalCustomerCountInput && !lastCompletedTimeInput) {
+      // 只在輸入欄位為空時才設定初始值，避免覆蓋用戶正在編輯的值
       setTotalCustomerCountInput(queueStatus.totalCustomerCount?.toString() || '');
       
       if (queueStatus.lastCompletedTime) {
@@ -124,7 +125,7 @@ export const useQueueManagement = () => {
         setLastCompletedTimeInput('');
       }
     }
-  }, [queueStatus]);
+  }, [queueStatus, totalCustomerCountInput, lastCompletedTimeInput]);
 
   // 載入候位列表
   const loadQueueList = useCallback(() => {
@@ -720,7 +721,17 @@ export const useQueueManagement = () => {
     
     // 如果系統處於非辦事狀態，自動更新客戶總數
     if (queueStatus && !queueStatus.isQueueOpen) {
-      dispatch(resetTotalCustomerCount());
+      dispatch(resetTotalCustomerCount())
+        .unwrap()
+        .then((response) => {
+          // 直接更新本地輸入值，避免清空
+          if (response.data && response.data.totalCustomerCount !== undefined) {
+            setTotalCustomerCountInput(response.data.totalCustomerCount.toString());
+          }
+        })
+        .catch((error) => {
+          console.error('自動更新客戶總數失敗:', error);
+        });
     }
     
     dispatch(showAlert({
@@ -752,7 +763,7 @@ export const useQueueManagement = () => {
           message: `客戶總數已設定為 ${count}`,
           severity: 'success'
         }));
-        dispatch(getQueueStatus()); // 重新獲取狀態
+        // 不需要重新獲取狀態，保持當前輸入值
       })
       .catch((error) => {
         dispatch(showAlert({
@@ -771,7 +782,10 @@ export const useQueueManagement = () => {
           message: response.message || '客戶總數已重設',
           severity: 'success'
         }));
-        dispatch(getQueueStatus()); // 重新獲取狀態
+        // 直接更新本地輸入值
+        if (response.data && response.data.totalCustomerCount !== undefined) {
+          setTotalCustomerCountInput(response.data.totalCustomerCount.toString());
+        }
       })
       .catch((error) => {
         dispatch(showAlert({
@@ -805,7 +819,7 @@ export const useQueueManagement = () => {
           message: '上一位辦完時間設置成功',
           severity: 'success'
         }));
-        dispatch(getQueueStatus()); // 重新獲取狀態
+        // 不需要重新獲取狀態，保持當前輸入值
       })
       .catch((error) => {
         dispatch(showAlert({
@@ -824,7 +838,18 @@ export const useQueueManagement = () => {
           message: response.message || '上一位辦完時間已重設',
           severity: 'success'
         }));
-        dispatch(getQueueStatus()); // 重新獲取狀態
+        // 直接更新本地輸入值
+        if (response.data && response.data.lastCompletedTime) {
+          const date = new Date(response.data.lastCompletedTime);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const hour = String(date.getHours()).padStart(2, '0');
+          const minute = String(date.getMinutes()).padStart(2, '0');
+          setLastCompletedTimeInput(`${year}-${month}-${day}T${hour}:${minute}`);
+        } else {
+          setLastCompletedTimeInput('');
+        }
       })
       .catch((error) => {
         dispatch(showAlert({
