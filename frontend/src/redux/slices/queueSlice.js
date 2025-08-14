@@ -31,7 +31,8 @@ export const getQueueStatus = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await queueService.getQueueStatus();
-      return response.data;
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '獲取候位狀態失敗');
     }
@@ -44,7 +45,8 @@ export const registerQueue = createAsyncThunk(
   async (queueData, { rejectWithValue }) => {
     try {
       const response = await queueService.registerQueue(queueData);
-      return response.data;
+      // registerQueue 可能還未完全遷移到 v1，保持原始處理
+      return response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '候位登記失敗');
     }
@@ -57,7 +59,8 @@ export const getQueueNumberStatus = createAsyncThunk(
   async (queueNumber, { rejectWithValue }) => {
     try {
       const response = await queueService.getQueueNumberStatus(queueNumber);
-      return response.data;
+      // getQueueNumberStatus 可能返回 v1 格式，安全處理
+      return response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '查詢候位狀態失敗');
     }

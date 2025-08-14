@@ -1,6 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const adminController = require('../../controllers/admin.controller');
+const queueController = require('../../controllers/queue.controller');
 const { validateRequest, protect } = require('../../utils/middleware');
 
 const router = express.Router();
@@ -8,7 +9,8 @@ const router = express.Router();
 router.use(protect);
 
 router.get('/queue/list', adminController.getQueueList);
-router.get('/queue/ordered-numbers', adminController.getOrderedQueueNumbers);
+// 使用 queue controller 中已有的 getOrderedNumbers 函數
+router.get('/queue/ordered-numbers', queueController.getOrderedNumbers);
 router.put('/queue/next', adminController.callNext);
 
 router.put(

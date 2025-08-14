@@ -87,7 +87,8 @@ const searchQueueByNameAndPhone = searchQueueByNameOrPhone;
 const getPublicOrderedNumbers = async () => {
   try {
     const response = await axios.get(`${API_ENDPOINTS.QUEUE}/ordered-numbers`);
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('獲取公共排序候位號碼錯誤:', error);
     throw error.response?.data || error;
@@ -98,7 +99,8 @@ const getPublicOrderedNumbers = async () => {
 const getMaxOrderIndex = async () => {
   try {
     const response = await axios.get(`${API_ENDPOINTS.QUEUE}/max-order`);
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('獲取最大叫號順序錯誤:', error);
     throw error.response?.data || error;
@@ -114,7 +116,8 @@ const getOrderedQueueNumbers = async (token) => {
   };
   try {
     const response = await axios.get(`${API_ENDPOINTS.ADMIN}/queue/ordered-numbers`, config);
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('獲取順序客戶號碼錯誤:', error);
     throw error.response?.data || error;

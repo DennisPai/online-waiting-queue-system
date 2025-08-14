@@ -1,6 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const adminController = require('../controllers/admin.controller');
+const queueController = require('../controllers/queue.controller');
 const { validateRequest, protect } = require('../utils/middleware');
 
 const router = express.Router();
@@ -11,8 +12,8 @@ router.use(protect);
 // 獲取候位列表
 router.get('/queue/list', adminController.getQueueList);
 
-// 獲取順序1和順序2的候位號碼
-router.get('/queue/ordered-numbers', adminController.getOrderedQueueNumbers);
+// 獲取順序1和順序2的候位號碼 - 使用 queue controller 中已有的函數
+router.get('/queue/ordered-numbers', queueController.getOrderedNumbers);
 
 // 呼叫下一位
 router.put('/queue/next', adminController.callNext);
