@@ -46,13 +46,6 @@ class QueueRepository {
   }
 
   /**
-   * 根據查詢條件計算記錄數量
-   */
-  async count(query) {
-    return await WaitingRecord.countDocuments(query);
-  }
-
-  /**
    * 獲取候位列表（支持分頁和篩選）
    */
   async findAll(filters = {}, options = {}) {
