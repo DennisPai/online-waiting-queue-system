@@ -770,6 +770,34 @@ const queueSlice = createSlice({
         state.error = action.payload;
       })
       
+      // 通過姓名和電話查詢候位號碼
+      .addCase(searchQueueByNameAndPhone.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(searchQueueByNameAndPhone.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // action.payload 結構: {records: [...], message: "..."}
+        // 將records數組存儲到currentQueueStatus中
+        if (action.payload.records && action.payload.records.length > 0) {
+          if (action.payload.records.length === 1) {
+            // 單筆記錄直接設置為currentQueueStatus
+            state.currentQueueStatus = action.payload.records[0];
+          } else {
+            // 多筆記錄設置為數組
+            state.currentQueueStatus = action.payload.records;
+          }
+        } else {
+          state.currentQueueStatus = null;
+        }
+        state.error = null;
+      })
+      .addCase(searchQueueByNameAndPhone.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+        state.currentQueueStatus = null;
+      })
+      
       // 清除所有候位資料（管理員）
       .addCase(clearAllQueue.pending, (state) => {
         state.isLoading = true;

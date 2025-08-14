@@ -9,8 +9,6 @@ router.post('/register', queueController.registerQueue);
 router.get('/number/:queueNumber', queueController.getQueueNumberStatus);
 // 使用重構版的搜尋功能（支持家人姓名搜尋）
 router.get('/search', queueControllerRefactored.searchQueue);
-// 調試端點：查看資料庫記錄
-router.get('/debug-records', queueControllerRefactored.debugRecords);
 router.get('/ordered-numbers', queueController.getOrderedNumbers);
 router.get('/max-order', queueController.getMaxOrderIndex);
 

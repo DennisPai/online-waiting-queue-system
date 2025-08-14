@@ -142,14 +142,6 @@ class QueueService {
 
     console.log(`查詢條件 - 姓名: ${name || '未提供'}, 電話: ${phone || '未提供'}`);
     
-    // 先檢查資料庫中是否有任何記錄
-    const totalRecords = await queueRepository.findByQuery({});
-    console.log(`資料庫中總共有 ${totalRecords.length} 筆候位記錄`);
-    
-    if (totalRecords.length === 0) {
-      throw ApiError.notFound('系統中尚無候位記錄');
-    }
-    
     let searchQuery = {};
     
     // 構建查詢條件
@@ -179,11 +171,8 @@ class QueueService {
       searchQuery = { phone: phone };
     }
 
-    console.log('構建的查詢條件:', JSON.stringify(searchQuery, null, 2));
-
     // 使用repository查找記錄
     const records = await queueRepository.findByQuery(searchQuery);
-    console.log(`查詢結果找到 ${records.length} 筆記錄`);
     
     if (!records || records.length === 0) {
       let errorMessage = '查無候位記錄';
