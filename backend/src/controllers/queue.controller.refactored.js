@@ -139,6 +139,15 @@ const searchQueue = catchAsync(async (req, res) => {
   
   const result = await queueService.searchQueueByNameAndPhone(name, phone);
   
+  // 調試：檢查QueueService返回的結果格式
+  console.log('QueueService returned:', {
+    resultType: typeof result,
+    resultKeys: Object.keys(result || {}),
+    recordsType: typeof result?.records,
+    recordsIsArray: Array.isArray(result?.records),
+    recordsLength: result?.records?.length
+  });
+  
   res.status(200).json({
     success: true,
     data: result.records,
