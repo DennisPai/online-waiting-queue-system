@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const queueController = require('../../controllers/queue.controller');
+const queueControllerRefactored = require('../../controllers/queue.controller.refactored');
 
 // 公共端點（v1）
 router.get('/status', queueController.getQueueStatus);
 router.post('/register', queueController.registerQueue);
 router.get('/number/:queueNumber', queueController.getQueueNumberStatus);
-router.get('/search', queueController.getQueueByNameAndPhone);
+// 使用重構版的搜尋功能（支持家人姓名搜尋）
+router.get('/search', queueControllerRefactored.searchQueue);
 router.get('/ordered-numbers', queueController.getOrderedNumbers);
 router.get('/max-order', queueController.getMaxOrderIndex);
 

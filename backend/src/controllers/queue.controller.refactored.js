@@ -132,24 +132,17 @@ const callNextQueue = catchAsync(async (req, res) => {
 });
 
 /**
- * 搜索候位記錄
+ * 搜索候位記錄（支持家人姓名搜尋）
  */
 const searchQueue = catchAsync(async (req, res) => {
   const { name, phone } = req.query;
   
-  if (!name && !phone) {
-    throw ApiError.badRequest('至少需要提供姓名或電話號碼其中一個條件');
-  }
-  
-  const filters = {};
-  if (name) filters.name = new RegExp(name, 'i');
-  if (phone) filters.phone = new RegExp(phone, 'i');
-  
-  const result = await queueService.getQueueList(filters);
+  const result = await queueService.searchQueueByNameAndPhone(name, phone);
   
   res.status(200).json({
     success: true,
-    data: result.records
+    data: result.records,
+    message: result.message
   });
 });
 

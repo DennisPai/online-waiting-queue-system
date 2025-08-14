@@ -39,6 +39,13 @@ class QueueRepository {
   }
 
   /**
+   * 根據自定義查詢條件查找記錄
+   */
+  async findByQuery(query, sortOptions = { queueNumber: 1 }) {
+    return await WaitingRecord.find(query).sort(sortOptions);
+  }
+
+  /**
    * 獲取候位列表（支持分頁和篩選）
    */
   async findAll(filters = {}, options = {}) {
