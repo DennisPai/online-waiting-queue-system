@@ -180,6 +180,13 @@
 
 ### 🛠 本地開發
 
+#### 開發前必讀
+**⚠️ 開始開發前請先閱讀**: `docs/DEVELOPMENT_LOG.md`
+- 包含已知問題和解決方案
+- 記錄重要技術決策和架構說明
+- 提供常見錯誤的快速修復指南
+- 避免重複踩坑，加速開發效率
+
 #### 前置需求
 - Node.js (v16+)
 - npm 或 yarn
@@ -434,6 +441,11 @@ online-waiting-queue-system/
 ├── DEPLOYMENT.md                     # 部署指南
 ├── AI_DEVELOPMENT_GUIDE.md           # AI開發指南
 ├── 線上候位系統開發文檔.md               # 完整開發文檔
+├── docs/
+│   ├── DEVELOPMENT_LOG.md            # 開發日誌（問題解決方案、技術決策記錄）
+│   ├── PRD.md                        # 產品需求文檔
+│   ├── API_SPEC.md                   # API規格文檔
+│   └── TODO.md                       # 開發任務清單
 └── README.md                         # 專案說明
 ```
 

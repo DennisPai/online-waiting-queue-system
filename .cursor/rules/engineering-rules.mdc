@@ -22,6 +22,11 @@ alwaysApply: true
 
 ## 文件與提交（全域）
 - 每次功能變更同步更新 `docs/PRD.md`（背景/AC）與 `docs/API_SPEC.md`
+- **開發日誌維護**：重要修改必須更新 `docs/DEVELOPMENT_LOG.md`
+  - **Bug修復**：記錄問題原因、解決方案、預防措施
+  - **架構變更**：記錄設計決策、實現細節、影響範圍
+  - **重大功能**：記錄開發過程、技術選擇、經驗教訓
+  - **已知問題**：記錄技術債務、workaround、解決計劃
 - **文檔同步工作流**：當 `docs/TODO.md` 任務狀態變更時，同步更新 `README.md` 的相關功能說明。特別是新功能開發或重構完成時，確保 README 反映最新的系統狀態。
 - **需求開發流程**：新需求必須先在 `docs/PRD.md` 進行規劃與溝通確認後，再進行技術開發（API 設計、實作、測試）。Agent 須先更新 PRD 並等待確認，再執行後續開發任務。
 - **任務確認機制**：TODO.md 任務標記完成前，需等用戶確認實際效果滿足需求，避免過早標記完成。
@@ -35,10 +40,11 @@ alwaysApply: true
 
 ## 檔案定位與探索指南（Agent 必讀）
 ### 🔍 初次接觸或不熟悉功能時的探索順序：
-1. **需求了解**：`docs/PRD.md` → 了解功能背景與驗收條件
-2. **API 規格**：`docs/API_SPEC.md` → 確認端點、請求/回應格式
-3. **前端入口**：`frontend/src/pages/*` → 找到頁面主要元件
-4. **後端入口**：`backend/src/routes/v1/*` → 找到對應路由與控制器
+1. **開發經驗**：`docs/DEVELOPMENT_LOG.md` → 了解已知問題、解決方案和技術決策
+2. **需求了解**：`docs/PRD.md` → 了解功能背景與驗收條件
+3. **API 規格**：`docs/API_SPEC.md` → 確認端點、請求/回應格式
+4. **前端入口**：`frontend/src/pages/*` → 找到頁面主要元件
+5. **後端入口**：`backend/src/routes/v1/*` → 找到對應路由與控制器
 
 ### 📂 關鍵檔案速查表：
 **前端核心結構：**
@@ -56,10 +62,13 @@ alwaysApply: true
 - 工具：`backend/src/utils/` (v1-response, validation)
 
 ### 🔎 常見問題的定位策略：
+- **首要原則**：遇到問題先查看 `docs/DEVELOPMENT_LOG.md` 的"常見問題與解決方案"部分
+- **前端白屏**：檢查 DEVELOPMENT_LOG.md → 控制台錯誤 → Redux狀態 → 組件import
+- **API格式問題**：檢查 DEVELOPMENT_LOG.md → v1-response.js → 對應 controller → API_SPEC.md  
+- **搜尋功能異常**：檢查 DEVELOPMENT_LOG.md → Service層格式處理 → Redux reducer → 後端格式
 - **登入/認證問題**：authService → authSlice → auth.controller → user.model
 - **候位功能問題**：queueService → queueSlice → queue.controller → queue.model
 - **管理面板問題**：AdminDashboardPage → useQueueManagement → adminService → admin.controller
-- **API 回應格式問題**：v1-response.js → 對應 controller → API_SPEC.md
 - **前端元件問題**：從 pages/ 開始，追蹤到 components/ 和 hooks/
 - **Socket 即時更新**：socketService → 對應元件的 useEffect → backend socket 事件
 
