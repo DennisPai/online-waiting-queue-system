@@ -107,16 +107,15 @@ export const useQueueManagement = () => {
     dispatch(getQueueStatus());
   }, [dispatch]);
 
-  // 當系統設定初次載入時，設定輸入欄位初始值
-  
+  // 當系統設定載入時，僅在輸入欄位為空時才設定初始值
   useEffect(() => {
-    if (queueStatus && !hasInitialized) {
-      // 只在第一次載入時設定初始值
-      if (queueStatus.totalCustomerCount !== undefined && !totalCustomerCountInput) {
+    if (queueStatus) {
+      // 只在輸入欄位為空時才從後端設定初始值，避免覆蓋用戶輸入
+      if (queueStatus.totalCustomerCount !== undefined && totalCustomerCountInput === '') {
         setTotalCustomerCountInput(queueStatus.totalCustomerCount.toString());
       }
       
-      if (queueStatus.lastCompletedTime && !lastCompletedTimeInput) {
+      if (queueStatus.lastCompletedTime && lastCompletedTimeInput === '') {
         // 格式化時間為 datetime-local 格式
         const date = new Date(queueStatus.lastCompletedTime);
         const year = date.getFullYear();
@@ -127,9 +126,11 @@ export const useQueueManagement = () => {
         setLastCompletedTimeInput(`${year}-${month}-${day}T${hour}:${minute}`);
       }
       
-      setHasInitialized(true);
+      if (!hasInitialized) {
+        setHasInitialized(true);
+      }
     }
-  }, [queueStatus, hasInitialized, totalCustomerCountInput, lastCompletedTimeInput]);
+  }, [queueStatus, totalCustomerCountInput, lastCompletedTimeInput, hasInitialized]);
 
   // 載入候位列表
   const loadQueueList = useCallback(() => {
