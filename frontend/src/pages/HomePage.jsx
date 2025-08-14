@@ -17,13 +17,20 @@ import {
 } from '@mui/material';
 import QueueStatusDisplay from '../components/QueueStatusDisplay';
 import { getQueueStatus, getOrderedQueueNumbers, getPublicOrderedNumbers } from '../redux/slices/queueSlice';
+import { API_ENDPOINTS } from '../config/api';
 
 // 獲取下一個等待的人
 const getNextWaitingNumber = async (currentNumber) => {
   try {
-    const response = await fetch(`/api/queue/next-waiting?currentNumber=${currentNumber}`);
+    // 檢查是否使用 v1 API，如果是則使用新端點路徑
+    const apiUrl = API_ENDPOINTS.QUEUE.includes('/v1/') 
+      ? `${API_ENDPOINTS.QUEUE}/next-waiting?currentNumber=${currentNumber}`
+      : `/api/queue/next-waiting?currentNumber=${currentNumber}`;
+    
+    const response = await fetch(apiUrl);
     const data = await response.json();
-    return data.success ? data.data.nextWaitingNumber : null;
+    // 處理 v1 格式回應
+    return data.success ? (data.data?.nextWaitingNumber || data.data) : null;
   } catch (error) {
     console.error('獲取下一個等待號碼錯誤:', error);
     return null;
