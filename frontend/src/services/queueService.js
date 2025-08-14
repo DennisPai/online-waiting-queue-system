@@ -75,8 +75,6 @@ const searchQueueByNameOrPhone = async (name, phone) => {
     });
     
     // v1 API 回應格式：{success, code, message, data}
-    // 調試：記錄後端實際回應
-    console.log('Backend response:', response.data);
     
     // 檢查後端實際返回的數據格式
     if (response.data.success) {
@@ -128,7 +126,6 @@ const searchQueueByNameOrPhone = async (name, phone) => {
         };
       }
       
-      console.log('Service returning:', result);
       return result;
     } else {
       throw new Error(response.data.message || '查詢失敗');

@@ -195,15 +195,6 @@ class QueueService {
       return await this.calculateDetailedQueueInfo(record, settings);
     }));
 
-    // 調試：檢查 recordsWithDetails 的格式
-    console.log('QueueService records format check:', {
-      isArray: Array.isArray(recordsWithDetails),
-      length: recordsWithDetails.length,
-      type: typeof recordsWithDetails,
-      keys: Object.keys(recordsWithDetails),
-      firstRecord: recordsWithDetails[0] ? typeof recordsWithDetails[0] : 'undefined'
-    });
-
     return {
       records: recordsWithDetails,
       message: `找到 ${recordsWithDetails.length} 筆候位記錄`
