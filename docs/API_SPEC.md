@@ -43,6 +43,10 @@
 - PUT `/api/v1/admin/settings/minutes-per-customer`
 - PUT `/api/v1/admin/settings/simplified-mode`
 - PUT `/api/v1/admin/settings/public-registration-enabled`
+- PUT `/api/v1/admin/settings/total-customer-count`
+- POST `/api/v1/admin/settings/reset-customer-count`
+- PUT `/api/v1/admin/settings/last-completed-time`
+- POST `/api/v1/admin/settings/reset-completed-time`
 
 ## Deprecated 對應（相容期）
 - 舊端點保留，逐步在 header 加入 `Deprecation: true` 與 `Link` 指向 v1
