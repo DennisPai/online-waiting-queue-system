@@ -270,4 +270,206 @@ export const exportToCSV = (data, filename = '客戶資料') => {
     console.error('匯出CSV時發生錯誤:', error);
     throw new Error('匯出CSV檔案失敗');
   }
+};
+
+// ========== 新增的表格範本匯出功能 ==========
+
+/**
+ * 格式化客戶資料為表格範本格式
+ */
+export const formatCustomerDataForTemplate = (customers) => {
+  const tableData = [];
+  const mergeRanges = [];
+  let currentRow = 1; // 第 0 行是標題
+
+  // 篩選等待中和處理中的客戶
+  const activeCustomers = customers.filter(customer => 
+    customer.status === 'waiting' || customer.status === 'processing'
+  );
+
+  activeCustomers.forEach(customer => {
+    const familyMembers = customer.familyMembers || [];
+    const totalMembers = 1 + familyMembers.length;
+    const allMembers = [customer, ...familyMembers];
+
+    // 計算合併範圍
+    const startRow = currentRow;
+    const endRow = currentRow + totalMembers - 1;
+
+    // 記錄需要合併的欄位 (完成、序號、人數、諮詢主題、備註)
+    const mergeCols = [0, 1, 3, 9, 10];
+    mergeCols.forEach(colIndex => {
+      if (totalMembers > 1) { // 只有當有多個成員時才需要合併
+        mergeRanges.push({
+          s: { r: startRow, c: colIndex },
+          e: { r: endRow, c: colIndex }
+        });
+      }
+    });
+
+    // 處理每個成員的資料
+    allMembers.forEach((member, memberIndex) => {
+      const isMainCustomer = memberIndex === 0;
+      
+      const rowData = {
+        '完成': '', // 空白欄位
+        '序號': isMainCustomer ? customer.queueNumber : '',
+        '姓名': member.name,
+        '人數': isMainCustomer ? totalMembers : '',
+        '性別': member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : '',
+        '農曆生日': formatLunarDateForTemplate(member),
+        '虛歲': member.virtualAge ? `${member.virtualAge}歲` : '',
+        '地址': getAddressForMember(member, customer),
+        '類型': getAddressTypeForMember(member, customer),
+        '諮詢主題': isMainCustomer ? formatConsultationTopicsForTemplate(customer.consultationTopics, customer.otherDetails) : '',
+        '備註': isMainCustomer ? (customer.remarks || '') : ''
+      };
+
+      tableData.push(rowData);
+      currentRow++;
+    });
+  });
+
+  return { tableData, mergeRanges };
+};
+
+/**
+ * 格式化農曆日期（表格範本用）
+ */
+const formatLunarDateForTemplate = (person) => {
+  if (!person.lunarBirthYear || !person.lunarBirthMonth || !person.lunarBirthDay) {
+    return ''; // 無農曆資料則留空
+  }
+  
+  const minguo = person.lunarBirthYear - 1911;
+  return `民國${minguo}年${person.lunarBirthMonth}月${person.lunarBirthDay}日`;
+};
+
+/**
+ * 獲取成員地址
+ */
+const getAddressForMember = (member, customer) => {
+  // 家人有自己的地址就用自己的，否則用主客戶的
+  if (member.address && member.address !== '臨時地址') {
+    return member.address;
+  }
+  
+  // 使用主客戶的第一個地址
+  if (customer.addresses && customer.addresses.length > 0) {
+    return customer.addresses[0].address;
+  }
+  
+  return '臨時地址';
+};
+
+/**
+ * 獲取成員地址類型
+ */
+const getAddressTypeForMember = (member, customer) => {
+  const typeMap = {
+    'home': '住家',
+    'work': '工作場所', 
+    'hospital': '醫院',
+    'other': '其他'
+  };
+
+  // 家人有自己的地址類型就用自己的
+  if (member.addressType) {
+    return typeMap[member.addressType] || '住家';
+  }
+  
+  // 使用主客戶的第一個地址類型
+  if (customer.addresses && customer.addresses.length > 0) {
+    return typeMap[customer.addresses[0].addressType] || '住家';
+  }
+  
+  return '住家';
+};
+
+/**
+ * 格式化諮詢主題（表格範本用）
+ */
+const formatConsultationTopicsForTemplate = (topics, otherDetails) => {
+  if (!topics || topics.length === 0) return '';
+  
+  const topicMap = {
+    'body': '身體',
+    'fate': '運途',
+    'karma': '因果',
+    'family': '家運/祖先',
+    'career': '事業',
+    'relationship': '婚姻感情',
+    'study': '學業',
+    'blessing': '收驚/加持',
+    'other': '其他'
+  };
+  
+  const translatedTopics = topics.map(topic => {
+    if (topic === 'other' && otherDetails) {
+      return `其他(${otherDetails})`;
+    }
+    return topicMap[topic] || topic;
+  });
+  
+  return translatedTopics.join('、');
+};
+
+/**
+ * 匯出表格範本 Excel
+ */
+export const exportToTemplateExcel = (customers, filename = '客戶資料表格範本') => {
+  try {
+    const { tableData, mergeRanges } = formatCustomerDataForTemplate(customers);
+    
+    if (tableData.length === 0) {
+      throw new Error('沒有符合條件的客戶資料（等待中或處理中）');
+    }
+
+    // 創建工作簿和工作表
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(tableData);
+    
+    // 應用合併儲存格
+    ws['!merges'] = mergeRanges;
+    
+    // 設定欄位寬度
+    const colWidths = [
+      { wch: 8 },  // 完成
+      { wch: 8 },  // 序號
+      { wch: 12 }, // 姓名
+      { wch: 8 },  // 人數
+      { wch: 6 },  // 性別
+      { wch: 18 }, // 農曆生日
+      { wch: 8 },  // 虛歲
+      { wch: 30 }, // 地址
+      { wch: 12 }, // 類型
+      { wch: 20 }, // 諮詢主題
+      { wch: 15 }  // 備註
+    ];
+    ws['!cols'] = colWidths;
+    
+    // 設定行高
+    const rowHeights = [];
+    for (let i = 0; i < tableData.length + 1; i++) {
+      rowHeights.push({ hpt: 20 });
+    }
+    ws['!rows'] = rowHeights;
+    
+    // 加入工作表
+    XLSX.utils.book_append_sheet(wb, ws, '客戶資料表格範本');
+    
+    // 生成並下載
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
+    
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+    saveAs(blob, `${filename}_${timestamp}.xlsx`);
+    
+    return true;
+  } catch (error) {
+    console.error('匯出Excel表格範本時發生錯誤:', error);
+    throw new Error(`匯出Excel檔案失敗: ${error.message}`);
+  }
 }; 

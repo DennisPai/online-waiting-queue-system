@@ -12,6 +12,10 @@ import LoginPage from './pages/LoginPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 
+// 匯入新增的預覽頁面
+import ExcelPreviewPage from './pages/admin/ExcelPreviewPage';
+import PDFPreviewPage from './pages/admin/PDFPreviewPage';
+
 // 匯入元件
 import { ProtectedRoute, ConditionalRegistrationRoute } from './components/common';
 import { Layout, AdminLayout } from './components/layout';
@@ -74,6 +78,10 @@ function App() {
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
+            
+            {/* 新增預覽頁面路由 */}
+            <Route path="excel-preview" element={<ExcelPreviewPage />} />
+            <Route path="pdf-preview" element={<PDFPreviewPage />} />
           </Route>
           
           {/* 錯誤路由 */}

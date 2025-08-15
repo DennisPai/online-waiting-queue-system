@@ -17,7 +17,8 @@ import {
 import {
   FileDownload as FileDownloadIcon,
   TableChart as TableChartIcon,
-  Description as DescriptionIcon
+  Description as DescriptionIcon,
+  Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import { formatCustomerDataForExport, exportToExcel, exportToCSV } from '../utils/exportUtils';
 
@@ -34,7 +35,24 @@ const ExportDialog = ({ open, onClose, customers = [], loading = false }) => {
     setExporting(true);
     
     try {
-      // 格式化資料
+      // 新增預覽功能的處理
+      if (exportFormat === 'template') {
+        // Excel 表格範本預覽
+        sessionStorage.setItem('exportCustomers', JSON.stringify(customers));
+        window.open('/admin/excel-preview', '_blank');
+        onClose();
+        return;
+      }
+      
+      if (exportFormat === 'forms') {
+        // PDF 問事單預覽
+        sessionStorage.setItem('exportCustomers', JSON.stringify(customers));
+        window.open('/admin/pdf-preview', '_blank');
+        onClose();
+        return;
+      }
+      
+      // 現有匯出功能
       const formattedData = formatCustomerDataForExport(customers);
       
       if (exportFormat === 'excel') {
@@ -136,21 +154,114 @@ const ExportDialog = ({ open, onClose, customers = [], loading = false }) => {
                 }
               }}
             />
+            
+            {/* 新增選項 */}
+            <FormControlLabel
+              value="template"
+              control={<Radio />}
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <AssignmentIcon color="warning" />
+                  <Box>
+                    <Typography variant="body1">
+                      客戶資料表格範本 (Excel)
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      標準表格格式，包含合併儲存格，只包含等待中和處理中的客戶
+                    </Typography>
+                  </Box>
+                </Box>
+              }
+              sx={{ 
+                border: '1px solid #e0e0e0',
+                borderRadius: 1,
+                p: 1,
+                m: 0,
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                }
+              }}
+            />
+            <FormControlLabel
+              value="forms"
+              control={<Radio />}
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <DescriptionIcon color="secondary" />
+                  <Box>
+                    <Typography variant="body1">
+                      修玄宮問事單 (PDF)
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      生成修玄宮問事單 PDF，A4頁面包含兩張A5問事單，只包含等待中和處理中的客戶
+                    </Typography>
+                  </Box>
+                </Box>
+              }
+              sx={{ 
+                border: '1px solid #e0e0e0',
+                borderRadius: 1,
+                p: 1,
+                m: 0,
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                }
+              }}
+            />
           </RadioGroup>
         </FormControl>
         
+        {/* 說明文字 */}
         <Box sx={{ mt: 2, p: 2, backgroundColor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1 }}>
-          <Typography variant="body2" color="primary">
-            <strong>匯出內容包含最詳細的客戶資料：</strong>
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.6 }}>
-            • <strong>基本資料</strong>：候位號碼、姓名、電話、電子郵件、性別<br/>
-            • <strong>出生日期</strong>：國曆和農曆完整出生年月日（包含閏月資訊）<br/>
-            • <strong>地址資訊</strong>：最多3個地址及其類型<br/>
-            • <strong>家庭成員</strong>：每位家人的完整資料（姓名、出生日期、地址）<br/>
-            • <strong>其他資訊</strong>：諮詢主題、虛歲、狀態、登記時間等<br/>
-            • <strong>匯出格式</strong>：主客戶和家人分別為獨立行，便於詳細分析
-          </Typography>
+          {exportFormat === 'excel' && (
+            <>
+              <Typography variant="body2" color="primary">
+                <strong>匯出內容包含最詳細的客戶資料：</strong>
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.6 }}>
+                • <strong>基本資料</strong>：候位號碼、姓名、電話、電子郵件、性別<br/>
+                • <strong>出生日期</strong>：國曆和農曆完整出生年月日（包含閏月資訊）<br/>
+                • <strong>地址資訊</strong>：最多3個地址及其類型<br/>
+                • <strong>家人資訊</strong>：每位家人的完整資料（姓名、出生日期、地址）<br/>
+                • <strong>其他資訊</strong>：諮詢主題、虛歲、狀態、登記時間等<br/>
+                • <strong>匯出格式</strong>：主客戶和家人分別為獨立行，便於詳細分析
+              </Typography>
+            </>
+          )}
+          {exportFormat === 'csv' && (
+            <>
+              <Typography variant="body2" color="primary">
+                <strong>CSV格式說明：</strong>
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.6 }}>
+                匯出所有客戶的完整詳細資料，CSV格式便於處理
+              </Typography>
+            </>
+          )}
+          {exportFormat === 'template' && (
+            <>
+              <Typography variant="body2" color="primary">
+                <strong>表格範本格式說明：</strong>
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.6 }}>
+                • 匯出標準表格範本格式，包含合併儲存格<br/>
+                • 只包含等待中和處理中的客戶<br/>
+                • 支援預覽功能，確認格式後再下載
+              </Typography>
+            </>
+          )}
+          {exportFormat === 'forms' && (
+            <>
+              <Typography variant="body2" color="primary">
+                <strong>修玄宮問事單說明：</strong>
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.6 }}>
+                • 生成修玄宮問事單 PDF，A4頁面包含兩張A5問事單<br/>
+                • 只包含等待中和處理中的客戶<br/>
+                • 支援預覽功能，確認格式後再下載
+              </Typography>
+            </>
+          )}
         </Box>
       </DialogContent>
       
@@ -169,7 +280,7 @@ const ExportDialog = ({ open, onClose, customers = [], loading = false }) => {
           disabled={exporting || loading || customers.length === 0}
           startIcon={exporting ? <CircularProgress size={20} /> : <FileDownloadIcon />}
         >
-          {exporting ? '匯出中...' : '開始匯出'}
+          {exporting ? '處理中...' : (exportFormat === 'template' || exportFormat === 'forms' ? '預覽' : '開始匯出')}
         </Button>
       </DialogActions>
     </Dialog>
