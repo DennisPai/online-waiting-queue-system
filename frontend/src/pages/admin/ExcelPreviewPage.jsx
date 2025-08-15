@@ -20,6 +20,7 @@ const ExcelPreviewPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [tableData, setTableData] = useState([]);
+  const [mergeRanges, setMergeRanges] = useState([]); // 保存合併範圍
   const [originalCustomers, setOriginalCustomers] = useState([]); // 保存原始客戶資料
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -39,8 +40,9 @@ const ExcelPreviewPage = () => {
       // 保存原始客戶資料供下載使用
       setOriginalCustomers(customersData);
       
-      const { tableData: formattedData } = formatCustomerDataForTemplate(customersData);
+      const { tableData: formattedData, mergeRanges: ranges } = formatCustomerDataForTemplate(customersData);
       setTableData(formattedData);
+      setMergeRanges(ranges);
       
       // 清理 sessionStorage
       sessionStorage.removeItem('exportCustomers');
@@ -120,7 +122,7 @@ const ExcelPreviewPage = () => {
       </Box>
 
       <Paper sx={{ p: 2 }}>
-        <ExcelPreviewTable data={tableData} />
+        <ExcelPreviewTable data={tableData} mergeRanges={mergeRanges} />
       </Paper>
     </Container>
   );

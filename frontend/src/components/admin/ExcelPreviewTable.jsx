@@ -28,16 +28,21 @@ const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   textAlign: 'center'
 }));
 
-const ExcelPreviewTable = ({ data }) => {
+const ExcelPreviewTable = ({ data, mergeRanges = [] }) => {
   const headers = ['完成', '序號', '姓名', '人數', '性別', '農曆生日', '虛歲', '地址', '類型', '諮詢主題', '備註'];
   
-  // 標記合併儲存格的邏輯
-  const getMergedStatus = (rowIndex, colKey) => {
-    const mergeCols = ['完成', '序號', '人數', '諮詢主題', '備註'];
-    if (!mergeCols.includes(colKey)) return false;
-    
-    // 簡化版：如果該欄位為空，表示是合併的下半部
-    return data[rowIndex][colKey] === '';
+  // 檢查某個儲存格是否在合併範圍內
+  const getMergedStatus = (rowIndex, colIndex) => {
+    // 檢查是否在任何合併範圍內
+    for (const range of mergeRanges) {
+      if (colIndex === range.s.c && 
+          rowIndex >= range.s.r && 
+          rowIndex <= range.e.r) {
+        // 如果是合併範圍的第一行，顯示內容
+        return rowIndex === range.s.r ? 'first' : 'merged';
+      }
+    }
+    return 'normal';
   };
 
   return (
@@ -53,16 +58,40 @@ const ExcelPreviewTable = ({ data }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              {headers.map((header) => (
-                <StyledTableCell 
-                  key={header}
-                  merged={getMergedStatus(index, header)}
-                >
-                  {row[header]}
-                </StyledTableCell>
-              ))}
+          {data.map((row, rowIndex) => (
+            <TableRow key={rowIndex}>
+              {headers.map((header, colIndex) => {
+                const mergeStatus = getMergedStatus(rowIndex, colIndex);
+                
+                // 如果是合併區域的非第一行，不顯示這個儲存格
+                if (mergeStatus === 'merged') {
+                  return null;
+                }
+                
+                // 計算合併的行數
+                let rowSpan = 1;
+                if (mergeStatus === 'first') {
+                  const range = mergeRanges.find(r => 
+                    r.s.c === colIndex && r.s.r === rowIndex
+                  );
+                  if (range) {
+                    rowSpan = range.e.r - range.s.r + 1;
+                  }
+                }
+                
+                return (
+                  <StyledTableCell 
+                    key={header}
+                    merged={mergeStatus === 'first'}
+                    rowSpan={rowSpan}
+                    sx={{
+                      backgroundColor: mergeStatus === 'first' ? '#f0f8ff' : 'white'
+                    }}
+                  >
+                    {row[header]}
+                  </StyledTableCell>
+                );
+              })}
             </TableRow>
           ))}
         </TableBody>

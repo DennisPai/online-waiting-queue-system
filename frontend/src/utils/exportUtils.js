@@ -287,6 +287,9 @@ export const formatCustomerDataForTemplate = (customers) => {
     customer.status === 'waiting' || customer.status === 'processing'
   );
 
+  console.log('==== formatCustomerDataForTemplate Debug ====');
+  console.log('Active customers count:', activeCustomers.length);
+
   activeCustomers.forEach(customer => {
     const familyMembers = customer.familyMembers || [];
     const totalMembers = 1 + familyMembers.length;
@@ -300,11 +303,14 @@ export const formatCustomerDataForTemplate = (customers) => {
     // 對應欄位順序：完成(0)、序號(1)、姓名(2)、人數(3)、性別(4)、農曆生日(5)、虛歲(6)、地址(7)、類型(8)、諮詢主題(9)、備註(10)
     const mergeCols = [0, 1, 3, 9, 10];
     if (totalMembers > 1) { // 只有當有多個成員時才需要合併
+      console.log(`Customer ${customer.queueNumber}: ${totalMembers} members, merge rows ${startRow}-${endRow}`);
       mergeCols.forEach(colIndex => {
-        mergeRanges.push({
+        const mergeRange = {
           s: { r: startRow, c: colIndex },
           e: { r: endRow, c: colIndex }
-        });
+        };
+        mergeRanges.push(mergeRange);
+        console.log(`  Merge col ${colIndex}:`, mergeRange);
       });
     }
 
@@ -331,6 +337,9 @@ export const formatCustomerDataForTemplate = (customers) => {
     });
   });
 
+  console.log('Final merge ranges:', mergeRanges);
+  console.log('==== End Debug ====');
+  
   return { tableData, mergeRanges };
 };
 
