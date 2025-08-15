@@ -435,76 +435,117 @@ export const useQueueManagement = () => {
   // 儲存資料
   const handleSaveData = useCallback(() => {
     if (selectedRecord && editMode) {
-      // 處理年份轉換
-      const processedData = { ...editedData };
+      try {
+        // 處理年份轉換
+        const processedData = { ...editedData };
 
-      if (processedData.gregorianBirthYear) {
-        const { minguoYear } = autoConvertToMinguo(processedData.gregorianBirthYear);
-        processedData.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+        if (processedData.gregorianBirthYear) {
+          const { minguoYear } = autoConvertToMinguo(processedData.gregorianBirthYear);
+          processedData.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+        }
+
+        if (processedData.lunarBirthYear) {
+          const { minguoYear } = autoConvertToMinguo(processedData.lunarBirthYear);
+          processedData.lunarBirthYear = convertMinguoForStorage(minguoYear);
+        }
+
+        // 處理家人年份轉換
+        if (processedData.familyMembers) {
+          processedData.familyMembers.forEach(member => {
+            try {
+              // 只有當年份是字串或需要轉換時才進行轉換
+              if (member.gregorianBirthYear && typeof member.gregorianBirthYear === 'string') {
+                const { minguoYear } = autoConvertToMinguo(parseInt(member.gregorianBirthYear));
+                member.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+              } else if (member.gregorianBirthYear && typeof member.gregorianBirthYear === 'number') {
+                // 確保數值型別
+                member.gregorianBirthYear = parseInt(member.gregorianBirthYear);
+              }
+              
+              if (member.lunarBirthYear && typeof member.lunarBirthYear === 'string') {
+                const { minguoYear } = autoConvertToMinguo(parseInt(member.lunarBirthYear));
+                member.lunarBirthYear = convertMinguoForStorage(minguoYear);
+              } else if (member.lunarBirthYear && typeof member.lunarBirthYear === 'number') {
+                // 確保數值型別
+                member.lunarBirthYear = parseInt(member.lunarBirthYear);
+              }
+
+              // 確保月份和日期是數值型別
+              if (member.gregorianBirthMonth) {
+                member.gregorianBirthMonth = parseInt(member.gregorianBirthMonth);
+              }
+              if (member.gregorianBirthDay) {
+                member.gregorianBirthDay = parseInt(member.gregorianBirthDay);
+              }
+              if (member.lunarBirthMonth) {
+                member.lunarBirthMonth = parseInt(member.lunarBirthMonth);
+              }
+              if (member.lunarBirthDay) {
+                member.lunarBirthDay = parseInt(member.lunarBirthDay);
+              }
+            } catch (memberError) {
+              console.error(`處理家人 ${member.name} 的日期資料時發生錯誤:`, memberError);
+              // 繼續處理其他家人，不讓單一家人的錯誤中斷整個儲存流程
+            }
+          });
+
+          try {
+            const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.familyMembers });
+            processedData.familyMembers = familyData.familyMembers;
+          } catch (familyError) {
+            console.error('處理家人日期自動填充時發生錯誤:', familyError);
+            // 如果自動填充失敗，使用原始數據繼續
+          }
+        }
+
+        try {
+          const updatedData = autoFillDates(processedData);
+
+          dispatch(updateQueueData({ queueId: selectedRecord._id, customerData: updatedData }))
+            .unwrap()
+            .then(() => {
+              handleCloseDialog();
+              loadQueueList();
+              dispatch(showAlert({
+                message: '客戶資料更新成功！',
+                severity: 'success'
+              }));
+            })
+            .catch((error) => {
+              console.error('更新客戶資料 API 錯誤:', error);
+              dispatch(showAlert({
+                message: `更新失敗: ${error}`,
+                severity: 'error'
+              }));
+            });
+        } catch (dateError) {
+          console.error('處理主客戶日期自動填充時發生錯誤:', dateError);
+          // 如果主客戶日期處理失敗，使用原始數據繼續
+          dispatch(updateQueueData({ queueId: selectedRecord._id, customerData: processedData }))
+            .unwrap()
+            .then(() => {
+              handleCloseDialog();
+              loadQueueList();
+              dispatch(showAlert({
+                message: '客戶資料更新成功！（部分日期轉換可能未完成）',
+                severity: 'warning'
+              }));
+            })
+            .catch((error) => {
+              console.error('更新客戶資料 API 錯誤:', error);
+              dispatch(showAlert({
+                message: `更新失敗: ${error}`,
+                severity: 'error'
+              }));
+            });
+        }
+      } catch (error) {
+        console.error('儲存客戶資料時發生未預期錯誤:', error);
+        dispatch(showAlert({
+          message: `儲存失敗，發生未預期錯誤: ${error.message}`,
+          severity: 'error'
+        }));
       }
-
-      if (processedData.lunarBirthYear) {
-        const { minguoYear } = autoConvertToMinguo(processedData.lunarBirthYear);
-        processedData.lunarBirthYear = convertMinguoForStorage(minguoYear);
-      }
-
-      // 處理家人年份轉換
-      if (processedData.familyMembers) {
-        processedData.familyMembers.forEach(member => {
-          // 只有當年份是字串或需要轉換時才進行轉換
-          if (member.gregorianBirthYear && typeof member.gregorianBirthYear === 'string') {
-            const { minguoYear } = autoConvertToMinguo(parseInt(member.gregorianBirthYear));
-            member.gregorianBirthYear = convertMinguoForStorage(minguoYear);
-          } else if (member.gregorianBirthYear && typeof member.gregorianBirthYear === 'number') {
-            // 確保數值型別
-            member.gregorianBirthYear = parseInt(member.gregorianBirthYear);
-          }
-          
-          if (member.lunarBirthYear && typeof member.lunarBirthYear === 'string') {
-            const { minguoYear } = autoConvertToMinguo(parseInt(member.lunarBirthYear));
-            member.lunarBirthYear = convertMinguoForStorage(minguoYear);
-          } else if (member.lunarBirthYear && typeof member.lunarBirthYear === 'number') {
-            // 確保數值型別
-            member.lunarBirthYear = parseInt(member.lunarBirthYear);
-          }
-
-          // 確保月份和日期是數值型別
-          if (member.gregorianBirthMonth) {
-            member.gregorianBirthMonth = parseInt(member.gregorianBirthMonth);
-          }
-          if (member.gregorianBirthDay) {
-            member.gregorianBirthDay = parseInt(member.gregorianBirthDay);
-          }
-          if (member.lunarBirthMonth) {
-            member.lunarBirthMonth = parseInt(member.lunarBirthMonth);
-          }
-          if (member.lunarBirthDay) {
-            member.lunarBirthDay = parseInt(member.lunarBirthDay);
-          }
-        });
-
-        const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.familyMembers });
-        processedData.familyMembers = familyData.familyMembers;
-      }
-
-      const updatedData = autoFillDates(processedData);
-
-      dispatch(updateQueueData({ queueId: selectedRecord._id, customerData: updatedData }))
-        .unwrap()
-        .then(() => {
-          handleCloseDialog();
-          loadQueueList();
-          dispatch(showAlert({
-            message: '客戶資料更新成功！',
-            severity: 'success'
-          }));
-        })
-        .catch((error) => {
-          dispatch(showAlert({
-            message: `更新失敗: ${error}`,
-            severity: 'error'
-          }));
-        });
     }
   }, [selectedRecord, editMode, editedData, dispatch, handleCloseDialog, loadQueueList]);
 

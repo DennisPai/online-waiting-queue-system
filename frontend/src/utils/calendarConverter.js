@@ -118,32 +118,42 @@ export function autoFillDates(data) {
     if (result.gregorianBirthYear && result.gregorianBirthMonth && result.gregorianBirthDay &&
         (!result.lunarBirthYear || !result.lunarBirthMonth || !result.lunarBirthDay)) {
       
-      const lunarDate = gregorianToLunar(
-        result.gregorianBirthYear,
-        result.gregorianBirthMonth,
-        result.gregorianBirthDay
-      );
-      
-      result.lunarBirthYear = lunarDate.year;
-      result.lunarBirthMonth = lunarDate.month;
-      result.lunarBirthDay = lunarDate.day;
-      result.lunarIsLeapMonth = lunarDate.isLeapMonth;
+      try {
+        const lunarDate = gregorianToLunar(
+          parseInt(result.gregorianBirthYear),
+          parseInt(result.gregorianBirthMonth),
+          parseInt(result.gregorianBirthDay)
+        );
+        
+        result.lunarBirthYear = lunarDate.year;
+        result.lunarBirthMonth = lunarDate.month;
+        result.lunarBirthDay = lunarDate.day;
+        result.lunarIsLeapMonth = lunarDate.isLeapMonth;
+      } catch (gregorianError) {
+        console.error('國曆轉農曆失敗，跳過日期自動填充:', gregorianError);
+        // 轉換失敗時不填充，保持原始資料
+      }
     }
     
     // 檢查是否有完整的農曆生日且缺少國曆生日
     if (result.lunarBirthYear && result.lunarBirthMonth && result.lunarBirthDay &&
         (!result.gregorianBirthYear || !result.gregorianBirthMonth || !result.gregorianBirthDay)) {
       
-      const gregorianDate = lunarToGregorian(
-        result.lunarBirthYear,
-        result.lunarBirthMonth,
-        result.lunarBirthDay,
-        result.lunarIsLeapMonth || false
-      );
-      
-      result.gregorianBirthYear = gregorianDate.year;
-      result.gregorianBirthMonth = gregorianDate.month;
-      result.gregorianBirthDay = gregorianDate.day;
+      try {
+        const gregorianDate = lunarToGregorian(
+          parseInt(result.lunarBirthYear),
+          parseInt(result.lunarBirthMonth),
+          parseInt(result.lunarBirthDay),
+          result.lunarIsLeapMonth || false
+        );
+        
+        result.gregorianBirthYear = gregorianDate.year;
+        result.gregorianBirthMonth = gregorianDate.month;
+        result.gregorianBirthDay = gregorianDate.day;
+      } catch (lunarError) {
+        console.error('農曆轉國曆失敗，跳過日期自動填充:', lunarError);
+        // 轉換失敗時不填充，保持原始資料
+      }
     }
     
     return result;
