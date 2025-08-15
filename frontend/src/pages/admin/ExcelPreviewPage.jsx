@@ -20,6 +20,7 @@ const ExcelPreviewPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [tableData, setTableData] = useState([]);
+  const [originalCustomers, setOriginalCustomers] = useState([]); // 保存原始客戶資料
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -35,6 +36,9 @@ const ExcelPreviewPage = () => {
         return;
       }
 
+      // 保存原始客戶資料供下載使用
+      setOriginalCustomers(customersData);
+      
       const { tableData: formattedData } = formatCustomerDataForTemplate(customersData);
       setTableData(formattedData);
       
@@ -49,17 +53,20 @@ const ExcelPreviewPage = () => {
 
   const handleDownload = async () => {
     try {
-      // 重新獲取原始客戶資料進行下載
-      const customersData = location.state?.customers || 
-                           JSON.parse(sessionStorage.getItem('exportCustomers') || '[]');
-      await exportToTemplateExcel(customersData, '客戶資料表格範本');
+      // 使用保存的原始客戶資料進行下載
+      if (originalCustomers.length === 0) {
+        alert('沒有客戶資料可供下載');
+        return;
+      }
+      await exportToTemplateExcel(originalCustomers, '客戶資料表格範本');
     } catch (error) {
       alert(`下載失敗: ${error.message}`);
     }
   };
 
   const handleBack = () => {
-    navigate(-1);
+    // 由於預覽頁面是新開視窗，需要直接跳轉到管理頁面
+    navigate('/admin/dashboard');
   };
 
   if (loading) {

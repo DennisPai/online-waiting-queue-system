@@ -297,15 +297,16 @@ export const formatCustomerDataForTemplate = (customers) => {
     const endRow = currentRow + totalMembers - 1;
 
     // 記錄需要合併的欄位 (完成、序號、人數、諮詢主題、備註)
+    // 對應欄位順序：完成(0)、序號(1)、姓名(2)、人數(3)、性別(4)、農曆生日(5)、虛歲(6)、地址(7)、類型(8)、諮詢主題(9)、備註(10)
     const mergeCols = [0, 1, 3, 9, 10];
-    mergeCols.forEach(colIndex => {
-      if (totalMembers > 1) { // 只有當有多個成員時才需要合併
+    if (totalMembers > 1) { // 只有當有多個成員時才需要合併
+      mergeCols.forEach(colIndex => {
         mergeRanges.push({
           s: { r: startRow, c: colIndex },
           e: { r: endRow, c: colIndex }
         });
-      }
-    });
+      });
+    }
 
     // 處理每個成員的資料
     allMembers.forEach((member, memberIndex) => {

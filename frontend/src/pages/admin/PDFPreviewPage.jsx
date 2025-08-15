@@ -65,7 +65,8 @@ const PDFPreviewPage = () => {
   };
 
   const handleBack = () => {
-    navigate(-1);
+    // 由於預覽頁面是新開視窗，需要直接跳轉到管理頁面
+    navigate('/admin/dashboard');
   };
 
   if (loading) {
