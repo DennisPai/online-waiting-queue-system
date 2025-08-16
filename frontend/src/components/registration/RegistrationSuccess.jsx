@@ -88,10 +88,10 @@ const RegistrationSuccess = ({
             <Grid container spacing={3} sx={{ mt: 1 }}>
               <Grid item xs={12} sm={3}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  您的叫號順序
+                  您的編號
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
-                  第 {registeredOrderIndex || '?'} 號
+                  {registeredQueueNumber || '?'} 號
                 </Typography>
               </Grid>
               

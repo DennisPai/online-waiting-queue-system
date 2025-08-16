@@ -162,7 +162,7 @@ const StatusPage = () => {
     setConfirmDialog({
       open: true,
       title: '確認取消預約',
-      message: `確定要取消叫號順序 ${record.orderIndex} 的預約嗎？此操作無法復原。`,
+      message: `確定要取消編號 ${record.queueNumber} 的預約嗎？此操作無法復原。`,
       onConfirm: () => confirmCancelQueue(record)
     });
   };
@@ -552,10 +552,10 @@ const StatusPage = () => {
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h5" component="div">
-                        叫號順序: 
+                        編號: 
                       </Typography>
                       <Typography variant="h4" color="primary" component="div" sx={{ ml: 2, fontWeight: 'bold', fontSize: { xs: '1.75rem', md: '2rem' } }}>
-                        {record.orderIndex}
+                        {record.queueNumber}
                       </Typography>
                       <Box sx={{ ml: 'auto' }}>
                         {record.status && (
@@ -627,10 +627,10 @@ const StatusPage = () => {
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h5" component="div">
-                    叫號順序: 
+                    編號: 
                   </Typography>
                   <Typography variant="h4" color="primary" component="div" sx={{ ml: 2, fontWeight: 'bold', fontSize: { xs: '1.75rem', md: '2rem' } }}>
-                    {currentQueueStatus.orderIndex}
+                    {currentQueueStatus.queueNumber}
                   </Typography>
                   <Box sx={{ ml: 'auto' }}>
                     {currentQueueStatus.status && (
@@ -738,7 +738,7 @@ const StatusPage = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <InfoIcon sx={{ mr: 1 }} />
-              叫號順序 {detailsDialog.record?.orderIndex} 詳細資料
+              編號 {detailsDialog.record?.queueNumber} 詳細資料
             </Box>
             <Button
               onClick={() => setDetailsDialog({ open: false, record: null, mode: 'view' })}

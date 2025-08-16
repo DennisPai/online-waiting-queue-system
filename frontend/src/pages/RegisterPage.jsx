@@ -85,7 +85,7 @@ const RegisterPage = () => {
                 {maxOrderMessage}
               </Typography>
               <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9 }}>
-                您的叫號順序將會是第 <strong>{(maxOrderIndex || 0) + 1}</strong> 號
+                您的編號將會是第 <strong>{(maxOrderIndex || 0) + 1}</strong> 號
               </Typography>
               {(maxOrderIndex + 1) > 80 && (
                 <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.9, color: 'warning.main' }}>
