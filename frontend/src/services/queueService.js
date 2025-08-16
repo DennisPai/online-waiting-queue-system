@@ -275,7 +275,7 @@ const setNextSessionDate = async (nextSessionDate, token) => {
       }
     };
     const response = await axios.put(
-      `${API_ENDPOINTS.ADMIN}/settings/nextSession`,
+      `${API_ENDPOINTS.ADMIN}/settings/next-session`,
       { nextSessionDate },
       config
     );
@@ -295,7 +295,7 @@ const toggleQueueStatus = async (isOpen, token) => {
       }
     };
     const response = await axios.put(
-      `${API_ENDPOINTS.ADMIN}/settings/queueStatus`,
+      `${API_ENDPOINTS.ADMIN}/settings/queue-status`,
       { isOpen },
       config
     );
@@ -315,7 +315,7 @@ const setMaxQueueNumber = async (maxQueueNumber, token) => {
       }
     };
     const response = await axios.put(
-      `${API_ENDPOINTS.ADMIN}/settings/maxQueueNumber`,
+      `${API_ENDPOINTS.ADMIN}/settings/max-queue-number`,
       { maxQueueNumber },
       config
     );
@@ -365,7 +365,7 @@ const deleteCustomer = async (queueId, token) => {
 // 設定每位客戶預估處理時間
 const setMinutesPerCustomer = async (minutesPerCustomer, token) => {
   const response = await axios.put(
-    `${API_ENDPOINTS.ADMIN}/settings/minutesPerCustomer`,
+    `${API_ENDPOINTS.ADMIN}/settings/minutes-per-customer`,
     { minutesPerCustomer },
     {
       headers: {
@@ -379,7 +379,7 @@ const setMinutesPerCustomer = async (minutesPerCustomer, token) => {
 // 設定簡化模式
 const setSimplifiedMode = async (simplifiedMode, token) => {
     const response = await axios.put(
-    `${API_ENDPOINTS.ADMIN}/settings/simplifiedMode`,
+    `${API_ENDPOINTS.ADMIN}/settings/simplified-mode`,
     { simplifiedMode },
     {
       headers: {
@@ -393,7 +393,7 @@ const setSimplifiedMode = async (simplifiedMode, token) => {
 // 設定公開候位登記功能
 const setPublicRegistrationEnabled = async (publicRegistrationEnabled, token) => {
     const response = await axios.put(
-    `${API_ENDPOINTS.ADMIN}/settings/publicRegistrationEnabled`,
+    `${API_ENDPOINTS.ADMIN}/settings/public-registration-enabled`,
     { publicRegistrationEnabled },
     {
       headers: {
