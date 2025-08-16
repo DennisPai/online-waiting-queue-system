@@ -98,7 +98,7 @@ exports.getQueueStatus = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        isOpen: true,
+        isOpen: settings.isQueueOpen,
         currentQueueNumber: currentQueueNumber,
         maxQueueNumber: settings.maxQueueNumber,
         minutesPerCustomer: settings.minutesPerCustomer,

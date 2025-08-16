@@ -14,7 +14,7 @@ import { zhTW } from 'date-fns/locale';
 const QueueStatusDisplay = ({ queueStatus, isLoading }) => {
   // 計算預估結束時間（基於新邏輯：totalCustomerCount * minutesPerCustomer）
   const calculateEstimatedEndTime = () => {
-    if (!queueStatus || !queueStatus.nextSessionDate || !queueStatus.isQueueOpen) return null;
+    if (!queueStatus || !queueStatus.nextSessionDate || !queueStatus.isOpen) return null;
     
     // 使用新邏輯：nextSessionDate + (totalCustomerCount * minutesPerCustomer)
     const nextSessionDate = new Date(queueStatus.nextSessionDate);
