@@ -12,6 +12,12 @@ const getApiBaseUrl = () => {
     if (currentHost.includes('zeabur.app')) {
       console.log('檢測到Zeabur環境，但未設定REACT_APP_API_URL');
       console.warn('警告：請設定REACT_APP_API_URL環境變數指向後端服務');
+      
+      // 嘗試構建後端URL - 假設後端服務在同一個項目下
+      const protocol = window.location.protocol;
+      const backendUrl = `${protocol}//${currentHost.replace('waiting-queue-frontend', 'waiting-queue-backend').replace('-frontend', '-backend')}`;
+      console.log('嘗試使用構建的後端URL:', backendUrl);
+      return backendUrl;
     }
     console.log('未設定REACT_APP_API_URL環境變數，使用相對路徑');
     return '';
