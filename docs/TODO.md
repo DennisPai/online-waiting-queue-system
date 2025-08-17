@@ -98,6 +98,47 @@
 - [x] **文檔更新**：更新 API_SPEC.md 和 PRD.md
 - [x] **清理暫時文檔**：刪除 `docs/QUEUE_TIME_ESTIMATION_PLAN.md`
 
+## 新匯出功能開發（當前重點）
+
+### 階段一：基礎準備 ✅
+- [x] **安裝PDF生成套件**：安裝 jspdf 和 html2canvas（參考 `docs/INTEGRATION_GUIDE.md` 第一步）
+- [x] **修改匯出對話框**：在 ExportDialog.jsx 新增兩個選項：Excel表格範本和PDF問事單（參考 `docs/INTEGRATION_GUIDE.md` 第三步）
+- [x] **擴展匯出工具**：在 exportUtils.js 新增表格範本相關函數（參考 `docs/INTEGRATION_GUIDE.md` 第四步和 `docs/EXCEL_EXPORT_IMPLEMENTATION.md`）
+
+### 階段二：Excel表格範本功能 ✅
+- [x] **建立Excel預覽表格元件**：建立 ExcelPreviewTable.jsx（參考 `docs/EXCEL_EXPORT_IMPLEMENTATION.md` ExcelPreviewTable部分）
+- [x] **建立Excel預覽頁面**：建立 ExcelPreviewPage.jsx（參考 `docs/EXCEL_EXPORT_IMPLEMENTATION.md` ExcelPreviewPage部分）
+- [x] **實作合併儲存格邏輯**：完成 formatCustomerDataForTemplate 和 exportToTemplateExcel 函數（參考 `docs/EXCEL_EXPORT_IMPLEMENTATION.md` 核心實作函數）
+
+### 階段三：PDF問事單功能 ✅
+- [x] **建立PDF生成工具**：建立 pdfGenerator.js 實現修玄宮問事單PDF生成（參考 `docs/PDF_FORMS_IMPLEMENTATION.md` pdfGenerator.js部分）
+- [x] **建立問事單模板元件**：建立 FormTemplate.jsx（參考 `docs/PDF_FORMS_IMPLEMENTATION.md` FormTemplate.jsx部分）
+- [x] **建立PDF預覽頁面**：建立 PDFPreviewPage.jsx（參考 `docs/PDF_FORMS_IMPLEMENTATION.md` PDFPreviewPage.jsx部分）
+
+### 階段四：系統整合 ✅
+- [x] **新增預覽頁面路由**：在 App.js 新增 /admin/excel-preview 和 /admin/pdf-preview 路由（參考 `docs/INTEGRATION_GUIDE.md` 第二步）
+- [x] **更新元件索引檔案**：更新 components/admin/index.js 匯出新元件（參考 `docs/INTEGRATION_GUIDE.md` 第六步）
+
+### 階段五：測試與驗證 ✅
+- [x] **完整功能測試**：測試預覽機制、下載功能、資料篩選、合併儲存格等（參考 `docs/INTEGRATION_GUIDE.md` 第七步）
+- [x] **Excel格式驗證**：確認合併儲存格正確、欄位順序符合需求、農曆日期格式正確（參考 `docs/EXCEL_EXPORT_IMPLEMENTATION.md` 測試檢查點）
+- [x] **PDF佈局驗證**：確認A4橫式雙A5直式佈局、裁切線、問事單欄位填入正確（參考 `docs/PDF_FORMS_IMPLEMENTATION.md` 測試檢查點）
+
+### 階段六：Bug修復與優化（緊急）🚨
+- [x] **修復預覽頁面返回按鈕**：ExcelPreviewPage 和 PDFPreviewPage 的返回按鈕改用 navigate('/admin/dashboard')
+- [x] **修復 Excel 下載錯誤**：保存原始客戶資料，解決資料丟失問題
+- [x] **修復 Excel 合併儲存格**：改進合併邏輯，正確處理 rowSpan 和合併範圍顯示
+- [ ] **重新設計 PDF 樣式**：完全按照修玄宮問事單.jpg 重新設計 PDF 佈局和美化
+- [ ] **修復 PDF 中文亂碼**：解決 jsPDF 中文字體顯示問題，確保中文正常顯示
+- [ ] **完整測試修復**：逐一驗證所有修復項目，確保功能正常
+
+### 階段七：文檔更新與收尾 🎯
+- [ ] **更新API文檔**：在 API_SPEC.md 中記錄新的匯出功能
+- [ ] **更新功能說明**：在 README.md 中新增新匯出功能的說明
+- [ ] **更新用戶指南**：在 USER_GUIDE_ADMIN.md 中新增操作說明
+- [x] **推送程式碼變更**：執行 git commit 和 git push 部署到 Zeabur（重要：每次修改後都要推送）
+- [ ] **清理開發文檔**：開發完成後將臨時開發文檔移至 docs/archive/ 目錄
+
 ## 延後項目（非核心）
 - 安全策略調參：rate-limit 白名單/滑動窗口；Helmet policy 依部署域名調整
 - GitHub Actions：前後端分 job（lint/test/build），報告覆蓋率  

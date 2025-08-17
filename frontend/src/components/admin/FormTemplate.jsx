@@ -194,3 +194,4 @@ const FormTemplate = ({ customer }) => {
 };
 
 export default FormTemplate;
+
