@@ -198,7 +198,7 @@ exports.registerQueue = async (req, res) => {
         }
       }
     }
-    } else {
+  } else {
       // 簡化模式下，只檢查基本必要欄位
       console.log('簡化模式已開啟，跳過詳細驗證');
       
