@@ -405,6 +405,7 @@ const queueSlice = createSlice({
       state.waitingCount = 0;
       state.estimatedWaitTime = 0;
       state.estimatedEndTime = null;
+      state.isLoading = false; // 重置載入狀態，防止按鈕一直轉圈圈
     },
     clearQueueSearch: (state) => {
       state.currentQueueStatus = null;
