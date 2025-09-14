@@ -181,6 +181,24 @@ const HomePage = () => {
                   本次預約人數已達上限，敬請報名下次開科辦事，下次開科辦事開放報名時間為{getNextRegistrationDate(queueStatus?.nextSessionDate)}中午12:00整
                 </Typography>
               </CardContent>
+              <CardActions>
+                <Button
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  disabled
+                  sx={{ 
+                    bgcolor: 'grey.400',
+                    color: 'white',
+                    '&.Mui-disabled': {
+                      bgcolor: 'grey.400',
+                      color: 'white'
+                    }
+                  }}
+                >
+                  報名已額滿
+                </Button>
+              </CardActions>
             </Card>
           </Grid>
         )}
