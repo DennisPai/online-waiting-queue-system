@@ -92,10 +92,10 @@ const QueueStatusDisplay = ({ queueStatus, isLoading }) => {
           <Grid item xs={12} md={4}>
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                等待組數
+                候位總數
               </Typography>
               <Typography variant="h3" color="primary" sx={{ fontWeight: 'bold', fontSize: { xs: '2.125rem', md: '2.375rem' } }}>
-                {queueStatus.waitingCount || 0}
+                {queueStatus.activeQueueCount || 0}
               </Typography>
             </Box>
           </Grid>

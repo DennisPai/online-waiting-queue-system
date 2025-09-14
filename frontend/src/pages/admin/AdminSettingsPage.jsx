@@ -482,7 +482,7 @@ const AdminSettingsPage = () => {
                   onChange={handleMaxQueueNumberChange}
                   fullWidth
                   inputProps={{ min: 1 }}
-                  helperText="設定每日候位的最大數量限制"
+                  helperText="設定候位總數的最大數量限制（不包含已取消的候位）"
                 />
               </Box>
               <Box sx={{ mt: 2 }}>
@@ -499,7 +499,7 @@ const AdminSettingsPage = () => {
                 <Alert severity="info">
                   目前最大候位上限設定為：{maxQueueNumber} 人
                   <br />
-                  當候位號碼達到此上限時，系統將不接受新的候位申請
+                  當候位總數（活躍候位人數）達到此上限時，系統將不接受新的候位申請
                 </Alert>
               </Box>
             </Paper>
