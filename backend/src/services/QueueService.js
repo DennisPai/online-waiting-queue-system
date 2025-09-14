@@ -1,5 +1,6 @@
 const queueRepository = require('../repositories/QueueRepository');
 const SystemSetting = require('../models/system-setting.model');
+const WaitingRecord = require('../models/waiting-record.model');
 const ApiError = require('../utils/ApiError');
 
 /**
@@ -22,8 +23,8 @@ class QueueService {
     // 處理和驗證數據
     const processedData = this.processQueueData(data, settings);
     
-    // 檢查候位系統是否開放
-    this.checkQueueAvailability(settings, processedData.queueNumber);
+    // 檢查候位是否已額滿（使用與getQueueStatus一致的邏輯）
+    await this.checkQueueAvailability(settings);
 
     // 計算 orderIndex
     const activeCustomerCount = await queueRepository.countActiveCustomers();
@@ -382,8 +383,13 @@ class QueueService {
   /**
    * 私有方法：檢查候位系統可用性
    */
-  checkQueueAvailability(settings, queueNumber) {
-    if (queueNumber > settings.maxQueueNumber) {
+  async checkQueueAvailability(settings) {
+    // 使用與getQueueStatus一致的邏輯：計算活躍候位人數（排除已取消的）
+    const activeQueueCount = await WaitingRecord.countDocuments({
+      status: { $ne: 'cancelled' }
+    });
+    
+    if (activeQueueCount >= settings.maxQueueNumber) {
       throw ApiError.forbidden('今日候位已滿，請下次再來');
     }
   }

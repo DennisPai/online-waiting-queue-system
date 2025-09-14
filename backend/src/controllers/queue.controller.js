@@ -303,17 +303,21 @@ exports.registerQueue = async (req, res) => {
     }
     */
     
-    // 獲取當前最大候位號碼
-    const nextQueueNumber = await WaitingRecord.getNextQueueNumber();
-    console.log('自動分配的候位號碼:', nextQueueNumber);
+    // 檢查候位是否已額滿（使用與getQueueStatus一致的邏輯）
+    const activeQueueCount = await WaitingRecord.countDocuments({
+      status: { $ne: 'cancelled' }
+    });
     
-    // 檢查是否超過最大候位數量限制
-    if (nextQueueNumber > settings.maxQueueNumber) {
+    if (activeQueueCount >= settings.maxQueueNumber) {
       return res.status(403).json({
         success: false,
         message: '今日候位已滿，請下次再來'
       });
     }
+    
+    // 獲取當前最大候位號碼
+    const nextQueueNumber = await WaitingRecord.getNextQueueNumber();
+    console.log('自動分配的候位號碼:', nextQueueNumber);
     
     // 準備要創建的資料，並進行日期自動轉換
     let recordData = {
