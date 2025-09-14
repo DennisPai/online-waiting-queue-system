@@ -21,6 +21,9 @@ const initialState = {
   currentQueueStatus: null,
   maxOrderIndex: 0, // 新增：目前最大的叫號順序
   maxOrderMessage: '', // 新增：最大叫號順序的提醒訊息
+  activeQueueCount: 0, // 新增：活躍候位人數
+  maxQueueNumber: 100, // 新增：最大候位上限
+  isFull: false, // 新增：是否已額滿
   isLoading: false,
   error: null
 };
@@ -425,6 +428,11 @@ const queueSlice = createSlice({
         state.isLoading = false;
         state.queueStatus = action.payload;
         state.isQueueOpen = action.payload.isOpen;
+        
+        // 更新容量相關狀態（無論系統開啟或關閉都需要）
+        state.activeQueueCount = action.payload.activeQueueCount || 0;
+        state.maxQueueNumber = action.payload.maxQueueNumber || 100;
+        state.isFull = action.payload.isFull || false;
         
         if (action.payload.isOpen) {
           state.currentQueue = action.payload.currentQueueNumber;

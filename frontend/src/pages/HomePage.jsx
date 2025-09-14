@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link as RouterLink } from 'react-router-dom';
+import { getNextRegistrationDate } from '../utils/dateUtils';
 import {
   Box,
   Typography,
@@ -41,7 +42,7 @@ const HomePage = () => {
   const dispatch = useDispatch();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { queueStatus, isLoading, currentQueue, isQueueOpen } = useSelector((state) => state.queue);
+  const { queueStatus, isLoading, currentQueue, isQueueOpen, isFull } = useSelector((state) => state.queue);
   const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -140,8 +141,8 @@ const HomePage = () => {
           <QueueStatusDisplay queueStatus={queueStatus} isLoading={isLoading} />
         </Grid>
 
-        {/* 當公開候位登記開啟時或管理員登入時才顯示候位登記功能 */}
-        {(queueStatus?.publicRegistrationEnabled || isAuthenticated) && (
+        {/* 當公開候位登記開啟時或管理員登入時才顯示候位登記功能，且未額滿 */}
+        {(queueStatus?.publicRegistrationEnabled || isAuthenticated) && !isFull && (
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
@@ -164,6 +165,22 @@ const HomePage = () => {
                   立即候位
                 </Button>
               </CardActions>
+            </Card>
+          </Grid>
+        )}
+
+        {/* 當候位已額滿時顯示額滿提示卡片 */}
+        {((queueStatus?.publicRegistrationEnabled || isAuthenticated) && isFull) && (
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h4" component="div" gutterBottom sx={{ fontSize: { xs: '1.4rem', md: '1.6rem' } }}>
+                  本次報名已額滿
+                </Typography>
+                <Typography variant="body1" color="text.secondary" paragraph sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}>
+                  本次預約人數已達上限，敬請報名下次開科辦事，下次開科辦事開放報名時間為{getNextRegistrationDate(queueStatus?.nextSessionDate)}中午12:00整
+                </Typography>
+              </CardContent>
             </Card>
           </Grid>
         )}

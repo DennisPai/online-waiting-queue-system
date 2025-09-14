@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Container,
   Typography,
@@ -10,6 +10,10 @@ import {
   Card,
   CardContent
 } from '@mui/material';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { getQueueStatus } from '../redux/slices/queueSlice';
+import { getNextRegistrationDate } from '../utils/dateUtils';
 import { useRegistrationForm } from '../hooks/useRegistrationForm';
 import {
   BasicInfoSection,
@@ -20,6 +24,12 @@ import {
 } from '../components/registration';
 
 const RegisterPage = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { queueStatus, isFull } = useSelector((state) => state.queue);
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
+  const [showFullMessage, setShowFullMessage] = useState(false);
+
   const {
     // 狀態
     formData,
@@ -45,6 +55,49 @@ const RegisterPage = () => {
     handleSubmit,
     handleBackToHome
   } = useRegistrationForm();
+
+  // 檢查候位狀態
+  useEffect(() => {
+    dispatch(getQueueStatus());
+  }, [dispatch]);
+
+  // 處理額滿狀態的跳轉邏輯
+  useEffect(() => {
+    if (isFull) {
+      setShowFullMessage(true);
+      const timer = setInterval(() => {
+        setRedirectCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            navigate('/');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }
+  }, [isFull, navigate]);
+
+  // 如果已額滿，顯示提示訊息
+  if (showFullMessage && isFull) {
+    return (
+      <Container maxWidth="md">
+        <Box sx={{ my: 4, textAlign: 'center' }}>
+          <Typography variant="h4" component="h1" gutterBottom color="error">
+            本次報名已額滿
+          </Typography>
+          <Typography variant="h6" component="h2" color="text.secondary" paragraph>
+            本次預約人數已達上限，敬請報名下次開科辦事，下次開科辦事開放報名時間為{getNextRegistrationDate(queueStatus?.nextSessionDate)}中午12:00整
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            將在 {redirectCountdown} 秒後自動返回首頁...
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
 
   // 如果顯示成功頁面
   if (showSuccessPage) {

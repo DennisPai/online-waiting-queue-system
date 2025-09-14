@@ -45,6 +45,11 @@ exports.getQueueStatus = async (req, res) => {
     
     // 若辦事服務已停止，返回相關資訊但仍包含publicRegistrationEnabled狀態
     if (!settings.isQueueOpen) {
+      // 即使系統關閉，也計算活躍候位人數供前端使用
+      const activeQueueCount = await WaitingRecord.countDocuments({
+        status: { $ne: 'cancelled' }
+      });
+      
       return res.status(200).json({
         success: true,
         data: {
@@ -58,6 +63,8 @@ exports.getQueueStatus = async (req, res) => {
           waitingCount: 0,
           totalCustomerCount: settings.totalCustomerCount || 0,
           lastCompletedTime: settings.lastCompletedTime,
+          activeQueueCount,
+          isFull: activeQueueCount >= settings.maxQueueNumber,
           message: '辦事服務目前已停止'
         }
       });
@@ -79,6 +86,11 @@ exports.getQueueStatus = async (req, res) => {
     // 計算等待中的候位數量（後台管理中狀態為"等待中"的總數）
     const waitingCount = await WaitingRecord.countDocuments({ 
       status: 'waiting'
+    });
+    
+    // 計算活躍候位人數（排除已取消的，用於額滿檢查）
+    const activeQueueCount = await WaitingRecord.countDocuments({
+      status: { $ne: 'cancelled' }
     });
     
     // 計算所有客戶的總人數（用於預估結束時間計算，包含處理中+等待中+已完成）
@@ -109,6 +121,8 @@ exports.getQueueStatus = async (req, res) => {
         lastCompletedTime: settings.lastCompletedTime,
         nextSessionDate: settings.nextSessionDate,
         estimatedEndTime: estimatedEndTime ? estimatedEndTime.toISOString() : null,
+        activeQueueCount,
+        isFull: activeQueueCount >= settings.maxQueueNumber,
         message: `目前叫號: ${currentQueueNumber}, 等待組數: ${waitingCount}`
       }
     });
