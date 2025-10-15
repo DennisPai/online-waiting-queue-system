@@ -45,16 +45,17 @@ exports.getQueueStatus = async (req, res) => {
     
     // 若辦事服務已停止，返回相關資訊但仍包含publicRegistrationEnabled狀態
     if (!settings.isQueueOpen) {
-      // 即使系統關閉，也計算活躍候位人數供前端使用
-      const activeQueueCount = await WaitingRecord.countDocuments({
-        status: { $ne: 'cancelled' }
-      });
+      // 即使系統關閉，也計算目前最大的 orderIndex
+      const maxOrderIndexRecord = await WaitingRecord.findOne({
+        status: { $in: ['waiting', 'processing'] }
+      }).sort({ orderIndex: -1 });
+      const currentMaxOrderIndex = maxOrderIndexRecord ? maxOrderIndexRecord.orderIndex : 0;
       
       return res.status(200).json({
         success: true,
         data: {
           isOpen: false,
-          maxQueueNumber: settings.maxQueueNumber,
+          maxOrderIndex: settings.maxOrderIndex,
           minutesPerCustomer: settings.minutesPerCustomer,
           simplifiedMode: settings.simplifiedMode,
           publicRegistrationEnabled: settings.publicRegistrationEnabled,
@@ -63,8 +64,8 @@ exports.getQueueStatus = async (req, res) => {
           waitingCount: 0,
           totalCustomerCount: settings.totalCustomerCount || 0,
           lastCompletedTime: settings.lastCompletedTime,
-          activeQueueCount,
-          isFull: activeQueueCount >= settings.maxQueueNumber,
+          currentMaxOrderIndex,
+          isFull: currentMaxOrderIndex >= settings.maxOrderIndex,
           message: '辦事服務目前已停止'
         }
       });
@@ -88,10 +89,11 @@ exports.getQueueStatus = async (req, res) => {
       status: 'waiting'
     });
     
-    // 計算活躍候位人數（排除已取消的，用於額滿檢查）
-    const activeQueueCount = await WaitingRecord.countDocuments({
-      status: { $ne: 'cancelled' }
-    });
+    // 計算目前最大的 orderIndex（用於額滿檢查）
+    const maxOrderIndexRecord = await WaitingRecord.findOne({
+      status: { $in: ['waiting', 'processing'] }
+    }).sort({ orderIndex: -1 });
+    const currentMaxOrderIndex = maxOrderIndexRecord ? maxOrderIndexRecord.orderIndex : 0;
     
     // 計算所有客戶的總人數（用於預估結束時間計算，包含處理中+等待中+已完成）
     const allActiveRecords = await WaitingRecord.find({
@@ -112,7 +114,7 @@ exports.getQueueStatus = async (req, res) => {
       data: {
         isOpen: settings.isQueueOpen,
         currentQueueNumber: currentQueueNumber,
-        maxQueueNumber: settings.maxQueueNumber,
+        maxOrderIndex: settings.maxOrderIndex,
         minutesPerCustomer: settings.minutesPerCustomer,
         simplifiedMode: settings.simplifiedMode,
         publicRegistrationEnabled: settings.publicRegistrationEnabled,
@@ -121,8 +123,8 @@ exports.getQueueStatus = async (req, res) => {
         lastCompletedTime: settings.lastCompletedTime,
         nextSessionDate: settings.nextSessionDate,
         estimatedEndTime: estimatedEndTime ? estimatedEndTime.toISOString() : null,
-        activeQueueCount,
-        isFull: activeQueueCount >= settings.maxQueueNumber,
+        currentMaxOrderIndex,
+        isFull: currentMaxOrderIndex >= settings.maxOrderIndex,
         message: `目前叫號: ${currentQueueNumber}, 等待組數: ${waitingCount}`
       }
     });
@@ -304,11 +306,12 @@ exports.registerQueue = async (req, res) => {
     */
     
     // 檢查候位是否已額滿（使用與getQueueStatus一致的邏輯）
-    const activeQueueCount = await WaitingRecord.countDocuments({
-      status: { $ne: 'cancelled' }
-    });
+    const maxOrderIndexRecord = await WaitingRecord.findOne({
+      status: { $in: ['waiting', 'processing'] }
+    }).sort({ orderIndex: -1 });
+    const currentMaxOrderIndex = maxOrderIndexRecord ? maxOrderIndexRecord.orderIndex : 0;
     
-    if (activeQueueCount >= settings.maxQueueNumber) {
+    if (currentMaxOrderIndex >= settings.maxOrderIndex) {
       return res.status(403).json({
         success: false,
         message: '今日候位已滿，請下次再來'

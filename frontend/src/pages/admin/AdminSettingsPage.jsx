@@ -21,7 +21,7 @@ import {
   toggleQueueStatus,
   setNextSessionDate,
   getQueueStatus,
-  setMaxQueueNumber,
+  setMaxOrderIndex,
   setMinutesPerCustomer,
   setSimplifiedMode,
   setPublicRegistrationEnabled
@@ -33,7 +33,7 @@ const AdminSettingsPage = () => {
   const { queueStatus, isLoading, error } = useSelector((state) => state.queue);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [nextSessionDateString, setNextSessionDateString] = useState('');
-  const [maxQueueNumber, setMaxQueueNumberLocal] = useState(100);
+  const [maxOrderIndex, setMaxOrderIndexLocal] = useState(100);
   const [minutesPerCustomer, setMinutesPerCustomerLocal] = useState(13);
   const [simplifiedMode, setSimplifiedModeLocal] = useState(false);
   const [publicRegistrationEnabled, setPublicRegistrationEnabledLocal] = useState(false);
@@ -106,8 +106,8 @@ const AdminSettingsPage = () => {
           setNextSessionDateString(result.nextSessionDate);
         }
         
-        if (result.maxQueueNumber) {
-          setMaxQueueNumberLocal(result.maxQueueNumber);
+        if (result.maxOrderIndex) {
+          setMaxOrderIndexLocal(result.maxOrderIndex);
         }
         
         if (result.minutesPerCustomer) {
@@ -244,24 +244,24 @@ const AdminSettingsPage = () => {
     }
   };
 
-  // 處理設定最大候位上限
-  const handleSetMaxQueueNumber = () => {
-    if (!maxQueueNumber || maxQueueNumber < 1) {
+  // 處理設定最大叫號順序上限
+  const handleSetMaxOrderIndex = () => {
+    if (!maxOrderIndex || maxOrderIndex < 1) {
       dispatch(
         showAlert({
-          message: '請輸入有效的最大候位上限（必須大於0）',
+          message: '請輸入有效的最大叫號順序上限（必須大於0）',
           severity: 'warning'
         })
       );
       return;
     }
 
-    dispatch(setMaxQueueNumber(maxQueueNumber))
+    dispatch(setMaxOrderIndex(maxOrderIndex))
       .unwrap()
       .then(() => {
         dispatch(
           showAlert({
-            message: '最大候位上限設定成功',
+            message: '最大叫號順序上限設定成功',
             severity: 'success'
           })
         );
@@ -276,11 +276,11 @@ const AdminSettingsPage = () => {
       });
   };
 
-  // 處理最大候位上限輸入變更
-  const handleMaxQueueNumberChange = (event) => {
+  // 處理最大叫號順序上限輸入變更
+  const handleMaxOrderIndexChange = (event) => {
     const value = parseInt(event.target.value);
     if (!isNaN(value) && value >= 1) {
-      setMaxQueueNumberLocal(value);
+      setMaxOrderIndexLocal(value);
     }
   };
 
@@ -472,34 +472,34 @@ const AdminSettingsPage = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                最大候位上限設置
+                最大叫號順序上限設置
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <TextField
-                  label="最大候位上限"
+                  label="最大叫號順序"
                   type="number"
-                  value={maxQueueNumber}
-                  onChange={handleMaxQueueNumberChange}
+                  value={maxOrderIndex}
+                  onChange={handleMaxOrderIndexChange}
                   fullWidth
                   inputProps={{ min: 1 }}
-                  helperText="設定候位總數的最大數量限制（不包含已取消的候位）"
+                  helperText="設定每日候位的最大叫號順序限制"
                 />
               </Box>
               <Box sx={{ mt: 2 }}>
                 <Button
                   variant="contained"
                   color="primary"
-                  onClick={handleSetMaxQueueNumber}
-                  disabled={!maxQueueNumber || maxQueueNumber < 1}
+                  onClick={handleSetMaxOrderIndex}
+                  disabled={!maxOrderIndex || maxOrderIndex < 1}
                 >
-                  設定最大候位上限
+                  設定最大叫號順序上限
                 </Button>
               </Box>
               <Box sx={{ mt: 2 }}>
                 <Alert severity="info">
-                  目前最大候位上限設定為：{maxQueueNumber} 人
+                  目前最大叫號順序設定為：{maxOrderIndex} 位
                   <br />
-                  當候位總數（活躍候位人數）達到此上限時，系統將不接受新的候位申請
+                  當叫號順序達到此上限時，系統將不接受新的候位申請
                 </Alert>
               </Box>
             </Paper>

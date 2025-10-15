@@ -306,8 +306,8 @@ const toggleQueueStatus = async (isOpen, token) => {
   }
 };
 
-// 設定最大候位上限
-const setMaxQueueNumber = async (maxQueueNumber, token) => {
+// 設定最大叫號順序上限
+const setMaxOrderIndex = async (maxOrderIndex, token) => {
   try {
     const config = {
       headers: {
@@ -315,13 +315,13 @@ const setMaxQueueNumber = async (maxQueueNumber, token) => {
       }
     };
     const response = await axios.put(
-      `${API_ENDPOINTS.ADMIN}/settings/max-queue-number`,
-      { maxQueueNumber },
+      `${API_ENDPOINTS.ADMIN}/settings/max-order-index`,
+      { maxOrderIndex },
       config
     );
     return response.data;
   } catch (error) {
-    console.error('設定最大候位上限錯誤:', error);
+    console.error('設定最大叫號順序上限錯誤:', error);
     throw error;
   }
 };
@@ -493,7 +493,7 @@ const queueService = {
   updateQueueOrder,
   setNextSessionDate,
   toggleQueueStatus,
-  setMaxQueueNumber,
+  setMaxOrderIndex,
   updateQueueData,
   deleteCustomer,
   setMinutesPerCustomer,

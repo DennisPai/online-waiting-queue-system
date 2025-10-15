@@ -384,12 +384,13 @@ class QueueService {
    * 私有方法：檢查候位系統可用性
    */
   async checkQueueAvailability(settings) {
-    // 使用與getQueueStatus一致的邏輯：計算活躍候位人數（排除已取消的）
-    const activeQueueCount = await WaitingRecord.countDocuments({
-      status: { $ne: 'cancelled' }
-    });
+    // 使用與getQueueStatus一致的邏輯：計算目前最大的 orderIndex
+    const maxOrderIndexRecord = await WaitingRecord.findOne({
+      status: { $in: ['waiting', 'processing'] }
+    }).sort({ orderIndex: -1 });
+    const currentMaxOrderIndex = maxOrderIndexRecord ? maxOrderIndexRecord.orderIndex : 0;
     
-    if (activeQueueCount >= settings.maxQueueNumber) {
+    if (currentMaxOrderIndex >= settings.maxOrderIndex) {
       throw ApiError.forbidden('今日候位已滿，請下次再來');
     }
   }

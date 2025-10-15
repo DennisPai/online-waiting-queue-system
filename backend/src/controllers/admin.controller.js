@@ -341,47 +341,49 @@ exports.toggleQueueStatus = async (req, res) => {
   }
 };
 
-// 設定最大候位上限
-exports.setMaxQueueNumber = async (req, res) => {
+// 設定最大叫號順序上限
+exports.setMaxOrderIndex = async (req, res) => {
   try {
-    const { maxQueueNumber } = req.body;
+    const { maxOrderIndex } = req.body;
     
-    if (!Number.isInteger(maxQueueNumber) || maxQueueNumber < 1) {
+    if (!Number.isInteger(maxOrderIndex) || maxOrderIndex < 1) {
       return res.status(400).json({
         success: false,
-        message: '最大候位上限必須是大於0的整數'
+        message: '最大叫號順序上限必須是大於0的整數'
       });
     }
     
     // 獲取系統設定
     const settings = await SystemSetting.getSettings();
     
-    // 檢查是否有候位數量超過新設定的上限
-    const currentMaxQueueNumber = await WaitingRecord.findOne().sort({ queueNumber: -1 }).limit(1);
-    const currentMax = currentMaxQueueNumber ? currentMaxQueueNumber.queueNumber : 0;
+    // 檢查目前最大的 orderIndex 是否超過新設定的上限
+    const maxOrderIndexRecord = await WaitingRecord.findOne({
+      status: { $in: ['waiting', 'processing'] }
+    }).sort({ orderIndex: -1 });
+    const currentMaxOrderIndex = maxOrderIndexRecord ? maxOrderIndexRecord.orderIndex : 0;
     
-    if (currentMax > maxQueueNumber) {
+    if (currentMaxOrderIndex > maxOrderIndex) {
       return res.status(400).json({
         success: false,
-        message: `無法設定，目前最大候位號碼為 ${currentMax}，新上限不能小於此數字`
+        message: `無法設定，目前最大叫號順序為 ${currentMaxOrderIndex}，新上限不能小於此數字`
       });
     }
     
-    // 更新最大候位上限
-    settings.maxQueueNumber = maxQueueNumber;
+    // 更新最大叫號順序上限
+    settings.maxOrderIndex = maxOrderIndex;
     settings.updatedBy = req.user.id;
     
     await settings.save();
     
     res.status(200).json({
       success: true,
-      message: `最大候位上限已設定為 ${maxQueueNumber}`,
+      message: `最大叫號順序上限已設定為 ${maxOrderIndex}`,
       data: {
-        maxQueueNumber: settings.maxQueueNumber
+        maxOrderIndex: settings.maxOrderIndex
       }
     });
   } catch (error) {
-    console.error('設定最大候位上限錯誤:', error);
+    console.error('設定最大叫號順序上限錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',
@@ -847,12 +849,12 @@ exports.clearAllQueue = async (req, res) => {
     // 刪除所有候位記錄
     await WaitingRecord.deleteMany({});
     
-    // 重置系統設定中的當前叫號，確保maxQueueNumber為合理值
+    // 重置系統設定中的當前叫號，確保maxOrderIndex為合理值
     const settings = await SystemSetting.getSettings();
     settings.currentQueueNumber = 0;
-    // 確保maxQueueNumber不為0，如果為0則重置為預設值100
-    if (settings.maxQueueNumber <= 0) {
-      settings.maxQueueNumber = 100;
+    // 確保maxOrderIndex不為0，如果為0則重置為預設值100
+    if (settings.maxOrderIndex <= 0) {
+      settings.maxOrderIndex = 100;
     }
     await settings.save();
     
@@ -865,7 +867,7 @@ exports.clearAllQueue = async (req, res) => {
         deletedCount: totalCustomers,
         resetSystemSettings: {
           currentQueueNumber: 0,
-          maxQueueNumber: settings.maxQueueNumber
+          maxOrderIndex: settings.maxOrderIndex
         }
       }
     });

@@ -13,9 +13,9 @@ const systemSettingSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  maxQueueNumber: {
+  maxOrderIndex: {
     type: Number,
-    default: 100
+    default: 100  // 最大叫號順序上限
   },
   minutesPerCustomer: {
     type: Number,
@@ -57,7 +57,7 @@ systemSettingSchema.statics.getSettings = async function() {
       nextSessionDate: new Date(),
       isQueueOpen: true,
       currentQueueNumber: 0,
-      maxQueueNumber: 100,
+      maxOrderIndex: 100,
       minutesPerCustomer: 13,
       simplifiedMode: false,
       publicRegistrationEnabled: false,
@@ -97,6 +97,13 @@ systemSettingSchema.statics.getSettings = async function() {
         console.log(`初始化 lastCompletedTime: ${updateFields.lastCompletedTime} (無已完成客戶)`);
       }
       needsUpdate = true;
+    }
+    
+    // 欄位遷移：maxQueueNumber → maxOrderIndex
+    if (settings.maxOrderIndex === undefined && settings.maxQueueNumber !== undefined) {
+      updateFields.maxOrderIndex = settings.maxQueueNumber;
+      needsUpdate = true;
+      console.log(`遷移欄位 maxQueueNumber → maxOrderIndex: ${settings.maxQueueNumber}`);
     }
     
     if (needsUpdate) {

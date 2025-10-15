@@ -21,8 +21,8 @@ const initialState = {
   currentQueueStatus: null,
   maxOrderIndex: 0, // 新增：目前最大的叫號順序
   maxOrderMessage: '', // 新增：最大叫號順序的提醒訊息
-  activeQueueCount: 0, // 新增：活躍候位人數
-  maxQueueNumber: 100, // 新增：最大候位上限
+  currentMaxOrderIndex: 0, // 新增：目前系統中最大的叫號順序
+  maxOrderIndexLimit: 100, // 新增：最大叫號順序上限
   isFull: false, // 新增：是否已額滿
   isLoading: false,
   error: null
@@ -160,17 +160,17 @@ export const toggleQueueStatus = createAsyncThunk(
   }
 );
 
-// 設定最大候位上限（管理員）
-export const setMaxQueueNumber = createAsyncThunk(
-  'queue/setMaxQueueNumber',
-  async (maxQueueNumber, { rejectWithValue, getState }) => {
+// 設定最大叫號順序上限（管理員）
+export const setMaxOrderIndex = createAsyncThunk(
+  'queue/setMaxOrderIndex',
+  async (maxOrderIndex, { rejectWithValue, getState }) => {
     try {
       const { token } = getState().auth;
-      const response = await queueService.setMaxQueueNumber(maxQueueNumber, token);
+      const response = await queueService.setMaxOrderIndex(maxOrderIndex, token);
       // queueService 已經處理了 v1 格式，直接回傳
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || '設定最大候位上限失敗');
+      return rejectWithValue(error.response?.data?.message || '設定最大叫號順序上限失敗');
     }
   }
 );
@@ -430,8 +430,8 @@ const queueSlice = createSlice({
         state.isQueueOpen = action.payload.isOpen;
         
         // 更新容量相關狀態（無論系統開啟或關閉都需要）
-        state.activeQueueCount = action.payload.activeQueueCount || 0;
-        state.maxQueueNumber = action.payload.maxQueueNumber || 100;
+        state.currentMaxOrderIndex = action.payload.currentMaxOrderIndex || 0;
+        state.maxOrderIndexLimit = action.payload.maxOrderIndex || 100;
         state.isFull = action.payload.isFull || false;
         
         if (action.payload.isOpen) {
@@ -579,19 +579,20 @@ const queueSlice = createSlice({
         state.error = action.payload;
       })
       
-      // 設定最大候位上限（管理員）
-      .addCase(setMaxQueueNumber.pending, (state) => {
+      // 設定最大叫號順序上限（管理員）
+      .addCase(setMaxOrderIndex.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(setMaxQueueNumber.fulfilled, (state, action) => {
+      .addCase(setMaxOrderIndex.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 更新系統設定中的最大候位上限
+        // 更新系統設定中的最大叫號順序上限
         state.queueStatus = {
           ...state.queueStatus,
-          maxQueueNumber: action.payload.maxQueueNumber
+          maxOrderIndex: action.payload.maxOrderIndex
         };
+        state.maxOrderIndexLimit = action.payload.maxOrderIndex;
       })
-      .addCase(setMaxQueueNumber.rejected, (state, action) => {
+      .addCase(setMaxOrderIndex.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })

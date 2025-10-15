@@ -27,7 +27,7 @@
 2) 後台
 - 候位列表（拖曳排序、快速完成移末尾、取消/復原、編輯、刪除、匯出）
 - 叫號（更新 `currentQueueNumber`）
-- 設定（`isQueueOpen`、`nextSessionDate`、`maxQueueNumber`、`minutesPerCustomer`、`simplifiedMode`、`publicRegistrationEnabled`）
+- 設定（`isQueueOpen`、`nextSessionDate`、`maxOrderIndex`、`minutesPerCustomer`、`simplifiedMode`、`publicRegistrationEnabled`）
 - 變更密碼功能（保留預設 admin/admin123；不強制首次登入）
 
 3) 系統/平台

@@ -19,6 +19,54 @@
 
 ## 🗓️ 開發時間線
 
+### 2025-10-15 - 候位上限邏輯重構
+
+**問題**：原本的 `maxQueueNumber` 限制所有未取消的客戶數量（包含等待中、處理中、已完成），導致已完成的客戶仍佔用候位名額，使得當日額滿後即使有客戶完成也無法接受新客戶
+
+**解決方案**：
+- 將 `maxQueueNumber` 欄位改名為 `maxOrderIndex`
+- 改為限制最大的叫號順序（orderIndex）值，而非所有客戶數量
+- 額滿判斷邏輯：`currentMaxOrderIndex >= maxOrderIndex`（僅計算等待中和處理中的客戶）
+- 已完成的客戶不再佔用候位名額
+
+**實施細節**：
+```javascript
+// 舊邏輯
+const activeQueueCount = await WaitingRecord.countDocuments({
+  status: { $ne: 'cancelled' }
+});
+if (activeQueueCount >= settings.maxQueueNumber) { /* 額滿 */ }
+
+// 新邏輯
+const maxOrderIndexRecord = await WaitingRecord.findOne({
+  status: { $in: ['waiting', 'processing'] }
+}).sort({ orderIndex: -1 });
+const currentMaxOrderIndex = maxOrderIndexRecord ? maxOrderIndexRecord.orderIndex : 0;
+if (currentMaxOrderIndex >= settings.maxOrderIndex) { /* 額滿 */ }
+```
+
+**資料庫遷移**：
+- SystemSetting 模型添加自動遷移邏輯，將舊的 `maxQueueNumber` 值遷移到新的 `maxOrderIndex`
+- 遷移在 `getSettings()` 方法中自動執行，無需手動操作
+
+**影響範圍**：
+- 後端：`system-setting.model.js`, `queue.controller.js`, `admin.controller.js`, `QueueService.js`
+- 後端路由：`admin.routes.js`, `v1/admin.routes.js`（端點從 `/settings/max-queue-number` 改為 `/settings/max-order-index`）
+- 前端Redux：`queueSlice.js`（state 欄位：`activeQueueCount` → `currentMaxOrderIndex`, `maxQueueNumber` → `maxOrderIndexLimit`）
+- 前端Service：`queueService.js`（函數改名：`setMaxQueueNumber` → `setMaxOrderIndex`）
+- 前端頁面：`AdminSettingsPage.jsx`（UI 文字更新為"最大叫號順序上限"）
+
+**經驗教訓**：
+- ⚠️ **欄位重命名需要全面更新**：資料庫模型、API、前後端邏輯、UI 文字都要同步
+- 💡 **資料遷移很重要**：在模型的 `getSettings()` 中添加自動遷移邏輯，確保現有系統平滑升級
+- 🔧 **語意清晰**：`maxOrderIndex` 比 `maxQueueNumber` 更清楚地表達"限制叫號順序"的含義
+
+**向後兼容**：
+- 資料庫自動遷移確保現有資料不會丟失
+- API 端點路徑變更但邏輯相容
+
+---
+
 ### 2025-01-14 - 客戶搜尋功能修復 (Array格式問題)
 
 **背景**：客戶查詢功能出現"records不是陣列格式，實際類型：object"錯誤

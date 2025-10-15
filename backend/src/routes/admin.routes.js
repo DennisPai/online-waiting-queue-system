@@ -92,14 +92,14 @@ router.put(
   adminController.toggleQueueStatus
 );
 
-// 設定最大候位上限
+// 設定最大叫號順序上限
 router.put(
-  '/settings/maxQueueNumber',
+  '/settings/maxOrderIndex',
   [
-    body('maxQueueNumber').isInt({ min: 1 }).withMessage('最大候位上限必須是大於0的整數')
+    body('maxOrderIndex').isInt({ min: 1 }).withMessage('最大叫號順序上限必須是大於0的整數')
   ],
   validateRequest,
-  adminController.setMaxQueueNumber
+  adminController.setMaxOrderIndex
 );
 
 // 設定每位客戶預估處理時間

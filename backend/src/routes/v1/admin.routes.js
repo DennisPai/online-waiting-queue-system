@@ -48,7 +48,7 @@ router.put(
 
 router.put('/settings/next-session', [body('nextSessionDate').notEmpty()], validateRequest, adminController.setNextSessionDate);
 router.put('/settings/queue-status', [body('isOpen').isBoolean()], validateRequest, adminController.toggleQueueStatus);
-router.put('/settings/max-queue-number', [body('maxQueueNumber').isInt({ min: 1 })], validateRequest, adminController.setMaxQueueNumber);
+router.put('/settings/max-order-index', [body('maxOrderIndex').isInt({ min: 1 })], validateRequest, adminController.setMaxOrderIndex);
 router.put('/settings/minutes-per-customer', [body('minutesPerCustomer').isInt({ min: 1, max: 120 })], validateRequest, adminController.setMinutesPerCustomer);
 router.put('/settings/simplified-mode', [body('simplifiedMode').isBoolean()], validateRequest, adminController.setSimplifiedMode);
 router.put('/settings/public-registration-enabled', [body('publicRegistrationEnabled').isBoolean()], validateRequest, adminController.setPublicRegistrationEnabled);
