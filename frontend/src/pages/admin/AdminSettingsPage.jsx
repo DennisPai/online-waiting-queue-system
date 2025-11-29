@@ -35,7 +35,8 @@ import {
   setMinutesPerCustomer,
   setSimplifiedMode,
   setPublicRegistrationEnabled,
-  updateEventBanner
+  updateEventBanner,
+  getEventBanner
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
 
@@ -447,6 +448,8 @@ const AdminSettingsPage = () => {
             severity: 'success'
           })
         );
+        // 重新載入最新設定，確保資料同步
+        dispatch(getEventBanner());
       })
       .catch((error) => {
         dispatch(

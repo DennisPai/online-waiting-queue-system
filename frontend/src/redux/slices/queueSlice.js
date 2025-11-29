@@ -696,16 +696,17 @@ const queueSlice = createSlice({
       })
       .addCase(getEventBanner.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 獲取活動報名區塊設定
-        state.eventBanner = action.payload;
+        // 獲取活動報名區塊設定 - 處理可能的兩種格式
+        state.eventBanner = action.payload.eventBanner || action.payload;
       })
       .addCase(updateEventBanner.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 更新活動報名區塊設定
-        state.eventBanner = action.payload;
+        // 更新活動報名區塊設定 - 處理可能的兩種格式
+        const newEventBanner = action.payload.eventBanner || action.payload;
+        state.eventBanner = newEventBanner;
         // 同時更新 queueStatus 中的 eventBanner
         if (state.queueStatus) {
-          state.queueStatus.eventBanner = action.payload.eventBanner;
+          state.queueStatus.eventBanner = newEventBanner;
         }
       })
       .addCase(updateEventBanner.rejected, (state, action) => {
