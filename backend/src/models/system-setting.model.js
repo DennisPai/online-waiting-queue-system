@@ -83,6 +83,10 @@ const systemSettingSchema = new mongoose.Schema({
     buttonColor: {
       type: String,
       default: '#1976d2'
+    },
+    buttonTextColor: {
+      type: String,
+      default: '#ffffff'
     }
   },
   updatedBy: {
@@ -163,7 +167,8 @@ systemSettingSchema.statics.getSettings = async function() {
         backgroundColor: '#ffffff',
         buttonText: '點我填寫報名表單',
         buttonUrl: 'https://www.google.com',
-        buttonColor: '#1976d2'
+        buttonColor: '#1976d2',
+        buttonTextColor: '#ffffff'
       };
       needsUpdate = true;
       console.log('初始化 eventBanner 設定');
@@ -179,6 +184,11 @@ systemSettingSchema.statics.getSettings = async function() {
       
       if (settings.eventBanner.backgroundColor === undefined) {
         updatedEventBanner.backgroundColor = '#ffffff';
+        eventBannerNeedsUpdate = true;
+      }
+      
+      if (settings.eventBanner.buttonTextColor === undefined) {
+        updatedEventBanner.buttonTextColor = '#ffffff';
         eventBannerNeedsUpdate = true;
       }
       

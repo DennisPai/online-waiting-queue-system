@@ -64,7 +64,8 @@ router.put('/settings/event-banner', [
   body('backgroundColor').optional().isString().trim(),
   body('buttonText').optional().isString().trim(),
   body('buttonUrl').optional().isURL(),
-  body('buttonColor').optional().isString().trim()
+  body('buttonColor').optional().isString().trim(),
+  body('buttonTextColor').optional().isString().trim()
 ], validateRequest, adminController.updateEventBanner);
 
 router.delete('/queue/clear-all', adminController.clearAllQueue);

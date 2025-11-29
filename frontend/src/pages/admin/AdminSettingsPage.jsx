@@ -60,7 +60,8 @@ const AdminSettingsPage = () => {
     backgroundColor: '#ffffff',
     buttonText: '點我填寫報名表單',
     buttonUrl: 'https://www.google.com',
-    buttonColor: '#1976d2'
+    buttonColor: '#1976d2',
+    buttonTextColor: '#ffffff'
   });
 
   // 安全的日期格式化函數
@@ -159,7 +160,8 @@ const AdminSettingsPage = () => {
             backgroundColor: result.eventBanner.backgroundColor ?? '#ffffff',
             buttonText: result.eventBanner.buttonText ?? '點我填寫報名表單',
             buttonUrl: result.eventBanner.buttonUrl ?? 'https://www.google.com',
-            buttonColor: result.eventBanner.buttonColor ?? '#1976d2'
+            buttonColor: result.eventBanner.buttonColor ?? '#1976d2',
+            buttonTextColor: result.eventBanner.buttonTextColor ?? '#ffffff'
           });
         }
       })
@@ -186,7 +188,8 @@ const AdminSettingsPage = () => {
         backgroundColor: eventBanner.backgroundColor ?? '#ffffff',
         buttonText: eventBanner.buttonText ?? '點我填寫報名表單',
         buttonUrl: eventBanner.buttonUrl ?? 'https://www.google.com',
-        buttonColor: eventBanner.buttonColor ?? '#1976d2'
+        buttonColor: eventBanner.buttonColor ?? '#1976d2',
+        buttonTextColor: eventBanner.buttonTextColor ?? '#ffffff'
       });
     }
   }, [eventBanner]);
@@ -869,15 +872,28 @@ const AdminSettingsPage = () => {
                     sx={{ mb: 2 }}
                   />
                   
-                  <TextField
-                    fullWidth
-                    label="按鈕顏色"
-                    type="color"
-                    value={eventBannerData.buttonColor}
-                    onChange={(e) => setEventBannerData({...eventBannerData, buttonColor: e.target.value})}
-                    helperText="選擇按鈕的背景顏色"
-                    sx={{ mb: 2 }}
-                  />
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        label="按鈕背景顏色"
+                        type="color"
+                        value={eventBannerData.buttonColor}
+                        onChange={(e) => setEventBannerData({...eventBannerData, buttonColor: e.target.value})}
+                        helperText="按鈕的背景顏色"
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        label="按鈕文字顏色"
+                        type="color"
+                        value={eventBannerData.buttonTextColor}
+                        onChange={(e) => setEventBannerData({...eventBannerData, buttonTextColor: e.target.value})}
+                        helperText="按鈕上文字的顏色"
+                      />
+                    </Grid>
+                  </Grid>
                   
                   <TextField
                     fullWidth
@@ -930,8 +946,10 @@ const AdminSettingsPage = () => {
                         disabled
                         sx={{
                           bgcolor: eventBannerData.buttonColor,
+                          color: eventBannerData.buttonTextColor,
                           '&.Mui-disabled': {
                             bgcolor: eventBannerData.buttonColor,
+                            color: eventBannerData.buttonTextColor,
                             opacity: 0.8
                           }
                         }}

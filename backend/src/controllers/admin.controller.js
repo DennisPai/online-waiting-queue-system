@@ -841,7 +841,7 @@ exports.setPublicRegistrationEnabled = async (req, res) => {
 // 更新活動報名區塊設定
 exports.updateEventBanner = async (req, res) => {
   try {
-    const { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor } = req.body;
+    const { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor } = req.body;
     
     // 驗證 URL 格式（如果提供）
     if (buttonUrl) {
@@ -898,6 +898,17 @@ exports.updateEventBanner = async (req, res) => {
       }
     }
     
+    // 驗證按鈕文字顏色格式（如果提供）
+    if (buttonTextColor) {
+      const colorRegex = /^#[0-9A-F]{6}$/i;
+      if (!colorRegex.test(buttonTextColor)) {
+        return res.status(400).json({
+          success: false,
+          message: '按鈕文字顏色格式不正確，請使用 hex 格式（例如：#ffffff）'
+        });
+      }
+    }
+    
     // 驗證對齊方式（如果提供）
     if (titleAlign && !['left', 'center', 'right'].includes(titleAlign)) {
       return res.status(400).json({
@@ -929,6 +940,7 @@ exports.updateEventBanner = async (req, res) => {
     if (buttonText !== undefined) settings.eventBanner.buttonText = buttonText;
     if (buttonUrl !== undefined) settings.eventBanner.buttonUrl = buttonUrl;
     if (buttonColor !== undefined) settings.eventBanner.buttonColor = buttonColor;
+    if (buttonTextColor !== undefined) settings.eventBanner.buttonTextColor = buttonTextColor;
     settings.updatedBy = req.user.id;
     
     await settings.save();

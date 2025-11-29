@@ -35,7 +35,8 @@ const initialState = {
     backgroundColor: '#ffffff',
     buttonText: '點我填寫報名表單',
     buttonUrl: 'https://www.google.com',
-    buttonColor: '#1976d2'
+    buttonColor: '#1976d2',
+    buttonTextColor: '#ffffff'
   },
   isLoading: false,
   error: null

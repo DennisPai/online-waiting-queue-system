@@ -16,7 +16,8 @@ const EventBanner = ({ eventBanner }) => {
     backgroundColor = '#ffffff',
     buttonText = '點我填寫報名表單',
     buttonUrl,
-    buttonColor = '#1976d2'
+    buttonColor = '#1976d2',
+    buttonTextColor = '#ffffff'
   } = eventBanner;
 
   return (
@@ -47,8 +48,10 @@ const EventBanner = ({ eventBanner }) => {
           rel="noopener noreferrer"
           sx={{
             bgcolor: buttonColor,
+            color: buttonTextColor,
             '&:hover': { 
               bgcolor: buttonColor,
+              color: buttonTextColor,
               opacity: 0.9
             }
           }}
