@@ -32,7 +32,7 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
         orderIndex: index + 1
       }));
 
-      // 批量更新本地狀態
+      // 批量更新本地狀態（即時反饋）
       const updatedList = localQueueList.map(record => {
         const update = updates.find(u => u.id === record._id);
         return update ? { ...record, orderIndex: update.orderIndex } : record;
@@ -40,13 +40,18 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
 
       setLocalQueueList(updatedList);
 
-      // 發送到後端
-      for (const update of updates) {
-        await dispatch(updateQueueOrder({
-          queueId: update.id,
-          newOrder: update.orderIndex
-        }));
-      }
+      // 使用 Promise.all 並行發送請求到後端
+      await Promise.all(
+        updates.map(update =>
+          dispatch(updateQueueOrder({
+            queueId: update.id,
+            newOrder: update.orderIndex
+          })).unwrap()
+        )
+      );
+
+      // 成功後重新載入列表，確保數據一致性
+      loadQueueList();
 
       dispatch(showAlert({
         message: '候位順序重新排列完成',
@@ -55,12 +60,14 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
 
     } catch (error) {
       console.error('重新排序失敗:', error);
+      // 失敗時也重新載入，恢復到後端的正確狀態
+      loadQueueList();
       dispatch(showAlert({
         message: '重新排序失敗，請稍後再試',
         severity: 'error'
       }));
     }
-  }, [localQueueList, setLocalQueueList, dispatch]);
+  }, [localQueueList, setLocalQueueList, dispatch, loadQueueList]);
 
   // 叫號
   const handleCallNext = useCallback(async () => {

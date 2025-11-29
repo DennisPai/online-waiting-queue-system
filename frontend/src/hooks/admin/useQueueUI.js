@@ -166,6 +166,7 @@ export const useQueueUI = () => {
     handleCloseDialog,
     handleEnterEditMode,
     handleOpenExportDialog,
+    handleExport: handleOpenExportDialog, // 別名以兼容現有代碼
     handleCloseExportDialog,
     handleOpenRegisterDialog,
     handleCloseRegisterDialog,
