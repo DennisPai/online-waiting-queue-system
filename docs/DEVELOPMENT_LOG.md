@@ -19,6 +19,91 @@
 
 ## 🗓️ 開發時間線
 
+### 2025-11-29 - 修復候位登記和叫號功能
+
+**背景**：重構完成後用戶報告兩個關鍵功能問題，影響正常使用。
+
+**問題分析**：
+
+1. **候位登記失敗（「伺服器內部錯誤」）**
+   - **症狀**：前後台候位登記表單填寫完成後無法送出，顯示「伺服器內部錯誤」
+   - **根本原因**：
+     - `WaitingRecord` 模型中 `queueNumber` 是必填欄位（`required: true`）
+     - `QueueService.registerQueue` 的 `processQueueData` 方法中沒有自動生成 `queueNumber`
+     - 雖然模型提供了 `getNextQueueNumber()` 靜態方法，但從未被調用
+     - 導致 MongoDB 創建記錄時拋出驗證錯誤
+   - **解決方案**：在 `registerQueue` 方法中、創建記錄前添加 queueNumber 自動生成邏輯
+
+2. **叫號下一位功能異常**
+   - **症狀**：點擊「叫號下一位」按鈕後跳出錯誤訊息，列表無法正常刷新，需要手動重新整理頁面
+   - **根本原因**：
+     - Redux slice 中 `callNextQueue.fulfilled` 的處理邏輯錯誤
+     - 前端期望的數據結構：`{ queueNumber, record: { _id, ... } }`
+     - 後端實際返回的數據結構：`{ completedCustomer, nextCustomer, currentQueueNumber, lastCompletedTime }`
+     - 數據結構不匹配導致 Redux 狀態更新失敗，前端無法正確刷新列表
+   - **解決方案**：
+     - 修改 Redux 處理邏輯，不在 reducer 中直接操作列表
+     - 只更新系統設定（currentQueueNumber、lastCompletedTime）
+     - 讓前端 Hook 負責重新載入列表，確保 orderIndex 一致性
+
+**技術實施**：
+
+1. **修復 QueueService.registerQueue**（[`backend/src/services/QueueService.js`](backend/src/services/QueueService.js)）：
+   ```javascript
+   // 在 processQueueData 之後、create 之前添加：
+   if (!processedData.queueNumber) {
+     processedData.queueNumber = await WaitingRecord.getNextQueueNumber();
+   }
+   ```
+
+2. **修改 Redux callNextQueue.fulfilled**（[`frontend/src/redux/slices/queueSlice.js`](frontend/src/redux/slices/queueSlice.js)）：
+   ```javascript
+   .addCase(callNextQueue.fulfilled, (state, action) => {
+     state.isLoading = false;
+     // 更新當前叫號和上一位辦完時間
+     if (action.payload.currentQueueNumber) {
+       state.queueStatus = state.queueStatus || {};
+       state.queueStatus.currentQueueNumber = action.payload.currentQueueNumber;
+       state.queueStatus.lastCompletedTime = action.payload.lastCompletedTime;
+     }
+     // 不在這裡更新 queueList，讓前端重新載入列表
+   })
+   ```
+
+3. **改進 useQueueActions.handleCallNext**（[`frontend/src/hooks/admin/useQueueActions.js`](frontend/src/hooks/admin/useQueueActions.js)）：
+   ```javascript
+   const handleCallNext = useCallback(async () => {
+     try {
+       const result = await dispatch(callNextQueue()).unwrap();
+       loadQueueList(); // 立即重新載入列表
+       dispatch(showAlert({
+         message: result.message || '叫號成功',
+         severity: 'success'
+       }));
+     } catch (error) {
+       // 顯示錯誤訊息給用戶
+       dispatch(showAlert({
+         message: error || '叫號失敗',
+         severity: 'error'
+       }));
+     }
+   }, [dispatch, loadQueueList]);
+   ```
+
+**影響範圍**：
+- 修復了前後台的候位登記功能
+- 修復了管理後台的叫號下一位功能
+- 改善了錯誤提示用戶體驗
+- 所有修復通過 linter 檢查
+
+**經驗教訓**：
+1. **數據驗證**：模型必填欄位必須在服務層確保有值
+2. **自動生成**：像 ID、序號這類自動生成的欄位要在服務層明確處理
+3. **數據結構一致性**：前後端數據結構要保持一致，或在服務層統一處理
+4. **Redux 最佳實踐**：複雜的列表更新邏輯應該通過重新載入實現，而非直接操作 state
+
+---
+
 ### 2025-11-29 - 修復重構後的功能問題
 
 **背景**：重構完成後發現三個主要功能問題，需要立即修復。
