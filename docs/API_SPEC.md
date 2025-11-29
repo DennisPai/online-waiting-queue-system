@@ -72,6 +72,11 @@
 - PUT `/api/v1/admin/settings/last-completed-time`
   - body: `{ lastCompletedTime }`
 - POST `/api/v1/admin/settings/reset-completed-time`
+- GET `/api/v1/admin/settings/event-banner`
+  - 200: `{ success, code, message: '獲取活動報名設定成功', data: { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor } }`
+- PUT `/api/v1/admin/settings/event-banner`
+  - body: `{ enabled?, title?, titleSize?, titleColor?, titleAlign?, fontWeight?, backgroundColor?, buttonText?, buttonUrl?, buttonColor?, buttonTextColor? }`
+  - 200: `{ success, code, message: '活動報名區塊設定已更新', data: { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor } }`
 - DELETE `/api/v1/admin/queue/clear-all`
 
 ## 注意事項
