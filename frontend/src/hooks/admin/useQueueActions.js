@@ -15,7 +15,7 @@ import { showAlert } from '../../redux/slices/uiSlice';
  * 候位操作邏輯 Hook
  * 負責候位的各種操作：叫號、更新狀態、排序、刪除等
  */
-export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueList }) => {
+export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueList, setConfirmDialog, handleCloseConfirmDialog }) => {
   const dispatch = useDispatch();
 
   // 重新排序
@@ -173,18 +173,31 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
   }, [localQueueList, setLocalQueueList, dispatch]);
 
   // 清空所有候位
-  const handleClearAllQueue = useCallback(async () => {
-    try {
-      await dispatch(clearAllQueue());
-      dispatch(showAlert({
-        message: '已清空所有候位記錄',
-        severity: 'success'
-      }));
-      loadQueueList();
-    } catch (error) {
-      console.error('清空候位失敗:', error);
-    }
-  }, [dispatch, loadQueueList]);
+  const handleClearAllQueue = useCallback(() => {
+    // 顯示確認對話框
+    setConfirmDialog({
+      open: true,
+      title: '確認清除所有候位',
+      message: '此操作將清空所有候位記錄（包括等待中、已完成、已取消），且無法復原。確定要繼續嗎？',
+      onConfirm: async () => {
+        handleCloseConfirmDialog();
+        try {
+          await dispatch(clearAllQueue()).unwrap();
+          dispatch(showAlert({
+            message: '已清空所有候位記錄',
+            severity: 'success'
+          }));
+          loadQueueList();
+        } catch (error) {
+          console.error('清空候位失敗:', error);
+          dispatch(showAlert({
+            message: '清空候位失敗',
+            severity: 'error'
+          }));
+        }
+      }
+    });
+  }, [dispatch, loadQueueList, setConfirmDialog, handleCloseConfirmDialog]);
 
   // 刪除客戶
   const handleDeleteCustomer = useCallback(async (customerId) => {

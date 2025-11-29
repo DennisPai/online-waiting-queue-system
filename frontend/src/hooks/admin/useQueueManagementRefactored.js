@@ -23,7 +23,9 @@ export const useQueueManagementRefactored = () => {
   const actionsHook = useQueueActions({
     localQueueList: dataHook.localQueueList,
     setLocalQueueList: dataHook.setLocalQueueList,
-    loadQueueList: dataHook.loadQueueList
+    loadQueueList: dataHook.loadQueueList,
+    setConfirmDialog: uiHook.setConfirmDialog,
+    handleCloseConfirmDialog: uiHook.handleCloseConfirmDialog
   });
   
   // 驗證邏輯

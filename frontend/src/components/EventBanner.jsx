@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, Typography, Button } from '@mui/material';
 
-const EventBanner = ({ eventBanner }) => {
+const EventBanner = React.memo(({ eventBanner }) => {
   // 如果未啟用或缺少必要資料，不顯示
   if (!eventBanner?.enabled || !eventBanner.title || !eventBanner.buttonUrl) {
     return null;
@@ -61,7 +61,9 @@ const EventBanner = ({ eventBanner }) => {
       </CardContent>
     </Card>
   );
-};
+});
+
+EventBanner.displayName = 'EventBanner';
 
 export default EventBanner;
 

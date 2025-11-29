@@ -173,6 +173,7 @@ export const useQueueUI = () => {
     handleRegisterSuccess,
 
     // 確認對話框
+    setConfirmDialog,
     handleOpenConfirmDialog,
     handleCloseConfirmDialog,
     handleConfirmAction,

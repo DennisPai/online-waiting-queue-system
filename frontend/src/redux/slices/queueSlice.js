@@ -234,6 +234,20 @@ export const setPublicRegistrationEnabled = createAsyncThunk(
   }
 );
 
+// 獲取活動報名區塊設定
+export const getEventBanner = createAsyncThunk(
+  'queue/getEventBanner',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await queueService.getEventBanner();
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '獲取活動報名設定失敗');
+    }
+  }
+);
+
 // 更新活動報名區塊設定（管理員）
 export const updateEventBanner = createAsyncThunk(
   'queue/updateEventBanner',
@@ -463,11 +477,6 @@ const queueSlice = createSlice({
         state.maxOrderIndexLimit = action.payload.maxOrderIndex || 100;
         state.isFull = action.payload.isFull || false;
         
-        // 同步活動報名區塊設定
-        if (action.payload.eventBanner) {
-          state.eventBanner = action.payload.eventBanner;
-        }
-        
         if (action.payload.isOpen) {
           state.currentQueue = action.payload.currentQueueNumber;
           state.waitingCount = action.payload.waitingCount;
@@ -685,12 +694,15 @@ const queueSlice = createSlice({
       .addCase(updateEventBanner.pending, (state) => {
         state.isLoading = true;
       })
+      .addCase(getEventBanner.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // 獲取活動報名區塊設定
+        state.eventBanner = action.payload;
+      })
       .addCase(updateEventBanner.fulfilled, (state, action) => {
         state.isLoading = false;
         // 更新活動報名區塊設定
-        if (action.payload.eventBanner) {
-          state.eventBanner = action.payload.eventBanner;
-        }
+        state.eventBanner = action.payload;
         // 同時更新 queueStatus 中的 eventBanner
         if (state.queueStatus) {
           state.queueStatus.eventBanner = action.payload.eventBanner;

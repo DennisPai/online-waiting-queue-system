@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import QueueStatusDisplay from '../components/QueueStatusDisplay';
 import EventBanner from '../components/EventBanner';
-import { getQueueStatus, getOrderedQueueNumbers, getPublicOrderedNumbers } from '../redux/slices/queueSlice';
+import { getQueueStatus, getOrderedQueueNumbers, getPublicOrderedNumbers, getEventBanner } from '../redux/slices/queueSlice';
 import { API_ENDPOINTS } from '../config/api';
 
 // 獲取下一個等待的人
@@ -47,8 +47,9 @@ const HomePage = () => {
   const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    // 獲取基本候位狀態
+    // 初始載入（總是執行）
     dispatch(getQueueStatus());
+    dispatch(getEventBanner()); // 載入活動報名設定
     
     // 根據登入狀態選擇適當的API獲取排序候位號碼
     if (isAuthenticated) {
@@ -57,18 +58,25 @@ const HomePage = () => {
       dispatch(getPublicOrderedNumbers());
     }
     
-    // 定期更新資料
-    const intervalId = setInterval(() => {
-      dispatch(getQueueStatus());
-      if (isAuthenticated) {
-        dispatch(getOrderedQueueNumbers());
-      } else {
-        dispatch(getPublicOrderedNumbers());
-      }
-    }, 30000); // 每30秒更新一次
+    // 定期更新資料（僅在開始辦事時）
+    let intervalId;
+    if (isQueueOpen) {
+      intervalId = setInterval(() => {
+        dispatch(getQueueStatus());
+        if (isAuthenticated) {
+          dispatch(getOrderedQueueNumbers());
+        } else {
+          dispatch(getPublicOrderedNumbers());
+        }
+      }, 300000); // 每5分鐘更新一次（300秒 = 300,000毫秒）
+    }
     
-    return () => clearInterval(intervalId);
-  }, [dispatch, isAuthenticated]);
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [dispatch, isAuthenticated, isQueueOpen]);
   
   return (
     <Container maxWidth="lg">
