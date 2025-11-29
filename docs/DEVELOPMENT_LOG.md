@@ -19,6 +19,134 @@
 
 ## 🗓️ 開發時間線
 
+### 2025-11-29 - 新增家人地址同上功能與活動報名區塊
+
+**背景**：用戶請求兩項新功能：1) 在填寫報名表單時為家人地址提供"同上"快速填寫功能，2) 在首頁新增可配置的活動報名宣傳區塊。
+
+**需求分析**：
+
+1. **家人地址"同上"功能**
+   - 適用範圍：前台和後台的所有報名表單（共用 `RegisterForm` 組件）
+   - 核心邏輯：勾選"同上"時自動填入主客戶的第一個地址和地址類型
+   - 取消勾選時保留已填內容，不自動清空
+   - 主客戶未填地址時禁用勾選並顯示提示
+   - 每個家人獨立管理"同上"狀態
+
+2. **活動報名區塊**
+   - 前台顯示：在首頁"下次辦事時間"下方新增Card
+   - 後台管理：新增"活動報名"分頁，提供完整的設定界面和即時預覽
+   - 連結開啟：固定以新分頁方式開啟（`target="_blank"`）
+   - 可配置項：啟用開關、標題（文字/大小/顏色/對齊）、按鈕（文字/連結/顏色）
+
+**技術實施**：
+
+1. **後端資料庫擴展**（[`backend/src/models/system-setting.model.js`](backend/src/models/system-setting.model.js)）：
+   ```javascript
+   eventBanner: {
+     enabled: { type: Boolean, default: false },
+     title: { type: String, default: '修玄宮特別活動' },
+     titleSize: { type: String, default: '1.5rem' },
+     titleColor: { type: String, default: '#1976d2' },
+     titleAlign: { type: String, default: 'center', enum: ['left', 'center', 'right'] },
+     buttonText: { type: String, default: '點我填寫報名表單' },
+     buttonUrl: { type: String, default: 'https://www.google.com' },
+     buttonColor: { type: String, default: 'primary', enum: [...] }
+   }
+   ```
+   - 在 `getSettings` 方法中添加自動初始化邏輯
+
+2. **後端API端點**（[`backend/src/controllers/admin.controller.js`](backend/src/controllers/admin.controller.js)）：
+   - 新增 `updateEventBanner` 方法
+   - URL格式驗證（必須包含 `http://` 或 `https://`）
+   - 字體大小驗證（支援 rem/px/em）
+   - 顏色格式驗證（hex格式）
+   - 路由：`PUT /api/v1/admin/settings/event-banner`
+
+3. **前端Redux狀態管理**：
+   - [`frontend/src/redux/slices/queueSlice.js`](frontend/src/redux/slices/queueSlice.js)
+     - 新增 `eventBanner` 到 initialState
+     - 新增 `updateEventBanner` asyncThunk
+     - 在 `getQueueStatus.fulfilled` 中同步 eventBanner
+   - [`frontend/src/services/queueService.js`](frontend/src/services/queueService.js)
+     - 新增 `updateEventBanner` 方法
+
+4. **家人地址"同上"功能**：
+   - [`frontend/src/components/RegisterForm.jsx`](frontend/src/components/RegisterForm.jsx)
+     - 新增 `handleUsePrimaryAddress(index, checked)` 方法
+     - 勾選時複製主客戶第一個地址和類型
+     - 取消勾選時只更新狀態，保留地址內容
+     - 在家人地址輸入框前添加Checkbox和提示
+   - [`frontend/src/components/registration/FamilySection.jsx`](frontend/src/components/registration/FamilySection.jsx)
+     - 新增 `onUsePrimaryAddress` prop
+     - 添加相同的Checkbox UI
+
+5. **活動報名管理界面**：
+   - [`frontend/src/pages/admin/AdminSettingsPage.jsx`](frontend/src/pages/admin/AdminSettingsPage.jsx)
+     - 引入 Tabs 組件重構頁面結構
+     - 新增4個分頁：基本設定、候位設定、註冊設定、活動報名
+     - **活動報名Tab**包含：
+       - 啟用/停用開關
+       - 標題設定區（文字、大小、顏色、對齊）
+       - 按鈕設定區（文字、URL、顏色）
+       - 即時預覽面板
+       - 儲存按鈕
+
+6. **活動報名前台顯示**：
+   - [`frontend/src/components/EventBanner.jsx`](frontend/src/components/EventBanner.jsx)（新建）
+     - 接收 `eventBanner` props
+     - 條件渲染（enabled 為 true 才顯示）
+     - 動態樣式（fontSize、color、align）
+     - 安全連結（`target="_blank" rel="noopener noreferrer"`）
+   - [`frontend/src/pages/HomePage.jsx`](frontend/src/pages/HomePage.jsx)
+     - 從 Redux 獲取 `eventBanner`
+     - 在 `QueueStatusDisplay` 之後渲染 `EventBanner`
+
+**測試要點**：
+
+- [x] 後端 eventBanner API 正常運作
+- [x] 前台家人地址"同上"功能（勾選/取消/禁用狀態）
+- [x] 後台家人地址"同上"功能（共用組件，自動支援）
+- [x] 後台活動報名設定頁面正常顯示
+- [x] 即時預覽準確反映設定變更
+- [x] 前台活動報名區塊根據設定正確顯示/隱藏
+- [x] 連結以新分頁開啟
+- [ ] 實際瀏覽器測試（待用戶確認）
+
+**經驗教訓**：
+
+1. **共用組件策略**：
+   - `RegisterForm` 和 `FamilySection` 在前後台共用
+   - 修改一處即可同時影響所有使用位置
+   - 減少代碼重複，提升維護效率
+
+2. **Tabs組織大型設定頁**：
+   - AdminSettingsPage 原本所有設定混在一頁
+   - 使用 Tabs 分類組織（基本/候位/註冊/活動）
+   - 提升用戶體驗和可維護性
+   - 未來擴展新設定更方便
+
+3. **即時預覽提升UX**：
+   - 活動報名設定提供即時預覽
+   - 用戶無需切換頁面即可確認效果
+   - 避免設定錯誤導致的前台顯示問題
+
+4. **安全外部連結**：
+   - 使用 `target="_blank"` 固定新分頁開啟
+   - 必須搭配 `rel="noopener noreferrer"` 防止安全風險
+   - 後端驗證 URL 格式防止 XSS 攻擊
+
+5. **向後兼容的資料遷移**：
+   - `SystemSetting.getSettings` 自動初始化 eventBanner
+   - 舊資料自動升級，無需手動遷移
+   - 確保雲端部署自動更新時不出問題
+
+**待辦事項**：
+
+- [ ] 將 AdminSettingsPage 的候位設定和註冊設定內容從 Tab 0 移到各自的 Tabs
+- [ ] 用戶實際測試新功能並提供反饋
+
+---
+
 ### 2025-11-29 - 修復匯出資料功能並優化重新排序功能
 
 **背景**：用戶反饋後台「匯出資料」按鈕點擊無反應，同時要求檢查並優化「重新排序」功能。
