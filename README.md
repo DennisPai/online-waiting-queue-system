@@ -163,6 +163,11 @@
 - JWT (身份驗證)
 - Socket.io (即時通訊)
 - bcrypt (密碼加密)
+- **架構模式**：
+  - 統一 v1 API 路由（`/api/v1/*`）
+  - 服務層 + 資料庫層分離
+  - 統一錯誤處理（catchAsync）
+  - 標準化回應格式（`{ success, code, message, data }`）
 
 ### 部署
 - Docker 容器化

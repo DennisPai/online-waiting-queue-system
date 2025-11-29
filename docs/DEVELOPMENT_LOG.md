@@ -19,6 +19,47 @@
 
 ## 🗓️ 開發時間線
 
+### 2025-11-29 - 完成系統重構遷移
+
+**背景**：系統處於新舊架構混合狀態，需要完成 v1 API 遷移和架構統一。
+
+**重構內容**：
+
+1. **後端路由層統一**
+   - 移除舊路由檔案（`auth.routes.js`, `queue.routes.js`, `admin.routes.js`）
+   - 統一使用 v1 路由（`/api/v1`）
+   - 補充缺失的 `/next-waiting` 端點到 v1 路由
+
+2. **後端控制器統一**
+   - 合併 `queue.controller.refactored.js` 到 `queue.controller.js`
+   - 所有控制器統一使用 `catchAsync` 錯誤處理
+   - 所有缺失函數（getQueueStatus, getNextWaitingNumber 等）已補充到重構版控制器
+
+3. **前端服務層清理**
+   - 移除 `queueService.js` 中重複的 API_BASE_URL 定義
+   - 統一所有函數回應處理為 `response.data.data || response.data`
+   - 所有 API 呼叫統一使用 `API_ENDPOINTS`
+
+4. **前端 Hooks 統一**
+   - AdminDashboardPage 改用 `useQueueManagementRefactored`
+   - 刪除舊版 `useQueueManagement.js`（745行超長 hook）
+
+5. **路由命名標準化**
+   - 前端統一使用 kebab-case 路由（`/queue/order` 取代 `/queue/updateOrder`）
+   - 移除後端相容層（`/queue/updateOrder`, `/status/:queueNumber`）
+
+**影響範圍**：
+- 所有 API 端點現在只通過 `/api/v1` 存取
+- 舊路由已完全移除，降低維護成本
+- 前後端命名風格統一（kebab-case）
+- 代碼結構更清晰，易於維護
+
+**技術決策**：
+- 保留部分控制器直接操作 Model 的邏輯（如 getQueueStatus），完全服務層抽象留作後續優化
+- 統一錯誤處理和回應格式，提升 API 一致性
+
+---
+
 ### 2025-10-15 - 候位上限邏輯重構
 
 **問題**：原本的 `maxQueueNumber` 限制所有未取消的客戶數量（包含等待中、處理中、已完成），導致已完成的客戶仍佔用候位名額，使得當日額滿後即使有客戶完成也無法接受新客戶

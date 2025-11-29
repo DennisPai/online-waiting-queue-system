@@ -38,14 +38,6 @@ router.put(
   adminController.updateQueueOrder
 );
 
-// 相容舊路由名稱（部分前端仍呼叫 updateOrder）
-router.put(
-  '/queue/updateOrder',
-  [body('queueId').notEmpty(), body('newOrder').isInt({ min: 1 })],
-  validateRequest,
-  adminController.updateQueueOrder
-);
-
 router.put('/settings/next-session', [body('nextSessionDate').notEmpty()], validateRequest, adminController.setNextSessionDate);
 router.put('/settings/queue-status', [body('isOpen').isBoolean()], validateRequest, adminController.toggleQueueStatus);
 router.put('/settings/max-order-index', [body('maxOrderIndex').isInt({ min: 1 })], validateRequest, adminController.setMaxOrderIndex);

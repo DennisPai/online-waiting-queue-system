@@ -11,10 +11,7 @@ const morgan = require('morgan');
 // 載入環境變數
 dotenv.config();
 
-// 導入路由
-const authRoutes = require('./routes/auth.routes');
-const queueRoutes = require('./routes/queue.routes');
-const adminRoutes = require('./routes/admin.routes');
+// 導入 v1 路由（已完成重構遷移）
 
 // 導入初始化數據功能
 const initializeData = require('./utils/init-data');
@@ -76,11 +73,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// API路由
-app.use('/api/auth', authRoutes);
-app.use('/api/queue', queueRoutes);
-app.use('/api/admin', adminRoutes);
-// v1 版本路由（逐步遷移到此）
+// v1 API 路由（重構完成後的統一路由）
 app.use('/api/v1', require('./routes/v1'));
 
 // 錯誤處理中間件

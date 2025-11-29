@@ -52,18 +52,30 @@
 - PUT `/api/v1/admin/queue/:queueId/update`
 - DELETE `/api/v1/admin/queue/:queueId/delete`
 - PUT `/api/v1/admin/queue/order`
+  - body: `{ queueId, newOrder }`
+  - 200: `{ success, code, message: '順序更新成功', data: updatedRecord }`
 - PUT `/api/v1/admin/settings/next-session`
+  - body: `{ nextSessionDate }`
 - PUT `/api/v1/admin/settings/queue-status`
-- PUT `/api/v1/admin/settings/max-queue-number`
+  - body: `{ isOpen }`
+- PUT `/api/v1/admin/settings/max-order-index`
+  - body: `{ maxOrderIndex }`
 - PUT `/api/v1/admin/settings/minutes-per-customer`
+  - body: `{ minutesPerCustomer }`
 - PUT `/api/v1/admin/settings/simplified-mode`
+  - body: `{ simplifiedMode }`
 - PUT `/api/v1/admin/settings/public-registration-enabled`
+  - body: `{ publicRegistrationEnabled }`
 - PUT `/api/v1/admin/settings/total-customer-count`
+  - body: `{ totalCustomerCount }`
 - POST `/api/v1/admin/settings/reset-customer-count`
 - PUT `/api/v1/admin/settings/last-completed-time`
+  - body: `{ lastCompletedTime }`
 - POST `/api/v1/admin/settings/reset-completed-time`
+- DELETE `/api/v1/admin/queue/clear-all`
 
-## Deprecated 對應（相容期）
-- 舊端點保留，逐步在 header 加入 `Deprecation: true` 與 `Link` 指向 v1
-- 回應格式差異由 v1 adapter 封裝成統一格式
+## 注意事項
+- 所有路由已統一使用 v1 API，舊路由已移除
+- 路由命名統一使用 kebab-case（如 `max-order-index`）
+- 所有回應格式已統一為 `{ success, code, message, data }`
 

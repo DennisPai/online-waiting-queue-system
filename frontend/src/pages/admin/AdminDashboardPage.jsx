@@ -33,7 +33,7 @@ import QueueTable from '../../components/admin/QueueTable';
 import CustomerDetailDialog from '../../components/admin/CustomerDetailDialog';
 import ExportDialog from '../../components/ExportDialog';
 import RegisterForm from '../../components/RegisterForm';
-import { useQueueManagement } from '../../hooks/useQueueManagement';
+import { useQueueManagementRefactored as useQueueManagement } from '../../hooks/admin/useQueueManagementRefactored';
 
 // 定義可顯示的欄位配置
 const AVAILABLE_COLUMNS = {

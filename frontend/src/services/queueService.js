@@ -1,20 +1,6 @@
 import axios from 'axios';
 import { API_ENDPOINTS } from '../config/api';
 
-// 根據環境決定API基礎URL
-const getApiBaseUrl = () => {
-  // 在生產環境中使用後端服務的完整URL
-  if (process.env.NODE_ENV === 'production') {
-    return process.env.REACT_APP_API_URL || window.location.origin;
-  }
-  // 開發環境使用代理
-  return '';
-};
-
-const API_BASE_URL = getApiBaseUrl();
-const API_URL = `${API_BASE_URL}/api/queue`;
-const ADMIN_API_URL = `${API_BASE_URL}/api/admin`;
-
 // 公共 API
 
 // 獲取候位狀態
@@ -33,25 +19,20 @@ const getQueueStatus = async () => {
 const registerQueue = async (queueData) => {
   try {
     const response = await axios.post(`${API_ENDPOINTS.QUEUE}/register`, queueData);
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('登記候位錯誤:', error);
     throw error;
   }
 };
 
-// 獲取特定候位號碼的狀態（支援 v1 正式路由 /number/:queueNumber 與相容路由 /status/:queueNumber）
+// 獲取特定候位號碼的狀態
 const getQueueNumberStatus = async (queueNumber) => {
   try {
-    // 先嘗試 v1 正式路由
-    try {
-      const resV1 = await axios.get(`${API_ENDPOINTS.QUEUE}/number/${queueNumber}`);
-      return resV1.data;
-    } catch (e) {
-      // 回退至相容路由
-      const resCompat = await axios.get(`${API_ENDPOINTS.QUEUE}/status/${queueNumber}`);
-      return resCompat.data;
-    }
+    const response = await axios.get(`${API_ENDPOINTS.QUEUE}/number/${queueNumber}`);
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('獲取候位號碼狀態錯誤:', error);
     throw error;
@@ -247,7 +228,7 @@ const updateQueueOrder = async (queueId, newOrder, token) => {
       }
     };
     const response = await axios.put(
-      `${API_ENDPOINTS.ADMIN}/queue/updateOrder`,
+      `${API_ENDPOINTS.ADMIN}/queue/order`,
       { queueId, newOrder },
       config
     );
@@ -279,7 +260,8 @@ const setNextSessionDate = async (nextSessionDate, token) => {
       { nextSessionDate },
       config
     );
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('設置下次辦事時間錯誤:', error);
     throw error;
@@ -299,7 +281,8 @@ const toggleQueueStatus = async (isOpen, token) => {
       { isOpen },
       config
     );
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('開關候位功能錯誤:', error);
     throw error;
@@ -319,7 +302,8 @@ const setMaxOrderIndex = async (maxOrderIndex, token) => {
       { maxOrderIndex },
       config
     );
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('設定最大叫號順序上限錯誤:', error);
     throw error;
@@ -339,7 +323,8 @@ const updateQueueData = async (queueId, customerData, token) => {
       customerData,
       config
     );
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('更新客戶資料錯誤:', error);
     throw error;
@@ -355,7 +340,8 @@ const deleteCustomer = async (queueId, token) => {
       }
     };
     const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/${queueId}/delete`, config);
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('刪除客戶資料錯誤:', error);
     throw error;
@@ -373,12 +359,13 @@ const setMinutesPerCustomer = async (minutesPerCustomer, token) => {
       }
     }
   );
-  return response.data;
-    };
+  // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+  return response.data.data || response.data;
+};
 
 // 設定簡化模式
 const setSimplifiedMode = async (simplifiedMode, token) => {
-    const response = await axios.put(
+  const response = await axios.put(
     `${API_ENDPOINTS.ADMIN}/settings/simplified-mode`,
     { simplifiedMode },
     {
@@ -386,13 +373,14 @@ const setSimplifiedMode = async (simplifiedMode, token) => {
         Authorization: `Bearer ${token}`
       }
     }
-    );
-    return response.data;
+  );
+  // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+  return response.data.data || response.data;
 };
 
 // 設定公開候位登記功能
 const setPublicRegistrationEnabled = async (publicRegistrationEnabled, token) => {
-    const response = await axios.put(
+  const response = await axios.put(
     `${API_ENDPOINTS.ADMIN}/settings/public-registration-enabled`,
     { publicRegistrationEnabled },
     {
@@ -400,8 +388,9 @@ const setPublicRegistrationEnabled = async (publicRegistrationEnabled, token) =>
         Authorization: `Bearer ${token}`
       }
     }
-    );
-    return response.data;
+  );
+  // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+  return response.data.data || response.data;
 };
 
 // 設定客戶總數
@@ -415,7 +404,8 @@ const setTotalCustomerCount = async (totalCustomerCount, token) => {
       }
     }
   );
-  return response.data;
+  // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+  return response.data.data || response.data;
 };
 
 // 重設客戶總數
@@ -429,7 +419,8 @@ const resetTotalCustomerCount = async (token) => {
       }
     }
   );
-  return response.data;
+  // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+  return response.data.data || response.data;
 };
 
 // 設定上一位辦完時間
@@ -443,7 +434,8 @@ const setLastCompletedTime = async (lastCompletedTime, token) => {
       }
     }
   );
-  return response.data;
+  // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+  return response.data.data || response.data;
 };
 
 // 重設上一位辦完時間
@@ -457,7 +449,8 @@ const resetLastCompletedTime = async (token) => {
       }
     }
   );
-  return response.data;
+  // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+  return response.data.data || response.data;
 };
 
 // 清空所有候位
@@ -469,7 +462,8 @@ const clearAllQueue = async (token) => {
       }
     };
     const response = await axios.delete(`${API_ENDPOINTS.ADMIN}/queue/clear-all`, config);
-    return response.data;
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
   } catch (error) {
     console.error('清空候位錯誤:', error);
     throw error;
