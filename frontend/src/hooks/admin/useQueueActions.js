@@ -65,14 +65,20 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
   // 叫號
   const handleCallNext = useCallback(async () => {
     try {
-      await dispatch(callNextQueue());
+      const result = await dispatch(callNextQueue()).unwrap();
+      // 立即重新載入列表
       loadQueueList();
       dispatch(showAlert({
-        message: '叫號成功',
+        message: result.message || '叫號成功',
         severity: 'success'
       }));
     } catch (error) {
       console.error('叫號失敗:', error);
+      // 顯示錯誤訊息給用戶
+      dispatch(showAlert({
+        message: error || '叫號失敗',
+        severity: 'error'
+      }));
     }
   }, [dispatch, loadQueueList]);
 

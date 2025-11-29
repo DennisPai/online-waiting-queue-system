@@ -26,6 +26,11 @@ class QueueService {
     // 檢查候位是否已額滿（使用與getQueueStatus一致的邏輯）
     await this.checkQueueAvailability(settings);
 
+    // 生成候位號碼（如果未提供）
+    if (!processedData.queueNumber) {
+      processedData.queueNumber = await WaitingRecord.getNextQueueNumber();
+    }
+
     // 計算 orderIndex
     const activeCustomerCount = await queueRepository.countActiveCustomers();
     processedData.orderIndex = activeCustomerCount + 1;

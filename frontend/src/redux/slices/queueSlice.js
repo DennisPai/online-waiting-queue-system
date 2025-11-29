@@ -499,14 +499,14 @@ const queueSlice = createSlice({
       })
       .addCase(callNextQueue.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.currentQueue = action.payload.queueNumber;
-        // 更新列表中的狀態
-        state.queueList = state.queueList.map(item => {
-          if (item._id === action.payload.record._id) {
-            return action.payload.record;
-          }
-          return item;
-        });
+        // 更新當前叫號和上一位辦完時間
+        if (action.payload.currentQueueNumber) {
+          state.queueStatus = state.queueStatus || {};
+          state.queueStatus.currentQueueNumber = action.payload.currentQueueNumber;
+          state.queueStatus.lastCompletedTime = action.payload.lastCompletedTime;
+        }
+        // 不在這裡更新 queueList，讓前端重新載入列表
+        // 這樣可以確保 orderIndex 和狀態的一致性
       })
       .addCase(callNextQueue.rejected, (state, action) => {
         state.isLoading = false;
