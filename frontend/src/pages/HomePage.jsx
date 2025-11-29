@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import QueueStatusDisplay from '../components/QueueStatusDisplay';
 import EventBanner from '../components/EventBanner';
-import { getQueueStatus, getOrderedQueueNumbers, getPublicOrderedNumbers, getEventBanner } from '../redux/slices/queueSlice';
+import { getQueueStatus, getOrderedQueueNumbers, getPublicOrderedNumbers } from '../redux/slices/queueSlice';
 import { API_ENDPOINTS } from '../config/api';
 
 // 獲取下一個等待的人
@@ -48,8 +48,7 @@ const HomePage = () => {
 
   useEffect(() => {
     // 初始載入（總是執行）
-    dispatch(getQueueStatus());
-    dispatch(getEventBanner()); // 載入活動報名設定
+    dispatch(getQueueStatus()); // 已包含 eventBanner，無需單獨調用
     
     // 根據登入狀態選擇適當的API獲取排序候位號碼
     if (isAuthenticated) {

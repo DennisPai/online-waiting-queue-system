@@ -393,6 +393,15 @@ const setPublicRegistrationEnabled = async (publicRegistrationEnabled, token) =>
   return response.data.data || response.data;
 };
 
+// 獲取活動報名區塊設定
+const getEventBanner = async () => {
+  const response = await axios.get(
+    `${API_ENDPOINTS.ADMIN}/settings/event-banner`
+  );
+  // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+  return response.data.data || response.data;
+};
+
 // 更新活動報名區塊設定
 const updateEventBanner = async (data, token) => {
   try {
@@ -514,6 +523,7 @@ const queueService = {
   setMinutesPerCustomer,
   setSimplifiedMode,
   setPublicRegistrationEnabled,
+  getEventBanner,
   updateEventBanner,
   setTotalCustomerCount,
   resetTotalCustomerCount,

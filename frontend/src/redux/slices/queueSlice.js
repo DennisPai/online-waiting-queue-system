@@ -477,6 +477,11 @@ const queueSlice = createSlice({
         state.maxOrderIndexLimit = action.payload.maxOrderIndex || 100;
         state.isFull = action.payload.isFull || false;
         
+        // 更新 eventBanner（如果後端有返回）
+        if (action.payload.eventBanner) {
+          state.eventBanner = action.payload.eventBanner;
+        }
+        
         if (action.payload.isOpen) {
           state.currentQueue = action.payload.currentQueueNumber;
           state.waitingCount = action.payload.waitingCount;

@@ -22,7 +22,8 @@
 
 ## Queue（公開）
 - GET `/api/v1/queue/status`
-  - 200: `{ success, code, data: { isOpen, currentQueueNumber, waitingCount, nextSessionDate, ... } }`
+  - 200: `{ success, code, data: { isOpen, currentQueueNumber, waitingCount, nextSessionDate, maxOrderIndex, minutesPerCustomer, simplifiedMode, publicRegistrationEnabled, totalCustomerCount, lastCompletedTime, estimatedEndTime, currentMaxOrderIndex, isFull, eventBanner: { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor }, message } }`
+  - 說明：回傳完整的系統狀態，包含活動報名區塊設定（eventBanner），確保前端重新整理時不會丟失設定
 - POST `/api/v1/queue/register`
   - body: `{ name, phone, email?, gender, addresses, familyMembers?, consultationTopics?, ... }`
   - 201: `{ success, code, data: { queueNumber, orderIndex, waitingCount, estimatedWaitTime, ... } }`
