@@ -4,10 +4,11 @@ alwaysApply: true
 # Backend 開發規範（僅重點補充，搭配全域 `engineering-rules.mdc`）
 
 ## v1 API 原則
-- 路徑：一律置於 `/api/v1/*`，舊端點保留相容期。
-- 回應：統一 `{ success, code, message, data }`。所有有效載荷歸入 `data`，不要在頂層再放 `token`、`pagination` 等鍵。
-- 錯誤碼：UNAUTHORIZED/FORBIDDEN/NOT_FOUND/CONFLICT/VALIDATION_ERROR/INTERNAL_ERROR。
-- 中介層：`backend/src/routes/v1/index.js` 內已掛載封裝；controller 仍須主動輸出 `{ success, data, message? }`。
+- 路徑：統一使用 `/api/v1/*`（舊端點已完全移除）
+- 回應：統一 `{ success, code, message, data }`。所有有效載荷歸入 `data`，不要在頂層再放 `token`、`pagination` 等鍵
+- 錯誤碼：UNAUTHORIZED/FORBIDDEN/NOT_FOUND/CONFLICT/VALIDATION_ERROR/INTERNAL_ERROR
+- 中介層：`backend/src/routes/v1/index.js` 內已掛載封裝；controller 仍須主動輸出 `{ success, data, message? }`
+- 命名規範：路由統一使用 kebab-case（如 `/settings/max-order-index`）
 
 ## 認證與安全
 - JWT：以 `Authorization: Bearer <token>` 驗證；`protect` 作為路由守衛。
@@ -28,7 +29,16 @@ alwaysApply: true
 - `/ready`：含 MongoDB 連線狀態（`readyState===1` 回 200；否則 503）。
 
 ## 目錄約定
-- `backend/src/routes/v1/*`：v1 路由，僅轉發到 controller；不要在路由內組 payload。
-- `backend/src/controllers/*`：商業邏輯與回應組裝（遵循 v1 回應規範）。
-- `backend/src/utils/v1-response.js`：回應封裝。
+- `backend/src/routes/v1/*`：v1 路由，僅轉發到 controller；不要在路由內組 payload
+- `backend/src/controllers/*`：商業邏輯與回應組裝（遵循 v1 回應規範），統一使用 `catchAsync` 錯誤處理
+- `backend/src/services/*`：業務邏輯層，處理複雜業務邏輯（如 QueueService）
+- `backend/src/repositories/*`：數據訪問層，封裝資料庫操作（如 QueueRepository）
+- `backend/src/utils/v1-response.js`：回應封裝
+- `backend/src/utils/errorHandler.js`：統一錯誤處理（catchAsync, ApiError）
+
+## 架構模式
+- 控制器層：僅處理 HTTP 請求/回應，薄層設計
+- 服務層：處理業務邏輯，可選（部分簡單操作可在控制器直接處理）
+- 資料庫層：Repository 模式封裝 Model 操作
+- 錯誤處理：統一使用 `catchAsync` 包裝，拋出 `ApiError`
 

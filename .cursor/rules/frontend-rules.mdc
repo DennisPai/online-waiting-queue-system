@@ -5,13 +5,18 @@ alwaysApply: true
 # Frontend 開發規範（僅重點補充，搭配全域 `engineering-rules.mdc`）
 
 ## API 存取
-- `API_VERSION` 預設 `v1`，統一使用 `frontend/src/config/api.js` 提供的 `API_ENDPOINTS`。
-- `services/*` 一律回傳單層 `response.data`，Redux slice 只解一次。
-- 若需切回舊端點，可在 `.env` 設 `REACT_APP_API_VERSION=""`（僅灰度、短期）。
+- `API_VERSION` 固定為 `v1`，統一使用 `frontend/src/config/api.js` 提供的 `API_ENDPOINTS`
+- `services/*` 一律回傳 `response.data.data || response.data`（統一處理 v1 回應格式）
+- Redux slice 只解一次，禁止 `.data.data` 雙層解包
 
 ## 狀態管理
-- Redux Toolkit：所有 asyncThunk 以 `services/*` 的單層 `data` 為準則；禁止 `.data.data`。
-- Error 處理：以 `error.response?.data?.message` 為主，必要時回退為字串。
+- Redux Toolkit：所有 asyncThunk 以 `services/*` 回傳的 `data` 為準則，services 層已處理 v1 格式
+- Error 處理：以 `error.response?.data?.message` 為主，必要時回退為字串
+
+## Hooks 架構
+- 管理面板使用 `useQueueManagementRefactored`（組合多個子 hooks）
+- 子 hooks 分離職責：useQueueData（數據）、useQueueActions（操作）、useQueueUI（UI狀態）、useQueueValidation（驗證）
+- 避免巨型 hook，優先模組化拆分
 
 ## UI/UX
 - 管理端「變更密碼」改為自主操作，不強制首次登入彈窗。

@@ -5,18 +5,19 @@ alwaysApply: true
 # Cursor 全域規範（本專案專用，Agent 必讀）
 
 ## API 與錯誤（全域）
-- 新介面一律使用 `/api/v1`；舊端點保留相容期
+- 統一使用 `/api/v1/*`（舊端點已移除，v1 API 為唯一標準）
 - 回應格式：`{ success, code, message, data }`
 - 錯誤碼：UNAUTHORIZED/FORBIDDEN/NOT_FOUND/CONFLICT/VALIDATION_ERROR/INTERNAL_ERROR
 
 ## 後端約定（全域）
-- 新增路由放入 `/api/v1/*`（可先轉接既有 controller，再逐步統一回應）
+- 所有路由統一使用 `/api/v1/*`
 - 變更密碼：提供 `PUT /api/v1/auth/change-password`（非強制，登入流程不鎖操作）
 - 安全：`helmet`、`express-rate-limit`（`/auth/*`, `/queue/register`）、CORS 限定
 - 日誌：`morgan`（dev/combined），未來改為結構化 JSON
 
 ## 前端約定（全域）
-- `API_VERSION = 'v1'`（切換時統一 `/api/${API_VERSION}`）；`services/*` 一律回傳 `data`（如無 `data` 欄位則回傳原物件）
+- `API_VERSION = 'v1'`（固定版本，統一 `/api/${API_VERSION}`）
+- `services/*` 一律回傳 `response.data.data || response.data`（統一處理 v1 回應格式）
 - 變更密碼為管理員可選操作，不在登入後強制彈窗
 - 拆分巨型頁為元件與 hooks；表單驗證抽 schema
 
@@ -50,9 +51,9 @@ alwaysApply: true
 **前端核心結構：**
 - 頁面：`frontend/src/pages/` (AdminDashboardPage, RegisterPage 等)
 - 元件：`frontend/src/components/` (按功能模組分組：admin/, registration/, common/, layout/)
-- 狀態：`frontend/src/redux/slices/` (authSlice, queueSlice, adminSlice, uiSlice)
-- 服務：`frontend/src/services/` (authService, queueService, adminService)
-- Hooks：`frontend/src/hooks/` (useQueueManagement 及其拆分版本在 hooks/admin/)
+- 狀態：`frontend/src/redux/slices/` (authSlice, queueSlice, uiSlice)
+- 服務：`frontend/src/services/` (authService, queueService)
+- Hooks：`frontend/src/hooks/admin/` (useQueueManagementRefactored 及其子 hooks: useQueueData, useQueueActions, useQueueUI, useQueueValidation)
 
 **後端核心結構：**
 - 路由：`backend/src/routes/v1/` (auth, queue, admin)
@@ -68,7 +69,7 @@ alwaysApply: true
 - **搜尋功能異常**：檢查 DEVELOPMENT_LOG.md → Service層格式處理 → Redux reducer → 後端格式
 - **登入/認證問題**：authService → authSlice → auth.controller → user.model
 - **候位功能問題**：queueService → queueSlice → queue.controller → queue.model
-- **管理面板問題**：AdminDashboardPage → useQueueManagement → adminService → admin.controller
+- **管理面板問題**：AdminDashboardPage → useQueueManagementRefactored → queueService → admin.controller
 - **前端元件問題**：從 pages/ 開始，追蹤到 components/ 和 hooks/
 - **Socket 即時更新**：socketService → 對應元件的 useEffect → backend socket 事件
 
@@ -131,10 +132,13 @@ alwaysApply: true
 - **例外規範**：
   - 正式的單元測試檔案（在 `tests/` 或 `__tests__/` 目錄下）
   - 有明確用途的工具腳本（如 `init-admin.js`、`update-existing-customers.js`）
-  - 重構或實驗性程式碼檔案（如 `*.refactored.js`）須經過確認後保留
 
 **記住：保持專案整潔是每個開發者的責任！** 🧹
 
-## 重構期間暫時規則（完成後可移除）
-- 一律優先補齊 v1 端點與回應格式，舊端點保持相容，不做破壞性修改。
-- 前端預設 `API_VERSION=v1`，如需回退以 `.env` 覆蓋。
+## 架構現狀（2025-11-29 重構完成）
+- ✅ 統一 v1 API：所有端點使用 `/api/v1/*`，舊路由已完全移除
+- ✅ 控制器統一：使用服務層架構，統一錯誤處理（catchAsync）
+- ✅ 回應格式標準化：`{ success, code, message, data }`
+- ✅ 前端服務層清理：統一回應處理 `response.data.data || response.data`
+- ✅ Hooks 重構完成：使用模組化的 useQueueManagementRefactored
+- ✅ 命名標準化：統一使用 kebab-case（如 `/queue/order`）
