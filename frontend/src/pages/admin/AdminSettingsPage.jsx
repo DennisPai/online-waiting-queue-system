@@ -52,9 +52,11 @@ const AdminSettingsPage = () => {
     titleSize: '1.5rem',
     titleColor: '#1976d2',
     titleAlign: 'center',
+    fontWeight: 'normal',
+    backgroundColor: '#ffffff',
     buttonText: '點我填寫報名表單',
     buttonUrl: 'https://www.google.com',
-    buttonColor: 'primary'
+    buttonColor: '#1976d2'
   });
 
   // 安全的日期格式化函數
@@ -143,7 +145,18 @@ const AdminSettingsPage = () => {
         
         // 初始化活動報名區塊設定
         if (result.eventBanner) {
-          setEventBannerData(result.eventBanner);
+          setEventBannerData({
+            enabled: result.eventBanner.enabled ?? false,
+            title: result.eventBanner.title ?? '修玄宮特別活動',
+            titleSize: result.eventBanner.titleSize ?? '1.5rem',
+            titleColor: result.eventBanner.titleColor ?? '#1976d2',
+            titleAlign: result.eventBanner.titleAlign ?? 'center',
+            fontWeight: result.eventBanner.fontWeight ?? 'normal',
+            backgroundColor: result.eventBanner.backgroundColor ?? '#ffffff',
+            buttonText: result.eventBanner.buttonText ?? '點我填寫報名表單',
+            buttonUrl: result.eventBanner.buttonUrl ?? 'https://www.google.com',
+            buttonColor: result.eventBanner.buttonColor ?? '#1976d2'
+          });
         }
       })
       .catch((error) => {
@@ -155,6 +168,24 @@ const AdminSettingsPage = () => {
         );
       });
   }, [dispatch]);
+
+  // 同步監聽eventBanner變化
+  useEffect(() => {
+    if (eventBanner) {
+      setEventBannerData({
+        enabled: eventBanner.enabled ?? false,
+        title: eventBanner.title ?? '修玄宮特別活動',
+        titleSize: eventBanner.titleSize ?? '1.5rem',
+        titleColor: eventBanner.titleColor ?? '#1976d2',
+        titleAlign: eventBanner.titleAlign ?? 'center',
+        fontWeight: eventBanner.fontWeight ?? 'normal',
+        backgroundColor: eventBanner.backgroundColor ?? '#ffffff',
+        buttonText: eventBanner.buttonText ?? '點我填寫報名表單',
+        buttonUrl: eventBanner.buttonUrl ?? 'https://www.google.com',
+        buttonColor: eventBanner.buttonColor ?? '#1976d2'
+      });
+    }
+  }, [eventBanner]);
 
   // 處理開關候位系統
   const handleToggleQueueStatus = () => {
@@ -746,14 +777,35 @@ const AdminSettingsPage = () => {
                   />
                   
                   <Grid container spacing={2}>
-                    <Grid item xs={6}>
+                    <Grid item xs={3}>
                       <TextField
                         fullWidth
+                        type="number"
                         label="字體大小"
-                        value={eventBannerData.titleSize}
-                        onChange={(e) => setEventBannerData({...eventBannerData, titleSize: e.target.value})}
-                        helperText="例如: 1.5rem"
+                        value={parseFloat(eventBannerData.titleSize) || 1.5}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const unit = eventBannerData.titleSize.match(/(rem|px|em)/)?.[0] || 'rem';
+                          setEventBannerData({...eventBannerData, titleSize: `${value}${unit}`});
+                        }}
+                        inputProps={{ min: 0.5, max: 5, step: 0.1 }}
                       />
+                    </Grid>
+                    <Grid item xs={3}>
+                      <FormControl fullWidth>
+                        <InputLabel>單位</InputLabel>
+                        <Select
+                          value={eventBannerData.titleSize.match(/(rem|px|em)/)?.[0] || 'rem'}
+                          onChange={(e) => {
+                            const num = parseFloat(eventBannerData.titleSize) || 1.5;
+                            setEventBannerData({...eventBannerData, titleSize: `${num}${e.target.value}`});
+                          }}
+                        >
+                          <MenuItem value="rem">rem</MenuItem>
+                          <MenuItem value="px">px</MenuItem>
+                          <MenuItem value="em">em</MenuItem>
+                        </Select>
+                      </FormControl>
                     </Grid>
                     <Grid item xs={6}>
                       <TextField
@@ -765,6 +817,20 @@ const AdminSettingsPage = () => {
                       />
                     </Grid>
                   </Grid>
+                  
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={eventBannerData.fontWeight === 'bold'}
+                        onChange={(e) => setEventBannerData({
+                          ...eventBannerData, 
+                          fontWeight: e.target.checked ? 'bold' : 'normal'
+                        })}
+                      />
+                    }
+                    label="粗體"
+                    sx={{ mt: 1 }}
+                  />
                   
                   <FormControl fullWidth sx={{ mt: 2 }}>
                     <FormLabel>文字對齊</FormLabel>
@@ -799,23 +865,25 @@ const AdminSettingsPage = () => {
                     sx={{ mb: 2 }}
                   />
                   
-                  <FormControl fullWidth>
-                    <FormLabel>按鈕顏色</FormLabel>
-                    <RadioGroup
-                      row
-                      value={eventBannerData.buttonColor}
-                      onChange={(e) => setEventBannerData({...eventBannerData, buttonColor: e.target.value})}
-                    >
-                      <FormControlLabel value="primary" control={<Radio />} label="主要" />
-                      <FormControlLabel value="secondary" control={<Radio />} label="次要" />
-                      <FormControlLabel value="success" control={<Radio />} label="成功" />
-                      <FormControlLabel value="error" control={<Radio />} label="錯誤" />
-                    </RadioGroup>
-                  </FormControl>
+                  <TextField
+                    fullWidth
+                    label="按鈕顏色"
+                    type="color"
+                    value={eventBannerData.buttonColor}
+                    onChange={(e) => setEventBannerData({...eventBannerData, buttonColor: e.target.value})}
+                    helperText="選擇按鈕的背景顏色"
+                    sx={{ mb: 2 }}
+                  />
                   
-                  <Alert severity="info" sx={{ mt: 2 }}>
-                    連結將固定以新分頁方式開啟
-                  </Alert>
+                  <TextField
+                    fullWidth
+                    label="背景顏色"
+                    type="color"
+                    value={eventBannerData.backgroundColor}
+                    onChange={(e) => setEventBannerData({...eventBannerData, backgroundColor: e.target.value})}
+                    helperText="選擇區塊的背景顏色"
+                    sx={{ mb: 2 }}
+                  />
                   
                   <Button
                     variant="contained"
@@ -834,7 +902,10 @@ const AdminSettingsPage = () => {
                   <Typography variant="h6" gutterBottom>
                     即時預覽
                   </Typography>
-                  <Card>
+                  <Card sx={{ 
+                    bgcolor: eventBannerData.backgroundColor,
+                    border: '2px solid white'
+                  }}>
                     <CardContent>
                       <Typography
                         variant="h5"
@@ -842,18 +913,24 @@ const AdminSettingsPage = () => {
                         sx={{
                           fontSize: eventBannerData.titleSize,
                           color: eventBannerData.titleColor,
-                          mb: 2,
-                          fontWeight: 'medium'
+                          fontWeight: eventBannerData.fontWeight,
+                          mb: 2
                         }}
                       >
                         {eventBannerData.title || '（標題文字）'}
                       </Typography>
                       <Button
                         variant="contained"
-                        color={eventBannerData.buttonColor}
                         fullWidth
                         size="large"
                         disabled
+                        sx={{
+                          bgcolor: eventBannerData.buttonColor,
+                          '&.Mui-disabled': {
+                            bgcolor: eventBannerData.buttonColor,
+                            opacity: 0.8
+                          }
+                        }}
                       >
                         {eventBannerData.buttonText || '（按鈕文字）'}
                       </Button>

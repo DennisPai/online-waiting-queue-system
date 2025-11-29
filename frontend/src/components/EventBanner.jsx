@@ -12,13 +12,19 @@ const EventBanner = ({ eventBanner }) => {
     titleSize = '1.5rem',
     titleColor = '#1976d2',
     titleAlign = 'center',
+    fontWeight = 'normal',
+    backgroundColor = '#ffffff',
     buttonText = '點我填寫報名表單',
     buttonUrl,
-    buttonColor = 'primary'
+    buttonColor = '#1976d2'
   } = eventBanner;
 
   return (
-    <Card sx={{ mt: 2 }}>
+    <Card sx={{ 
+      mt: 2,
+      bgcolor: backgroundColor,
+      border: '2px solid white'
+    }}>
       <CardContent>
         <Typography
           variant="h5"
@@ -26,20 +32,26 @@ const EventBanner = ({ eventBanner }) => {
           sx={{
             fontSize: titleSize,
             color: titleColor,
-            mb: 2,
-            fontWeight: 'medium'
+            fontWeight: fontWeight,
+            mb: 2
           }}
         >
           {title}
         </Typography>
         <Button
           variant="contained"
-          color={buttonColor}
           fullWidth
           size="large"
           href={buttonUrl}
           target="_blank"
           rel="noopener noreferrer"
+          sx={{
+            bgcolor: buttonColor,
+            '&:hover': { 
+              bgcolor: buttonColor,
+              opacity: 0.9
+            }
+          }}
         >
           {buttonText}
         </Button>

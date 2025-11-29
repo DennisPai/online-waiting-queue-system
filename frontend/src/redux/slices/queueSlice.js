@@ -31,9 +31,11 @@ const initialState = {
     titleSize: '1.5rem',
     titleColor: '#1976d2',
     titleAlign: 'center',
+    fontWeight: 'normal',
+    backgroundColor: '#ffffff',
     buttonText: '點我填寫報名表單',
     buttonUrl: 'https://www.google.com',
-    buttonColor: 'primary'
+    buttonColor: '#1976d2'
   },
   isLoading: false,
   error: null

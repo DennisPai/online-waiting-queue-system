@@ -54,7 +54,18 @@ router.put('/settings/last-completed-time', [body('lastCompletedTime').notEmpty(
 router.post('/settings/reset-completed-time', adminController.resetLastCompletedTime);
 
 // 新增：活動報名區塊設定
-router.put('/settings/event-banner', adminController.updateEventBanner);
+router.put('/settings/event-banner', [
+  body('enabled').optional().isBoolean(),
+  body('title').optional().isString().trim(),
+  body('titleSize').optional().isString().trim(),
+  body('titleColor').optional().isString().trim(),
+  body('titleAlign').optional().isIn(['left', 'center', 'right']),
+  body('fontWeight').optional().isIn(['normal', 'bold']),
+  body('backgroundColor').optional().isString().trim(),
+  body('buttonText').optional().isString().trim(),
+  body('buttonUrl').optional().isURL(),
+  body('buttonColor').optional().isString().trim()
+], validateRequest, adminController.updateEventBanner);
 
 router.delete('/queue/clear-all', adminController.clearAllQueue);
 

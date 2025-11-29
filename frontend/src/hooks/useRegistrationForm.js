@@ -527,6 +527,29 @@ export const useRegistrationForm = (embedded = false) => {
     }
   }, [embedded, dispatch, navigate]);
 
+  // 處理家人地址"同上"功能
+  const handleUsePrimaryAddress = useCallback((index, checked) => {
+    if (checked && formData.addresses[0]?.address) {
+      // 複製主客戶的第一個地址
+      const newFamilyMembers = [...formData.familyMembers];
+      newFamilyMembers[index] = {
+        ...newFamilyMembers[index],
+        address: formData.addresses[0].address,
+        addressType: formData.addresses[0].addressType,
+        usePrimaryAddress: true
+      };
+      setFormData({ ...formData, familyMembers: newFamilyMembers });
+    } else {
+      // 取消勾選時，只更新勾選狀態，保留地址內容
+      const newFamilyMembers = [...formData.familyMembers];
+      newFamilyMembers[index] = {
+        ...newFamilyMembers[index],
+        usePrimaryAddress: false
+      };
+      setFormData({ ...formData, familyMembers: newFamilyMembers });
+    }
+  }, [formData]);
+
   return {
     // 狀態
     formData,
@@ -548,6 +571,7 @@ export const useRegistrationForm = (embedded = false) => {
     addAddress,
     removeAddress,
     handleFamilyMemberChange,
+    handleUsePrimaryAddress,
     addFamilyMember,
     removeFamilyMember,
     handleSubmit,

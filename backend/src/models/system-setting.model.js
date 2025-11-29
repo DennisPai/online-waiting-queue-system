@@ -63,6 +63,15 @@ const systemSettingSchema = new mongoose.Schema({
       default: 'center',
       enum: ['left', 'center', 'right']
     },
+    fontWeight: {
+      type: String,
+      default: 'normal',
+      enum: ['normal', 'bold']
+    },
+    backgroundColor: {
+      type: String,
+      default: '#ffffff'
+    },
     buttonText: {
       type: String,
       default: '點我填寫報名表單'
@@ -73,8 +82,7 @@ const systemSettingSchema = new mongoose.Schema({
     },
     buttonColor: {
       type: String,
-      default: 'primary',
-      enum: ['primary', 'secondary', 'success', 'error', 'info', 'warning']
+      default: '#1976d2'
     }
   },
   updatedBy: {
@@ -151,12 +159,40 @@ systemSettingSchema.statics.getSettings = async function() {
         titleSize: '1.5rem',
         titleColor: '#1976d2',
         titleAlign: 'center',
+        fontWeight: 'normal',
+        backgroundColor: '#ffffff',
         buttonText: '點我填寫報名表單',
         buttonUrl: 'https://www.google.com',
-        buttonColor: 'primary'
+        buttonColor: '#1976d2'
       };
       needsUpdate = true;
       console.log('初始化 eventBanner 設定');
+    } else if (settings.eventBanner) {
+      // 為現有的 eventBanner 添加新欄位
+      let eventBannerNeedsUpdate = false;
+      const updatedEventBanner = { ...settings.eventBanner };
+      
+      if (settings.eventBanner.fontWeight === undefined) {
+        updatedEventBanner.fontWeight = 'normal';
+        eventBannerNeedsUpdate = true;
+      }
+      
+      if (settings.eventBanner.backgroundColor === undefined) {
+        updatedEventBanner.backgroundColor = '#ffffff';
+        eventBannerNeedsUpdate = true;
+      }
+      
+      // 如果 buttonColor 還是舊的 enum 值，轉換為顏色碼
+      if (settings.eventBanner.buttonColor && ['primary', 'secondary', 'success', 'error', 'info', 'warning'].includes(settings.eventBanner.buttonColor)) {
+        updatedEventBanner.buttonColor = '#1976d2';
+        eventBannerNeedsUpdate = true;
+      }
+      
+      if (eventBannerNeedsUpdate) {
+        updateFields.eventBanner = updatedEventBanner;
+        needsUpdate = true;
+        console.log('更新 eventBanner 設定，添加新欄位');
+      }
     }
     
     if (needsUpdate) {

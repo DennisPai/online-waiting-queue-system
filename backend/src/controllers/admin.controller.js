@@ -841,7 +841,7 @@ exports.setPublicRegistrationEnabled = async (req, res) => {
 // 更新活動報名區塊設定
 exports.updateEventBanner = async (req, res) => {
   try {
-    const { enabled, title, titleSize, titleColor, titleAlign, buttonText, buttonUrl, buttonColor } = req.body;
+    const { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor } = req.body;
     
     // 驗證 URL 格式（如果提供）
     if (buttonUrl) {
@@ -876,6 +876,28 @@ exports.updateEventBanner = async (req, res) => {
       }
     }
     
+    // 驗證背景顏色格式（如果提供）
+    if (backgroundColor) {
+      const colorRegex = /^#[0-9A-F]{6}$/i;
+      if (!colorRegex.test(backgroundColor)) {
+        return res.status(400).json({
+          success: false,
+          message: '背景顏色格式不正確，請使用 hex 格式（例如：#ffffff）'
+        });
+      }
+    }
+    
+    // 驗證按鈕顏色格式（如果提供）
+    if (buttonColor) {
+      const colorRegex = /^#[0-9A-F]{6}$/i;
+      if (!colorRegex.test(buttonColor)) {
+        return res.status(400).json({
+          success: false,
+          message: '按鈕顏色格式不正確，請使用 hex 格式（例如：#1976d2）'
+        });
+      }
+    }
+    
     // 驗證對齊方式（如果提供）
     if (titleAlign && !['left', 'center', 'right'].includes(titleAlign)) {
       return res.status(400).json({
@@ -884,11 +906,11 @@ exports.updateEventBanner = async (req, res) => {
       });
     }
     
-    // 驗證按鈕顏色（如果提供）
-    if (buttonColor && !['primary', 'secondary', 'success', 'error', 'info', 'warning'].includes(buttonColor)) {
+    // 驗證字體粗細（如果提供）
+    if (fontWeight && !['normal', 'bold'].includes(fontWeight)) {
       return res.status(400).json({
         success: false,
-        message: '按鈕顏色必須是 primary、secondary、success、error、info 或 warning'
+        message: '字體粗細必須是 normal 或 bold'
       });
     }
     
@@ -902,6 +924,8 @@ exports.updateEventBanner = async (req, res) => {
     if (titleSize !== undefined) settings.eventBanner.titleSize = titleSize;
     if (titleColor !== undefined) settings.eventBanner.titleColor = titleColor;
     if (titleAlign !== undefined) settings.eventBanner.titleAlign = titleAlign;
+    if (fontWeight !== undefined) settings.eventBanner.fontWeight = fontWeight;
+    if (backgroundColor !== undefined) settings.eventBanner.backgroundColor = backgroundColor;
     if (buttonText !== undefined) settings.eventBanner.buttonText = buttonText;
     if (buttonUrl !== undefined) settings.eventBanner.buttonUrl = buttonUrl;
     if (buttonColor !== undefined) settings.eventBanner.buttonColor = buttonColor;

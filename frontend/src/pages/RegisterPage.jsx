@@ -50,6 +50,7 @@ const RegisterPage = () => {
     addAddress,
     removeAddress,
     handleFamilyMemberChange,
+    handleUsePrimaryAddress,
     addFamilyMember,
     removeFamilyMember,
     handleSubmit,
@@ -174,6 +175,7 @@ const RegisterPage = () => {
             formData={formData}
             formErrors={formErrors}
             onFamilyMemberChange={handleFamilyMemberChange}
+            onUsePrimaryAddress={handleUsePrimaryAddress}
             onAddFamilyMember={addFamilyMember}
             onRemoveFamilyMember={removeFamilyMember}
           />
