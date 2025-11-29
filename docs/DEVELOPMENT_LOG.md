@@ -19,6 +19,96 @@
 
 ## 🗓️ 開發時間線
 
+### 2025-11-29 - 修復匯出資料功能並優化重新排序功能
+
+**背景**：用戶反饋後台「匯出資料」按鈕點擊無反應，同時要求檢查並優化「重新排序」功能。
+
+**問題分析**：
+
+1. **匯出資料按鈕無反應**
+   - **症狀**：點擊後台候位管理中的「匯出資料」按鈕沒有任何反應
+   - **根本原因**：
+     - `AdminDashboardPage` 從 hook 中解構並使用 `handleExport` 方法
+     - `useQueueUI` 只導出了 `handleOpenExportDialog`，未提供 `handleExport`
+     - 函數名稱不匹配導致 `handleExport` 為 `undefined`
+   - **解決方案**：在 `useQueueUI` 中添加 `handleExport` 別名指向 `handleOpenExportDialog`
+
+2. **重新排序功能優化**
+   - **現有問題**：
+     - 使用 `for` 循環逐個發送 API 請求，當客戶數量多時性能差
+     - 錯誤處理不完整：中途失敗會導致部分更新成功、部分失敗，數據不一致
+     - 缺少重新載入機制：更新後不刷新列表，無法確保顯示的是後端的實際狀態
+   - **優化方案**：
+     - 使用 `Promise.all` 並行發送所有請求，大幅提升性能
+     - 添加 `.unwrap()` 確保錯誤能被正確捕獲
+     - 成功/失敗後都重新載入列表，確保前後端數據一致性
+
+**技術實施**：
+
+1. **修復匯出功能**（[`frontend/src/hooks/admin/useQueueUI.js`](frontend/src/hooks/admin/useQueueUI.js)）：
+   ```javascript
+   return {
+     // ... 其他返回值 ...
+     handleOpenExportDialog,
+     handleExport: handleOpenExportDialog, // 添加別名以兼容現有代碼
+     handleCloseExportDialog,
+     // ... 其他返回值 ...
+   };
+   ```
+
+2. **優化重新排序**（[`frontend/src/hooks/admin/useQueueActions.js`](frontend/src/hooks/admin/useQueueActions.js)）：
+   ```javascript
+   const handleReorderQueue = useCallback(async () => {
+     try {
+       // ... 過濾和排序邏輯 ...
+       
+       // 使用 Promise.all 並行發送請求（替代原來的 for 循環）
+       await Promise.all(
+         updates.map(update =>
+           dispatch(updateQueueOrder({
+             queueId: update.id,
+             newOrder: update.orderIndex
+           })).unwrap()
+         )
+       );
+
+       // 成功後重新載入列表，確保數據一致性
+       loadQueueList();
+       
+       dispatch(showAlert({
+         message: '候位順序重新排列完成',
+         severity: 'success'
+       }));
+     } catch (error) {
+       // 失敗時也重新載入，恢復到後端的正確狀態
+       loadQueueList();
+       dispatch(showAlert({
+         message: '重新排序失敗，請稍後再試',
+         severity: 'error'
+       }));
+     }
+   }, [localQueueList, setLocalQueueList, dispatch, loadQueueList]);
+   ```
+
+**影響範圍**：
+- 修復了後台匯出資料按鈕功能
+- 大幅提升了重新排序的性能（並行請求）
+- 改善了錯誤處理，避免數據不一致
+- 所有修復通過 linter 檢查
+
+**性能提升**：
+- **順序請求**（舊方式）：假設有 50 個客戶，每個請求 100ms，總耗時約 5 秒
+- **並行請求**（新方式）：所有請求同時發送，總耗時約 100-200ms（取決於網路）
+- **性能提升**：約 25-50 倍
+
+**經驗教訓**：
+1. **命名一致性**：Hook 導出的方法名應與使用處保持一致，或提供明確的別名
+2. **性能優化**：批量操作優先使用並行請求（`Promise.all`）而非順序執行
+3. **數據一致性**：關鍵操作後應重新載入數據，確保前後端同步
+4. **錯誤恢復**：失敗時應恢復到已知的正確狀態，避免殘留錯誤數據
+
+---
+
 ### 2025-11-29 - 修復候位登記和叫號功能
 
 **背景**：重構完成後用戶報告兩個關鍵功能問題，影響正常使用。
