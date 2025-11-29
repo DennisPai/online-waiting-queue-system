@@ -17,6 +17,7 @@ import {
   useMediaQuery
 } from '@mui/material';
 import QueueStatusDisplay from '../components/QueueStatusDisplay';
+import EventBanner from '../components/EventBanner';
 import { getQueueStatus, getOrderedQueueNumbers, getPublicOrderedNumbers } from '../redux/slices/queueSlice';
 import { API_ENDPOINTS } from '../config/api';
 
@@ -42,7 +43,7 @@ const HomePage = () => {
   const dispatch = useDispatch();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { queueStatus, isLoading, currentQueue, isQueueOpen, isFull } = useSelector((state) => state.queue);
+  const { queueStatus, eventBanner, isLoading, currentQueue, isQueueOpen, isFull } = useSelector((state) => state.queue);
   const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -139,6 +140,9 @@ const HomePage = () => {
       <Grid container spacing={4} sx={{ my: 2 }}>
         <Grid item xs={12}>
           <QueueStatusDisplay queueStatus={queueStatus} isLoading={isLoading} />
+          
+          {/* 活動報名區塊 */}
+          {eventBanner?.enabled && <EventBanner eventBanner={eventBanner} />}
         </Grid>
 
         {/* 當公開候位登記開啟時或管理員登入時才顯示候位登記功能，且未額滿 */}

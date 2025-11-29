@@ -33,6 +33,7 @@ const FamilySection = ({
   formData,
   formErrors,
   onFamilyMemberChange,
+  onUsePrimaryAddress,
   onAddFamilyMember,
   onRemoveFamilyMember,
   simplified = false
@@ -208,6 +209,30 @@ const FamilySection = ({
                   </Grid>
                 )}
                 
+                {/* 地址同上核取方框 */}
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={member.usePrimaryAddress || false}
+                        onChange={(e) => onUsePrimaryAddress && onUsePrimaryAddress(index, e.target.checked)}
+                        disabled={!formData.addresses?.[0]?.address}
+                        size="small"
+                      />
+                    }
+                    label={
+                      <Typography variant="body2">
+                        同上（使用主客戶地址）
+                      </Typography>
+                    }
+                  />
+                  {!formData.addresses?.[0]?.address && (
+                    <Typography variant="caption" color="error" sx={{ ml: 4, display: 'block' }}>
+                      請先填寫主客戶地址
+                    </Typography>
+                  )}
+                </Grid>
+
                 {/* 地址 */}
                 <Grid item xs={12} sm={8}>
                   <TextField

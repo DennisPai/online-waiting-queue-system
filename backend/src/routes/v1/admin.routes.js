@@ -53,6 +53,9 @@ router.post('/settings/reset-customer-count', adminController.resetTotalCustomer
 router.put('/settings/last-completed-time', [body('lastCompletedTime').notEmpty()], validateRequest, adminController.setLastCompletedTime);
 router.post('/settings/reset-completed-time', adminController.resetLastCompletedTime);
 
+// 新增：活動報名區塊設定
+router.put('/settings/event-banner', adminController.updateEventBanner);
+
 router.delete('/queue/clear-all', adminController.clearAllQueue);
 
 module.exports = router;

@@ -838,6 +838,94 @@ exports.setPublicRegistrationEnabled = async (req, res) => {
   }
 };
 
+// 更新活動報名區塊設定
+exports.updateEventBanner = async (req, res) => {
+  try {
+    const { enabled, title, titleSize, titleColor, titleAlign, buttonText, buttonUrl, buttonColor } = req.body;
+    
+    // 驗證 URL 格式（如果提供）
+    if (buttonUrl) {
+      const urlRegex = /^https?:\/\/.+/i;
+      if (!urlRegex.test(buttonUrl)) {
+        return res.status(400).json({
+          success: false,
+          message: 'URL 格式不正確，必須以 http:// 或 https:// 開頭'
+        });
+      }
+    }
+    
+    // 驗證字體大小格式（如果提供）
+    if (titleSize) {
+      const sizeRegex = /^\d+(\.\d+)?(rem|px|em)$/;
+      if (!sizeRegex.test(titleSize)) {
+        return res.status(400).json({
+          success: false,
+          message: '字體大小格式不正確，請使用 rem、px 或 em 單位'
+        });
+      }
+    }
+    
+    // 驗證顏色格式（如果提供）
+    if (titleColor) {
+      const colorRegex = /^#[0-9A-F]{6}$/i;
+      if (!colorRegex.test(titleColor)) {
+        return res.status(400).json({
+          success: false,
+          message: '顏色格式不正確，請使用 hex 格式（例如：#1976d2）'
+        });
+      }
+    }
+    
+    // 驗證對齊方式（如果提供）
+    if (titleAlign && !['left', 'center', 'right'].includes(titleAlign)) {
+      return res.status(400).json({
+        success: false,
+        message: '對齊方式必須是 left、center 或 right'
+      });
+    }
+    
+    // 驗證按鈕顏色（如果提供）
+    if (buttonColor && !['primary', 'secondary', 'success', 'error', 'info', 'warning'].includes(buttonColor)) {
+      return res.status(400).json({
+        success: false,
+        message: '按鈕顏色必須是 primary、secondary、success、error、info 或 warning'
+      });
+    }
+    
+    // 獲取系統設定
+    const settings = await SystemSetting.getSettings();
+    
+    // 更新活動報名區塊設定
+    settings.eventBanner = settings.eventBanner || {};
+    if (enabled !== undefined) settings.eventBanner.enabled = enabled;
+    if (title !== undefined) settings.eventBanner.title = title;
+    if (titleSize !== undefined) settings.eventBanner.titleSize = titleSize;
+    if (titleColor !== undefined) settings.eventBanner.titleColor = titleColor;
+    if (titleAlign !== undefined) settings.eventBanner.titleAlign = titleAlign;
+    if (buttonText !== undefined) settings.eventBanner.buttonText = buttonText;
+    if (buttonUrl !== undefined) settings.eventBanner.buttonUrl = buttonUrl;
+    if (buttonColor !== undefined) settings.eventBanner.buttonColor = buttonColor;
+    settings.updatedBy = req.user.id;
+    
+    await settings.save();
+    
+    res.status(200).json({
+      success: true,
+      message: '活動報名區塊設定已更新',
+      data: {
+        eventBanner: settings.eventBanner
+      }
+    });
+  } catch (error) {
+    console.error('更新活動報名區塊設定錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器內部錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};
+
 // 清除所有候位資料
 exports.clearAllQueue = async (req, res) => {
   try {

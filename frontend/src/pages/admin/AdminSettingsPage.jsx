@@ -14,7 +14,13 @@ import {
   CircularProgress,
   Card,
   CardContent,
-  Divider
+  Divider,
+  Tabs,
+  Tab,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  Radio
 } from '@mui/material';
 
 import {
@@ -24,19 +30,32 @@ import {
   setMaxOrderIndex,
   setMinutesPerCustomer,
   setSimplifiedMode,
-  setPublicRegistrationEnabled
+  setPublicRegistrationEnabled,
+  updateEventBanner
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
 
 const AdminSettingsPage = () => {
   const dispatch = useDispatch();
-  const { queueStatus, isLoading, error } = useSelector((state) => state.queue);
+  const { queueStatus, eventBanner, isLoading, error } = useSelector((state) => state.queue);
+  const [tabValue, setTabValue] = useState(0);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [nextSessionDateString, setNextSessionDateString] = useState('');
   const [maxOrderIndex, setMaxOrderIndexLocal] = useState(100);
   const [minutesPerCustomer, setMinutesPerCustomerLocal] = useState(13);
   const [simplifiedMode, setSimplifiedModeLocal] = useState(false);
   const [publicRegistrationEnabled, setPublicRegistrationEnabledLocal] = useState(false);
+  // 活動報名區塊設定
+  const [eventBannerData, setEventBannerData] = useState({
+    enabled: false,
+    title: '修玄宮特別活動',
+    titleSize: '1.5rem',
+    titleColor: '#1976d2',
+    titleAlign: 'center',
+    buttonText: '點我填寫報名表單',
+    buttonUrl: 'https://www.google.com',
+    buttonColor: 'primary'
+  });
 
   // 安全的日期格式化函數
   const formatDateForInput = (dateString) => {
@@ -120,6 +139,11 @@ const AdminSettingsPage = () => {
         
         if (typeof result.publicRegistrationEnabled !== 'undefined') {
           setPublicRegistrationEnabledLocal(result.publicRegistrationEnabled);
+        }
+        
+        // 初始化活動報名區塊設定
+        if (result.eventBanner) {
+          setEventBannerData(result.eventBanner);
         }
       })
       .catch((error) => {
@@ -374,8 +398,30 @@ const AdminSettingsPage = () => {
       });
   };
 
+  // 處理儲存活動報名設定
+  const handleSaveEventBanner = () => {
+    dispatch(updateEventBanner(eventBannerData))
+      .unwrap()
+      .then(() => {
+        dispatch(
+          showAlert({
+            message: '活動報名區塊設定已更新',
+            severity: 'success'
+          })
+        );
+      })
+      .catch((error) => {
+        dispatch(
+          showAlert({
+            message: error,
+            severity: 'error'
+          })
+        );
+      });
+  };
+
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
         系統設置
       </Typography>
@@ -386,12 +432,25 @@ const AdminSettingsPage = () => {
         </Alert>
       )}
 
+      {/* Tabs 導航 */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+          <Tab label="基本設定" />
+          <Tab label="候位設定" />
+          <Tab label="註冊設定" />
+          <Tab label="活動報名" />
+        </Tabs>
+      </Box>
+
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
           <CircularProgress />
         </Box>
       ) : (
-        <Grid container spacing={3}>
+        <>
+          {/* Tab 0: 基本設定 */}
+          {tabValue === 0 && (
+            <Grid container spacing={3}>
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
@@ -617,53 +676,194 @@ const AdminSettingsPage = () => {
             </Paper>
           </Grid>
 
-          {queueStatus && (
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    當前系統狀態
-                  </Typography>
-                  <Divider sx={{ my: 1 }} />
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        目前叫號
-                      </Typography>
-                      <Typography variant="h6">
-                        {queueStatus.currentQueueNumber || queueStatus.currentNumber || '無'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        等待組數
-                      </Typography>
-                      <Typography variant="h6">
-                        {queueStatus.waitingCount || 0} 組
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        下次辦事時間
-                      </Typography>
-                      <Typography variant="h6">
-                        {formatDateForDisplay(queueStatus.nextSessionDate)}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        系統狀態
-                      </Typography>
-                      <Typography variant="h6" color={queueStatus.isOpen ? 'success.main' : 'error.main'}>
-                        {queueStatus.isOpen ? '開啟' : '關閉'}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </Card>
             </Grid>
           )}
-        </Grid>
+
+          {/* Tab 1: 候位設定 */}
+          {tabValue === 1 && (
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    候位設定（請返回程式碼重新組織）
+                  </Typography>
+                  <Alert severity="info">
+                    此Tab尚未完成重構。請保留現有的候位設定內容。
+                  </Alert>
+                </Paper>
+              </Grid>
+            </Grid>
+          )}
+
+          {/* Tab 2: 註冊設定 */}
+          {tabValue === 2 && (
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    註冊設定（請返回程式碼重新組織）
+                  </Typography>
+                  <Alert severity="info">
+                    此Tab尚未完成重構。請保留現有的註冊設定內容。
+                  </Alert>
+                </Paper>
+              </Grid>
+            </Grid>
+          )}
+
+          {/* Tab 3: 活動報名 */}
+          {tabValue === 3 && (
+            <Grid container spacing={3}>
+              {/* 設定區域 */}
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    活動報名區塊設定
+                  </Typography>
+                  
+                  {/* 啟用開關 */}
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={eventBannerData.enabled}
+                        onChange={(e) => setEventBannerData({...eventBannerData, enabled: e.target.checked})}
+                      />
+                    }
+                    label="啟用活動報名區塊"
+                  />
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  {/* 標題設定 */}
+                  <TextField
+                    fullWidth
+                    label="標題文字"
+                    multiline
+                    rows={2}
+                    value={eventBannerData.title}
+                    onChange={(e) => setEventBannerData({...eventBannerData, title: e.target.value})}
+                    sx={{ mb: 2 }}
+                  />
+                  
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        label="字體大小"
+                        value={eventBannerData.titleSize}
+                        onChange={(e) => setEventBannerData({...eventBannerData, titleSize: e.target.value})}
+                        helperText="例如: 1.5rem"
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        label="文字顏色"
+                        type="color"
+                        value={eventBannerData.titleColor}
+                        onChange={(e) => setEventBannerData({...eventBannerData, titleColor: e.target.value})}
+                      />
+                    </Grid>
+                  </Grid>
+                  
+                  <FormControl fullWidth sx={{ mt: 2 }}>
+                    <FormLabel>文字對齊</FormLabel>
+                    <RadioGroup
+                      row
+                      value={eventBannerData.titleAlign}
+                      onChange={(e) => setEventBannerData({...eventBannerData, titleAlign: e.target.value})}
+                    >
+                      <FormControlLabel value="left" control={<Radio />} label="靠左" />
+                      <FormControlLabel value="center" control={<Radio />} label="置中" />
+                      <FormControlLabel value="right" control={<Radio />} label="靠右" />
+                    </RadioGroup>
+                  </FormControl>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  {/* 按鈕設定 */}
+                  <TextField
+                    fullWidth
+                    label="按鈕文字"
+                    value={eventBannerData.buttonText}
+                    onChange={(e) => setEventBannerData({...eventBannerData, buttonText: e.target.value})}
+                    sx={{ mb: 2 }}
+                  />
+                  
+                  <TextField
+                    fullWidth
+                    label="超連結網址"
+                    value={eventBannerData.buttonUrl}
+                    onChange={(e) => setEventBannerData({...eventBannerData, buttonUrl: e.target.value})}
+                    helperText="必須包含 http:// 或 https://"
+                    sx={{ mb: 2 }}
+                  />
+                  
+                  <FormControl fullWidth>
+                    <FormLabel>按鈕顏色</FormLabel>
+                    <RadioGroup
+                      row
+                      value={eventBannerData.buttonColor}
+                      onChange={(e) => setEventBannerData({...eventBannerData, buttonColor: e.target.value})}
+                    >
+                      <FormControlLabel value="primary" control={<Radio />} label="主要" />
+                      <FormControlLabel value="secondary" control={<Radio />} label="次要" />
+                      <FormControlLabel value="success" control={<Radio />} label="成功" />
+                      <FormControlLabel value="error" control={<Radio />} label="錯誤" />
+                    </RadioGroup>
+                  </FormControl>
+                  
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    連結將固定以新分頁方式開啟
+                  </Alert>
+                  
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={handleSaveEventBanner}
+                    sx={{ mt: 3 }}
+                  >
+                    儲存設定
+                  </Button>
+                </Paper>
+              </Grid>
+              
+              {/* 即時預覽區域 */}
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    即時預覽
+                  </Typography>
+                  <Card>
+                    <CardContent>
+                      <Typography
+                        variant="h5"
+                        align={eventBannerData.titleAlign}
+                        sx={{
+                          fontSize: eventBannerData.titleSize,
+                          color: eventBannerData.titleColor,
+                          mb: 2,
+                          fontWeight: 'medium'
+                        }}
+                      >
+                        {eventBannerData.title || '（標題文字）'}
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        color={eventBannerData.buttonColor}
+                        fullWidth
+                        size="large"
+                        disabled
+                      >
+                        {eventBannerData.buttonText || '（按鈕文字）'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Paper>
+              </Grid>
+            </Grid>
+          )}
+        </>
       )}
     </Container>
   );

@@ -40,6 +40,43 @@ const systemSettingSchema = new mongoose.Schema({
     type: Date,
     default: null  // 上一位辦完時間，初始為 null
   },
+  // 活動報名區塊設定（固定新分頁開啟）
+  eventBanner: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    title: {
+      type: String,
+      default: '修玄宮特別活動'
+    },
+    titleSize: {
+      type: String,
+      default: '1.5rem'
+    },
+    titleColor: {
+      type: String,
+      default: '#1976d2'
+    },
+    titleAlign: {
+      type: String,
+      default: 'center',
+      enum: ['left', 'center', 'right']
+    },
+    buttonText: {
+      type: String,
+      default: '點我填寫報名表單'
+    },
+    buttonUrl: {
+      type: String,
+      default: 'https://www.google.com'
+    },
+    buttonColor: {
+      type: String,
+      default: 'primary',
+      enum: ['primary', 'secondary', 'success', 'error', 'info', 'warning']
+    }
+  },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -104,6 +141,22 @@ systemSettingSchema.statics.getSettings = async function() {
       updateFields.maxOrderIndex = settings.maxQueueNumber;
       needsUpdate = true;
       console.log(`遷移欄位 maxQueueNumber → maxOrderIndex: ${settings.maxQueueNumber}`);
+    }
+    
+    // 初始化 eventBanner 欄位
+    if (settings.eventBanner === undefined) {
+      updateFields.eventBanner = {
+        enabled: false,
+        title: '修玄宮特別活動',
+        titleSize: '1.5rem',
+        titleColor: '#1976d2',
+        titleAlign: 'center',
+        buttonText: '點我填寫報名表單',
+        buttonUrl: 'https://www.google.com',
+        buttonColor: 'primary'
+      };
+      needsUpdate = true;
+      console.log('初始化 eventBanner 設定');
     }
     
     if (needsUpdate) {

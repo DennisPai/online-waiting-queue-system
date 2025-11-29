@@ -286,6 +286,29 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
     }
   };
 
+  // 處理家人地址"同上"功能
+  const handleUsePrimaryAddress = (index, checked) => {
+    if (checked && formData.addresses[0]?.address) {
+      // 複製主客戶的第一個地址
+      const newFamilyMembers = [...formData.familyMembers];
+      newFamilyMembers[index] = {
+        ...newFamilyMembers[index],
+        address: formData.addresses[0].address,
+        addressType: formData.addresses[0].addressType,
+        usePrimaryAddress: true
+      };
+      setFormData({ ...formData, familyMembers: newFamilyMembers });
+    } else {
+      // 取消勾選時，只更新勾選狀態，保留地址內容
+      const newFamilyMembers = [...formData.familyMembers];
+      newFamilyMembers[index] = {
+        ...newFamilyMembers[index],
+        usePrimaryAddress: false
+      };
+      setFormData({ ...formData, familyMembers: newFamilyMembers });
+    }
+  };
+
   // 新增家人
   const addFamilyMember = () => {
     setFormData({
@@ -822,6 +845,30 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                           />
                         </Grid>
                       )}
+
+                      {/* 地址同上核取方框 */}
+                      <Grid item xs={12}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={member.usePrimaryAddress || false}
+                              onChange={(e) => handleUsePrimaryAddress(index, e.target.checked)}
+                              disabled={!formData.addresses?.[0]?.address}
+                              size="small"
+                            />
+                          }
+                          label={
+                            <Typography variant="body2">
+                              同上（使用主客戶地址）
+                            </Typography>
+                          }
+                        />
+                        {!formData.addresses?.[0]?.address && (
+                          <Typography variant="caption" color="error" sx={{ ml: 4, display: 'block' }}>
+                            請先填寫主客戶地址
+                          </Typography>
+                        )}
+                      </Grid>
 
                       {/* 地址 */}
                       <Grid item xs={12} sm={8}>

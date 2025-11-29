@@ -24,6 +24,17 @@ const initialState = {
   currentMaxOrderIndex: 0, // 新增：目前系統中最大的叫號順序
   maxOrderIndexLimit: 100, // 新增：最大叫號順序上限
   isFull: false, // 新增：是否已額滿
+  // 活動報名區塊設定
+  eventBanner: {
+    enabled: false,
+    title: '修玄宮特別活動',
+    titleSize: '1.5rem',
+    titleColor: '#1976d2',
+    titleAlign: 'center',
+    buttonText: '點我填寫報名表單',
+    buttonUrl: 'https://www.google.com',
+    buttonColor: 'primary'
+  },
   isLoading: false,
   error: null
 };
@@ -216,6 +227,21 @@ export const setPublicRegistrationEnabled = createAsyncThunk(
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '設定公開候位登記功能失敗');
+    }
+  }
+);
+
+// 更新活動報名區塊設定（管理員）
+export const updateEventBanner = createAsyncThunk(
+  'queue/updateEventBanner',
+  async (data, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.updateEventBanner(data, token);
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '更新活動報名設定失敗');
     }
   }
 );
@@ -434,6 +460,11 @@ const queueSlice = createSlice({
         state.maxOrderIndexLimit = action.payload.maxOrderIndex || 100;
         state.isFull = action.payload.isFull || false;
         
+        // 同步活動報名區塊設定
+        if (action.payload.eventBanner) {
+          state.eventBanner = action.payload.eventBanner;
+        }
+        
         if (action.payload.isOpen) {
           state.currentQueue = action.payload.currentQueueNumber;
           state.waitingCount = action.payload.waitingCount;
@@ -644,6 +675,25 @@ const queueSlice = createSlice({
         };
       })
       .addCase(setPublicRegistrationEnabled.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      // 更新活動報名區塊設定
+      .addCase(updateEventBanner.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(updateEventBanner.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // 更新活動報名區塊設定
+        if (action.payload.eventBanner) {
+          state.eventBanner = action.payload.eventBanner;
+        }
+        // 同時更新 queueStatus 中的 eventBanner
+        if (state.queueStatus) {
+          state.queueStatus.eventBanner = action.payload.eventBanner;
+        }
+      })
+      .addCase(updateEventBanner.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
