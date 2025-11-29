@@ -74,6 +74,11 @@ export const useQueueData = () => {
     );
   }, [dispatch, currentTab]);
 
+  // 處理分頁切換
+  const handleTabChange = useCallback((event, newValue) => {
+    setCurrentTab(newValue);
+  }, []);
+
   return {
     // 狀態
     localQueueList,
@@ -87,6 +92,7 @@ export const useQueueData = () => {
     // 方法
     setLocalQueueList,
     setCurrentTab,
+    handleTabChange,
     loadQueueList,
     detectDuplicateNumbers
   };

@@ -3,6 +3,7 @@ import { useQueueData } from './useQueueData';
 import { useQueueActions } from './useQueueActions';
 import { useQueueUI } from './useQueueUI';
 import { useQueueValidation } from './useQueueValidation';
+import { useQueueSettings } from './useQueueSettings';
 
 /**
  * 重構後的候位管理主 Hook
@@ -14,6 +15,9 @@ export const useQueueManagementRefactored = () => {
   
   // UI 狀態管理
   const uiHook = useQueueUI();
+  
+  // 系統設定管理
+  const settingsHook = useQueueSettings();
   
   // 操作邏輯
   const actionsHook = useQueueActions({
@@ -39,6 +43,9 @@ export const useQueueManagementRefactored = () => {
     
     // UI 狀態
     ...uiHook,
+    
+    // 系統設定
+    ...settingsHook,
     
     // 操作方法
     ...actionsHook,
