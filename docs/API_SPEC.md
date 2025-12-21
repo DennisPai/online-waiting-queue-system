@@ -22,8 +22,8 @@
 
 ## Queue（公開）
 - GET `/api/v1/queue/status`
-  - 200: `{ success, code, data: { isOpen, currentQueueNumber, waitingCount, nextSessionDate, maxOrderIndex, minutesPerCustomer, simplifiedMode, publicRegistrationEnabled, totalCustomerCount, lastCompletedTime, estimatedEndTime, currentMaxOrderIndex, isFull, eventBanner: { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor }, message } }`
-  - 說明：回傳完整的系統狀態，包含活動報名區塊設定（eventBanner），確保前端重新整理時不會丟失設定
+  - 200: `{ success, code, data: { isOpen, currentQueueNumber, waitingCount, nextSessionDate, maxOrderIndex, minutesPerCustomer, simplifiedMode, publicRegistrationEnabled, totalCustomerCount, lastCompletedTime, estimatedEndTime, currentMaxOrderIndex, isFull, eventBanner: { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor }, nextRegistrationDateTime, message } }`
+  - 說明：回傳完整的系統狀態，包含活動報名區塊設定（eventBanner）和候位額滿提示訊息的開放報名時間（nextRegistrationDateTime，可能為 null 表示使用動態計算），確保前端重新整理時不會丟失設定
 - POST `/api/v1/queue/register`
   - body: `{ name, phone, email?, gender, addresses, familyMembers?, consultationTopics?, ... }`
   - 201: `{ success, code, data: { queueNumber, orderIndex, waitingCount, estimatedWaitTime, ... } }`
@@ -78,6 +78,13 @@
 - PUT `/api/v1/admin/settings/event-banner`
   - body: `{ enabled?, title?, titleSize?, titleColor?, titleAlign?, fontWeight?, backgroundColor?, buttonText?, buttonUrl?, buttonColor?, buttonTextColor? }`
   - 200: `{ success, code, message: '活動報名區塊設定已更新', data: { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor } }`
+- GET `/api/v1/admin/settings/next-registration-datetime`
+  - 200: `{ success, code, message: '獲取開放報名時間設定成功', data: { nextRegistrationDateTime } }`
+  - 說明：返回 null 表示使用系統自動計算（開科辦事日 + 1天 + 中午12:00整），返回字串表示使用自訂值
+- PUT `/api/v1/admin/settings/next-registration-datetime`
+  - body: `{ nextRegistrationDateTime }`
+  - 200: `{ success, code, message: '開放報名時間設定已更新', data: { nextRegistrationDateTime } }`
+  - 說明：傳入 null 恢復使用系統自動計算，傳入字串設定為自訂值
 - DELETE `/api/v1/admin/queue/clear-all`
 
 ## 注意事項

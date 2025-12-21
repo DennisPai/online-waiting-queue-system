@@ -40,6 +40,11 @@ const systemSettingSchema = new mongoose.Schema({
     type: Date,
     default: null  // 上一位辦完時間，初始為 null
   },
+  // 候位額滿提示訊息的開放報名時間（null 表示使用動態計算）
+  nextRegistrationDateTime: {
+    type: String,
+    default: null  // 預設為 null，使用系統自動計算（開科辦事日 + 1天 + 中午12:00整）
+  },
   // 活動報名區塊設定（固定新分頁開啟）
   eventBanner: {
     enabled: {

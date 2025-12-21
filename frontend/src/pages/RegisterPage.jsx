@@ -30,6 +30,20 @@ const RegisterPage = () => {
   const [redirectCountdown, setRedirectCountdown] = useState(5);
   const [showFullMessage, setShowFullMessage] = useState(false);
 
+  // 計算顯示的時間：優先使用自訂值，否則使用動態計算
+  const getDisplayDateTime = () => {
+    if (queueStatus?.nextRegistrationDateTime) {
+      return queueStatus.nextRegistrationDateTime;
+    }
+    if (queueStatus?.nextSessionDate) {
+      const dateStr = getNextRegistrationDate(queueStatus.nextSessionDate);
+      return `${dateStr}中午12:00整`;
+    }
+    return '未設定';
+  };
+
+  const displayDateTime = getDisplayDateTime();
+
   const {
     // 狀態
     formData,
@@ -90,7 +104,7 @@ const RegisterPage = () => {
             本次報名已額滿
           </Typography>
           <Typography variant="h6" component="h2" color="text.secondary" paragraph>
-            本次預約人數已達上限，敬請報名下次開科辦事，下次開科辦事開放報名時間為{getNextRegistrationDate(queueStatus?.nextSessionDate)}中午12:00整
+            本次預約人數已達上限，敬請報名下次開科辦事，下次開科辦事開放報名時間為{displayDateTime}
           </Typography>
           <Typography variant="body1" color="text.secondary">
             將在 {redirectCountdown} 秒後自動返回首頁...

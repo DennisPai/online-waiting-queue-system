@@ -46,6 +46,22 @@ const HomePage = () => {
   const { queueStatus, eventBanner, isLoading, currentQueue, isQueueOpen, isFull } = useSelector((state) => state.queue);
   const { isAuthenticated } = useSelector((state) => state.auth);
 
+  // 計算顯示的時間：優先使用自訂值，否則使用動態計算
+  const getDisplayDateTime = () => {
+    // 如果有自訂值，直接使用
+    if (queueStatus?.nextRegistrationDateTime) {
+      return queueStatus.nextRegistrationDateTime;
+    }
+    // 否則使用動態計算
+    if (queueStatus?.nextSessionDate) {
+      const dateStr = getNextRegistrationDate(queueStatus.nextSessionDate);
+      return `${dateStr}中午12:00整`;
+    }
+    return '未設定';
+  };
+
+  const displayDateTime = getDisplayDateTime();
+
   useEffect(() => {
     // 初始載入（總是執行）
     dispatch(getQueueStatus()); // 已包含 eventBanner，無需單獨調用
@@ -189,7 +205,7 @@ const HomePage = () => {
                   本次報名已額滿
                 </Typography>
                 <Typography variant="body1" color="text.secondary" paragraph sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}>
-                  本次預約人數已達上限，敬請報名下次開科辦事，下次開科辦事開放報名時間為{getNextRegistrationDate(queueStatus?.nextSessionDate)}中午12:00整
+                  本次預約人數已達上限，敬請報名下次開科辦事，下次開科辦事開放報名時間為{displayDateTime}
                 </Typography>
               </CardContent>
               <CardActions>

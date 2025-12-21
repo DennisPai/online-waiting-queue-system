@@ -180,6 +180,7 @@ const getQueueStatus = catchAsync(async (req, res) => {
         currentMaxOrderIndex,
         isFull: currentMaxOrderIndex >= settings.maxOrderIndex,
         eventBanner: settings.eventBanner,
+        nextRegistrationDateTime: settings.nextRegistrationDateTime || null,
         message: '辦事服務目前已停止'
       }
     });
@@ -235,6 +236,7 @@ const getQueueStatus = catchAsync(async (req, res) => {
       currentMaxOrderIndex,
       isFull: currentMaxOrderIndex >= settings.maxOrderIndex,
       eventBanner: settings.eventBanner,
+      nextRegistrationDateTime: settings.nextRegistrationDateTime || null,
       message: `目前叫號: ${currentQueueNumber}, 等待組數: ${waitingCount}`
     }
   });

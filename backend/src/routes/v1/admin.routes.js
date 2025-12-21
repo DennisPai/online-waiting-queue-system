@@ -69,6 +69,12 @@ router.put('/settings/event-banner', [
   body('buttonTextColor').optional().isString().trim()
 ], validateRequest, adminController.updateEventBanner);
 
+// 新增：候位額滿提示訊息的開放報名時間設定
+router.get('/settings/next-registration-datetime', adminController.getNextRegistrationDateTime);
+router.put('/settings/next-registration-datetime', [
+  body('nextRegistrationDateTime').optional({ nullable: true })
+], validateRequest, adminController.updateNextRegistrationDateTime);
+
 router.delete('/queue/clear-all', adminController.clearAllQueue);
 
 module.exports = router;

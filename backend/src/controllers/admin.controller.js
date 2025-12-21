@@ -1194,4 +1194,60 @@ exports.resetLastCompletedTime = async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : {}
     });
   }
+};
+
+// 獲取候位額滿提示訊息的開放報名時間設定
+exports.getNextRegistrationDateTime = async (req, res) => {
+  try {
+    const settings = await SystemSetting.getSettings();
+    return res.status(200).json({
+      success: true,
+      code: 'OK',
+      message: '獲取開放報名時間設定成功',
+      data: {
+        nextRegistrationDateTime: settings?.nextRegistrationDateTime || null
+      }
+    });
+  } catch (error) {
+    console.error('獲取開放報名時間設定錯誤:', error);
+    return res.status(500).json({
+      success: false,
+      code: 'INTERNAL_ERROR',
+      message: '獲取設定時發生錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};
+
+// 更新候位額滿提示訊息的開放報名時間設定
+exports.updateNextRegistrationDateTime = async (req, res) => {
+  try {
+    const { nextRegistrationDateTime } = req.body;
+    
+    // 獲取系統設定
+    const settings = await SystemSetting.getSettings();
+    
+    // 更新設定（允許 null 值，表示使用系統自動計算）
+    settings.nextRegistrationDateTime = nextRegistrationDateTime;
+    settings.updatedBy = req.user.id;
+    
+    await settings.save();
+    
+    return res.status(200).json({
+      success: true,
+      code: 'OK',
+      message: '開放報名時間設定已更新',
+      data: {
+        nextRegistrationDateTime: settings.nextRegistrationDateTime
+      }
+    });
+  } catch (error) {
+    console.error('更新開放報名時間設定錯誤:', error);
+    return res.status(500).json({
+      success: false,
+      code: 'INTERNAL_ERROR',
+      message: '更新設定時發生錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
 }; 

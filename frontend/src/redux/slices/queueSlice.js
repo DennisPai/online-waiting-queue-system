@@ -24,6 +24,7 @@ const initialState = {
   currentMaxOrderIndex: 0, // 新增：目前系統中最大的叫號順序
   maxOrderIndexLimit: 100, // 新增：最大叫號順序上限
   isFull: false, // 新增：是否已額滿
+  nextRegistrationDateTime: null, // 候位額滿提示訊息的開放報名時間（null 表示使用動態計算）
   // 活動報名區塊設定
   eventBanner: {
     enabled: false,
@@ -263,6 +264,35 @@ export const updateEventBanner = createAsyncThunk(
   }
 );
 
+// 獲取候位額滿提示訊息的開放報名時間設定
+export const getNextRegistrationDateTime = createAsyncThunk(
+  'queue/getNextRegistrationDateTime',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await queueService.getNextRegistrationDateTime();
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '獲取設定失敗');
+    }
+  }
+);
+
+// 設定候位額滿提示訊息的開放報名時間（管理員）
+export const setNextRegistrationDateTime = createAsyncThunk(
+  'queue/setNextRegistrationDateTime',
+  async (nextRegistrationDateTime, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.setNextRegistrationDateTime(nextRegistrationDateTime, token);
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '更新設定失敗');
+    }
+  }
+);
+
 // 設定客戶總數（管理員）
 export const setTotalCustomerCount = createAsyncThunk(
   'queue/setTotalCustomerCount',
@@ -481,6 +511,11 @@ const queueSlice = createSlice({
         if (action.payload.eventBanner) {
           state.eventBanner = action.payload.eventBanner;
         }
+        
+        // 更新 nextRegistrationDateTime（明確處理 null 值）
+        state.nextRegistrationDateTime = action.payload.nextRegistrationDateTime !== undefined 
+          ? action.payload.nextRegistrationDateTime 
+          : state.nextRegistrationDateTime;
         
         if (action.payload.isOpen) {
           state.currentQueue = action.payload.currentQueueNumber;
@@ -715,6 +750,34 @@ const queueSlice = createSlice({
         }
       })
       .addCase(updateEventBanner.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      // getNextRegistrationDateTime
+      .addCase(getNextRegistrationDateTime.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getNextRegistrationDateTime.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.nextRegistrationDateTime = action.payload.nextRegistrationDateTime || null;
+      })
+      .addCase(getNextRegistrationDateTime.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      // setNextRegistrationDateTime
+      .addCase(setNextRegistrationDateTime.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(setNextRegistrationDateTime.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.nextRegistrationDateTime = action.payload.nextRegistrationDateTime;
+        // 同時更新 queueStatus 中的 nextRegistrationDateTime
+        if (state.queueStatus) {
+          state.queueStatus.nextRegistrationDateTime = action.payload.nextRegistrationDateTime;
+        }
+      })
+      .addCase(setNextRegistrationDateTime.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })

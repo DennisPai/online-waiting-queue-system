@@ -423,6 +423,41 @@ const updateEventBanner = async (data, token) => {
   }
 };
 
+// 獲取候位額滿提示訊息的開放報名時間設定
+const getNextRegistrationDateTime = async () => {
+  try {
+    const response = await axios.get(
+      `${API_ENDPOINTS.ADMIN}/settings/next-registration-datetime`
+    );
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
+  } catch (error) {
+    console.error('獲取開放報名時間設定錯誤:', error);
+    throw error.response?.data?.message || '獲取開放報名時間設定失敗';
+  }
+};
+
+// 設定候位額滿提示訊息的開放報名時間
+const setNextRegistrationDateTime = async (nextRegistrationDateTime, token) => {
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.put(
+      `${API_ENDPOINTS.ADMIN}/settings/next-registration-datetime`,
+      { nextRegistrationDateTime },
+      config
+    );
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
+  } catch (error) {
+    console.error('更新開放報名時間設定錯誤:', error);
+    throw error.response?.data?.message || '更新開放報名時間設定失敗';
+  }
+};
+
 // 設定客戶總數
 const setTotalCustomerCount = async (totalCustomerCount, token) => {
   const response = await axios.put(
@@ -525,6 +560,8 @@ const queueService = {
   setPublicRegistrationEnabled,
   getEventBanner,
   updateEventBanner,
+  getNextRegistrationDateTime,
+  setNextRegistrationDateTime,
   setTotalCustomerCount,
   resetTotalCustomerCount,
   setLastCompletedTime,

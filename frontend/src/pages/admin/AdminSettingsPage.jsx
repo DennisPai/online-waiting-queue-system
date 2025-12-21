@@ -36,9 +36,12 @@ import {
   setSimplifiedMode,
   setPublicRegistrationEnabled,
   updateEventBanner,
-  getEventBanner
+  getEventBanner,
+  setNextRegistrationDateTime,
+  getNextRegistrationDateTime
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
+import { getNextRegistrationDate } from '../../utils/dateUtils';
 
 const AdminSettingsPage = () => {
   const dispatch = useDispatch();
@@ -50,6 +53,9 @@ const AdminSettingsPage = () => {
   const [minutesPerCustomer, setMinutesPerCustomerLocal] = useState(13);
   const [simplifiedMode, setSimplifiedModeLocal] = useState(false);
   const [publicRegistrationEnabled, setPublicRegistrationEnabledLocal] = useState(false);
+  // 候位額滿提示訊息的開放報名時間設定
+  const [nextRegistrationDateTime, setNextRegistrationDateTimeLocal] = useState('');
+  const [useCustomDateTime, setUseCustomDateTime] = useState(false);
   // 活動報名區塊設定
   const [eventBannerData, setEventBannerData] = useState({
     enabled: false,
@@ -164,6 +170,23 @@ const AdminSettingsPage = () => {
             buttonColor: result.eventBanner.buttonColor ?? '#1976d2',
             buttonTextColor: result.eventBanner.buttonTextColor ?? '#ffffff'
           });
+        }
+        
+        // 初始化候位額滿提示訊息的開放報名時間設定
+        const customValue = result.nextRegistrationDateTime;
+        if (customValue) {
+          // 有自訂值
+          setNextRegistrationDateTimeLocal(customValue);
+          setUseCustomDateTime(true);
+        } else {
+          // 使用預設計算
+          if (result.nextSessionDate) {
+            const dateStr = getNextRegistrationDate(result.nextSessionDate);
+            setNextRegistrationDateTimeLocal(`${dateStr}中午12:00整`);
+          } else {
+            setNextRegistrationDateTimeLocal('未設定開科辦事日期');
+          }
+          setUseCustomDateTime(false);
         }
       })
       .catch((error) => {
@@ -426,6 +449,52 @@ const AdminSettingsPage = () => {
             severity: 'success'
           })
         );
+      })
+      .catch((error) => {
+        dispatch(
+          showAlert({
+            message: error,
+            severity: 'error'
+          })
+        );
+      });
+  };
+
+  // 計算動態預設值的輔助函數
+  const getDefaultDateTime = () => {
+    if (queueStatus?.nextSessionDate) {
+      const dateStr = getNextRegistrationDate(queueStatus.nextSessionDate);
+      return `${dateStr}中午12:00整`;
+    }
+    return '未設定開科辦事日期';
+  };
+
+  // 處理切換自訂/預設
+  const handleToggleCustomDateTime = (event) => {
+    const isCustom = event.target.checked;
+    setUseCustomDateTime(isCustom);
+    if (!isCustom) {
+      // 切換回預設時，顯示計算的值
+      setNextRegistrationDateTimeLocal(getDefaultDateTime());
+    }
+  };
+
+  // 處理儲存候位額滿提示訊息的開放報名時間設定
+  const handleSaveNextRegistrationDateTime = () => {
+    const valueToSave = useCustomDateTime ? nextRegistrationDateTime : null;
+    
+    dispatch(setNextRegistrationDateTime(valueToSave))
+      .unwrap()
+      .then(() => {
+        dispatch(
+          showAlert({
+            message: useCustomDateTime 
+              ? '開放報名時間設定已更新' 
+              : '已恢復使用系統自動計算',
+            severity: 'success'
+          })
+        );
+        dispatch(getQueueStatus());
       })
       .catch((error) => {
         dispatch(
@@ -742,11 +811,104 @@ const AdminSettingsPage = () => {
               <Grid item xs={12}>
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" gutterBottom>
-                    註冊設定（請返回程式碼重新組織）
+                    候位額滿提示設定
                   </Typography>
-                  <Alert severity="info">
-                    此Tab尚未完成重構。請保留現有的註冊設定內容。
-                  </Alert>
+                  <Typography variant="body2" color="text.secondary" paragraph>
+                    當候位人數達到上限時，系統會顯示「下次開科辦事開放報名時間」。
+                  </Typography>
+                  
+                  <Box sx={{ mt: 3 }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={useCustomDateTime}
+                          onChange={handleToggleCustomDateTime}
+                          color="primary"
+                        />
+                      }
+                      label={useCustomDateTime ? '使用自訂時間' : '使用系統自動計算'}
+                    />
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      {useCustomDateTime 
+                        ? '您可以自由輸入任何日期時間格式' 
+                        : `系統將自動計算為「開科辦事日期 + 1天 + 中午12:00整」`}
+                    </Alert>
+                  </Box>
+                  
+                  <Box sx={{ mt: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="開放報名時間"
+                      value={nextRegistrationDateTime}
+                      onChange={(e) => setNextRegistrationDateTimeLocal(e.target.value)}
+                      placeholder="例如：12月28日中午12:00整"
+                      helperText={useCustomDateTime 
+                        ? "自訂格式，此文字會直接顯示在候位額滿提示訊息中" 
+                        : "預設值（自動計算），切換為「使用自訂時間」可修改"}
+                      disabled={!useCustomDateTime}
+                    />
+                  </Box>
+
+                  <Box sx={{ mt: 3 }}>
+                    <Alert severity="info">
+                      <Typography variant="body2">
+                        <strong>預覽效果：</strong><br />
+                        本次預約人數已達上限，敬請報名下次開科辦事，下次開科辦事開放報名時間為
+                        <strong>{nextRegistrationDateTime}</strong>
+                      </Typography>
+                    </Alert>
+                  </Box>
+
+                  <Box sx={{ mt: 3 }}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleSaveNextRegistrationDateTime}
+                      disabled={isLoading}
+                    >
+                      儲存設定
+                    </Button>
+                  </Box>
+                </Paper>
+              </Grid>
+
+              {/* 保留現有的公開候位登記設置 */}
+              <Grid item xs={12}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    公開候位登記設置
+                  </Typography>
+                  <Box sx={{ mt: 2 }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={publicRegistrationEnabled}
+                          onChange={handleTogglePublicRegistrationEnabled}
+                          color="primary"
+                        />
+                      }
+                      label={publicRegistrationEnabled ? '公開候位登記已開啟' : '公開候位登記已關閉'}
+                    />
+                  </Box>
+                  <Box sx={{ mt: 2 }}>
+                    <Alert severity={publicRegistrationEnabled ? 'success' : 'warning'}>
+                      {publicRegistrationEnabled
+                        ? '公開候位登記已開啟：一般民眾可以在首頁直接進行候位登記'
+                        : '公開候位登記已關閉：只有管理員登入後才能進行候位登記'}
+                    </Alert>
+                  </Box>
+                  <Box sx={{ mt: 2 }}>
+                    <Alert severity="info">
+                      <Typography variant="body2" component="div">
+                        <strong>公開候位登記說明：</strong>
+                        <ul style={{ marginTop: '8px', marginBottom: 0 }}>
+                          <li>開啟時：首頁顯示「我要候位」按鈕，民眾可直接登記</li>
+                          <li>關閉時：首頁隱藏「我要候位」按鈕，僅管理員可登記</li>
+                          <li>適用於需要控制候位開放時間或特殊情況</li>
+                        </ul>
+                      </Typography>
+                    </Alert>
+                  </Box>
                 </Paper>
               </Grid>
             </Grid>
