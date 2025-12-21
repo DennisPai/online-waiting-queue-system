@@ -101,7 +101,9 @@ const AdminSettingsPage = () => {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return '日期格式錯誤';
       
+      // 明確指定使用台北時區顯示
       return date.toLocaleString('zh-TW', {
+        timeZone: 'Asia/Taipei',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -495,7 +497,16 @@ const AdminSettingsPage = () => {
 
   // 處理儲存下次開科辦事開放報名時間設定
   const handleSaveScheduledOpenTime = () => {
-    const valueToSave = useCustomTime ? scheduledOpenTime : null;
+    let valueToSave = null;
+    
+    if (useCustomTime && scheduledOpenTime) {
+      // 將 datetime-local 的值視為台北時間，轉換為 ISO 字串
+      // datetime-local 格式：2026-01-04T12:00
+      // 我們需要明確指定這是台北時區（UTC+8）的時間
+      const localDateTime = scheduledOpenTime; // "2026-01-04T12:00"
+      // 加上台北時區偏移量 +08:00
+      valueToSave = localDateTime + ':00+08:00'; // "2026-01-04T12:00:00+08:00"
+    }
     
     dispatch(setScheduledOpenTime(valueToSave))
       .unwrap()
