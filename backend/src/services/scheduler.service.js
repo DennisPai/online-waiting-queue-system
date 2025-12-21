@@ -19,8 +19,24 @@ const schedulePublicRegistrationOpening = async () => {
     }
     
     // 檢查是否需要設定新任務
-    if (settings && settings.autoOpenEnabled && settings.scheduledOpenTime) {
-      const scheduledTime = new Date(settings.scheduledOpenTime);
+    if (settings && settings.autoOpenEnabled) {
+      let scheduledTime;
+      
+      // 優先使用自訂時間，否則使用動態計算（nextSessionDate + 1天 + 中午12:00）
+      if (settings.scheduledOpenTime) {
+        scheduledTime = new Date(settings.scheduledOpenTime);
+        console.log('[排程系統] 使用自訂時間');
+      } else if (settings.nextSessionDate) {
+        const sessionDate = new Date(settings.nextSessionDate);
+        scheduledTime = new Date(sessionDate);
+        scheduledTime.setDate(sessionDate.getDate() + 1);
+        scheduledTime.setHours(12, 0, 0, 0);
+        console.log('[排程系統] 使用動態計算時間（開科辦事日 + 1天 + 中午12:00）');
+      } else {
+        console.log('[排程系統] ⚠️ 未設定開科辦事日期，無法計算排程時間');
+        return;
+      }
+      
       const now = new Date();
       
       // 只有未來時間才設定任務
@@ -53,7 +69,7 @@ const schedulePublicRegistrationOpening = async () => {
         console.log('[排程系統] ⚠️ 排程時間已過期，不設定任務');
       }
     } else {
-      console.log('[排程系統] ℹ️ 未啟用定時開放或未設定時間');
+      console.log('[排程系統] ℹ️ 未啟用定時開放');
     }
   } catch (error) {
     console.error('[排程系統] ❌ 初始化失敗:', error);

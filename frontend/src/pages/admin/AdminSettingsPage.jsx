@@ -846,10 +846,10 @@ const AdminSettingsPage = () => {
               <Grid item xs={12}>
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" gutterBottom>
-                    候位額滿提示設定
+                    下次開科辦事開放報名時間
                   </Typography>
                   <Typography variant="body2" color="text.secondary" paragraph>
-                    當候位人數達到上限時，系統會顯示「下次開科辦事開放報名時間」。
+                    當候位人數達到上限時，系統會顯示此時間提示民眾何時可再次報名。
                   </Typography>
                   
                   <Box sx={{ mt: 3 }}>
@@ -964,19 +964,23 @@ const AdminSettingsPage = () => {
                           checked={autoOpenEnabled}
                           onChange={handleToggleAutoOpenEnabled}
                           color="primary"
-                          disabled={!scheduledOpenTime || !useCustomTime}
+                          disabled={!queueStatus?.nextSessionDate && !scheduledOpenTime}
                         />
                       }
                       label={autoOpenEnabled ? '定時開放已啟用' : '定時開放已停用'}
                     />
                     <Alert severity={autoOpenEnabled ? 'success' : 'info'} sx={{ mt: 2 }}>
-                      {autoOpenEnabled && scheduledOpenTime && useCustomTime
-                        ? `系統將在 ${formatDateForDisplay(scheduledOpenTime)} 自動開啟公開候位登記`
+                      {autoOpenEnabled
+                        ? useCustomTime && scheduledOpenTime
+                          ? `系統將在 ${formatDateForDisplay(scheduledOpenTime)} 自動開啟公開候位登記`
+                          : queueStatus?.nextSessionDate
+                            ? `系統將在 ${getNextRegistrationDate(queueStatus.nextSessionDate)}中午12:00整 自動開啟公開候位登記`
+                            : '啟用後，系統會在「下次開科辦事開放報名時間」自動開啟公開候位登記功能'
                         : '啟用後，系統會在「下次開科辦事開放報名時間」自動開啟公開候位登記功能'}
                     </Alert>
-                    {(!scheduledOpenTime || !useCustomTime) && (
+                    {!queueStatus?.nextSessionDate && !scheduledOpenTime && (
                       <Alert severity="warning" sx={{ mt: 2 }}>
-                        請先在「註冊設定」中設定「下次開科辦事開放報名時間」並選擇「使用自訂時間」，才能啟用定時開放功能
+                        請先設定「下次辦事時間」或「下次開科辦事開放報名時間」，才能啟用定時開放功能
                       </Alert>
                     )}
                   </Box>
