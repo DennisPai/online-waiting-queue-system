@@ -423,11 +423,11 @@ const updateEventBanner = async (data, token) => {
   }
 };
 
-// 獲取候位額滿提示訊息的開放報名時間設定
-const getNextRegistrationDateTime = async () => {
+// 獲取下次開科辦事開放報名時間設定
+const getScheduledOpenTime = async () => {
   try {
     const response = await axios.get(
-      `${API_ENDPOINTS.ADMIN}/settings/next-registration-datetime`
+      `${API_ENDPOINTS.ADMIN}/settings/scheduled-open-time`
     );
     // v1 API 回應格式：{success, code, message, data}，回傳實際數據
     return response.data.data || response.data;
@@ -437,8 +437,8 @@ const getNextRegistrationDateTime = async () => {
   }
 };
 
-// 設定候位額滿提示訊息的開放報名時間
-const setNextRegistrationDateTime = async (nextRegistrationDateTime, token) => {
+// 設定下次開科辦事開放報名時間
+const setScheduledOpenTime = async (scheduledOpenTime, token) => {
   try {
     const config = {
       headers: {
@@ -446,8 +446,8 @@ const setNextRegistrationDateTime = async (nextRegistrationDateTime, token) => {
       }
     };
     const response = await axios.put(
-      `${API_ENDPOINTS.ADMIN}/settings/next-registration-datetime`,
-      { nextRegistrationDateTime },
+      `${API_ENDPOINTS.ADMIN}/settings/scheduled-open-time`,
+      { scheduledOpenTime },
       config
     );
     // v1 API 回應格式：{success, code, message, data}，回傳實際數據
@@ -455,6 +455,27 @@ const setNextRegistrationDateTime = async (nextRegistrationDateTime, token) => {
   } catch (error) {
     console.error('更新開放報名時間設定錯誤:', error);
     throw error.response?.data?.message || '更新開放報名時間設定失敗';
+  }
+};
+
+// 設定定時開放開關
+const setAutoOpenEnabled = async (autoOpenEnabled, token) => {
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+    const response = await axios.put(
+      `${API_ENDPOINTS.ADMIN}/settings/auto-open-enabled`,
+      { autoOpenEnabled },
+      config
+    );
+    // v1 API 回應格式：{success, code, message, data}，回傳實際數據
+    return response.data.data || response.data;
+  } catch (error) {
+    console.error('設定定時開放錯誤:', error);
+    throw error.response?.data?.message || '設定定時開放失敗';
   }
 };
 
@@ -560,8 +581,9 @@ const queueService = {
   setPublicRegistrationEnabled,
   getEventBanner,
   updateEventBanner,
-  getNextRegistrationDateTime,
-  setNextRegistrationDateTime,
+  getScheduledOpenTime,
+  setScheduledOpenTime,
+  setAutoOpenEnabled,
   setTotalCustomerCount,
   resetTotalCustomerCount,
   setLastCompletedTime,

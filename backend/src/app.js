@@ -16,6 +16,9 @@ dotenv.config();
 // 導入初始化數據功能
 const initializeData = require('./utils/init-data');
 
+// 導入排程服務
+const { schedulePublicRegistrationOpening, cancelAllScheduledJobs } = require('./services/scheduler.service');
+
 // 初始化Express應用
 const app = express();
 const server = http.createServer(app);
@@ -117,6 +120,10 @@ mongoose.connect(mongoUri)
     const initResult = await initializeData();
     console.log('數據初始化結果:', initResult ? '成功' : '失敗');
     
+    // 啟動排程系統（在資料庫連接成功後）
+    console.log('啟動排程系統...');
+    await schedulePublicRegistrationOpening();
+    
     // 啟動伺服器
     const PORT = process.env.PORT || 8080;
     server.listen(PORT, '0.0.0.0', () => {
@@ -129,6 +136,31 @@ mongoose.connect(mongoUri)
     console.error('無法連接到MongoDB:', err);
     process.exit(1);
   });
+
+// 優雅關閉處理
+process.on('SIGTERM', () => {
+  console.log('SIGTERM 信號收到，正在關閉服務...');
+  cancelAllScheduledJobs();
+  server.close(() => {
+    console.log('HTTP 伺服器已關閉');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB 連接已關閉');
+      process.exit(0);
+    });
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT 信號收到，正在關閉服務...');
+  cancelAllScheduledJobs();
+  server.close(() => {
+    console.log('HTTP 伺服器已關閉');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB 連接已關閉');
+      process.exit(0);
+    });
+  });
+});
 
 // 導出app以供測試使用
 module.exports = app; 

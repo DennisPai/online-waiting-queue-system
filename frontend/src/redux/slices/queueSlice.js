@@ -24,7 +24,8 @@ const initialState = {
   currentMaxOrderIndex: 0, // 新增：目前系統中最大的叫號順序
   maxOrderIndexLimit: 100, // 新增：最大叫號順序上限
   isFull: false, // 新增：是否已額滿
-  nextRegistrationDateTime: null, // 候位額滿提示訊息的開放報名時間（null 表示使用動態計算）
+  scheduledOpenTime: null, // 下次開科辦事開放報名時間（null 表示使用動態計算）
+  autoOpenEnabled: false, // 是否啟用定時自動開放公開候位登記
   // 活動報名區塊設定
   eventBanner: {
     enabled: false,
@@ -264,12 +265,12 @@ export const updateEventBanner = createAsyncThunk(
   }
 );
 
-// 獲取候位額滿提示訊息的開放報名時間設定
-export const getNextRegistrationDateTime = createAsyncThunk(
-  'queue/getNextRegistrationDateTime',
+// 獲取下次開科辦事開放報名時間設定
+export const getScheduledOpenTime = createAsyncThunk(
+  'queue/getScheduledOpenTime',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await queueService.getNextRegistrationDateTime();
+      const response = await queueService.getScheduledOpenTime();
       // queueService 已經處理了 v1 格式，直接回傳
       return response;
     } catch (error) {
@@ -278,17 +279,32 @@ export const getNextRegistrationDateTime = createAsyncThunk(
   }
 );
 
-// 設定候位額滿提示訊息的開放報名時間（管理員）
-export const setNextRegistrationDateTime = createAsyncThunk(
-  'queue/setNextRegistrationDateTime',
-  async (nextRegistrationDateTime, { rejectWithValue, getState }) => {
+// 設定下次開科辦事開放報名時間（管理員）
+export const setScheduledOpenTime = createAsyncThunk(
+  'queue/setScheduledOpenTime',
+  async (scheduledOpenTime, { rejectWithValue, getState }) => {
     try {
       const { token } = getState().auth;
-      const response = await queueService.setNextRegistrationDateTime(nextRegistrationDateTime, token);
+      const response = await queueService.setScheduledOpenTime(scheduledOpenTime, token);
       // queueService 已經處理了 v1 格式，直接回傳
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '更新設定失敗');
+    }
+  }
+);
+
+// 設定定時開放開關（管理員）
+export const setAutoOpenEnabled = createAsyncThunk(
+  'queue/setAutoOpenEnabled',
+  async (autoOpenEnabled, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.setAutoOpenEnabled(autoOpenEnabled, token);
+      // queueService 已經處理了 v1 格式，直接回傳
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '設定定時開放失敗');
     }
   }
 );
@@ -512,10 +528,10 @@ const queueSlice = createSlice({
           state.eventBanner = action.payload.eventBanner;
         }
         
-        // 更新 nextRegistrationDateTime（明確處理 null 值）
-        state.nextRegistrationDateTime = action.payload.nextRegistrationDateTime !== undefined 
-          ? action.payload.nextRegistrationDateTime 
-          : state.nextRegistrationDateTime;
+        // 更新 scheduledOpenTime（明確處理 null 值）
+        state.scheduledOpenTime = action.payload.scheduledOpenTime !== undefined 
+          ? action.payload.scheduledOpenTime 
+          : state.scheduledOpenTime;
         
         if (action.payload.isOpen) {
           state.currentQueue = action.payload.currentQueueNumber;
@@ -753,31 +769,47 @@ const queueSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      // getNextRegistrationDateTime
-      .addCase(getNextRegistrationDateTime.pending, (state) => {
+      // getScheduledOpenTime
+      .addCase(getScheduledOpenTime.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(getNextRegistrationDateTime.fulfilled, (state, action) => {
+      .addCase(getScheduledOpenTime.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.nextRegistrationDateTime = action.payload.nextRegistrationDateTime || null;
+        state.scheduledOpenTime = action.payload.scheduledOpenTime || null;
       })
-      .addCase(getNextRegistrationDateTime.rejected, (state, action) => {
+      .addCase(getScheduledOpenTime.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
-      // setNextRegistrationDateTime
-      .addCase(setNextRegistrationDateTime.pending, (state) => {
+      // setScheduledOpenTime
+      .addCase(setScheduledOpenTime.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(setNextRegistrationDateTime.fulfilled, (state, action) => {
+      .addCase(setScheduledOpenTime.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.nextRegistrationDateTime = action.payload.nextRegistrationDateTime;
-        // 同時更新 queueStatus 中的 nextRegistrationDateTime
+        state.scheduledOpenTime = action.payload.scheduledOpenTime;
+        // 同時更新 queueStatus 中的 scheduledOpenTime
         if (state.queueStatus) {
-          state.queueStatus.nextRegistrationDateTime = action.payload.nextRegistrationDateTime;
+          state.queueStatus.scheduledOpenTime = action.payload.scheduledOpenTime;
         }
       })
-      .addCase(setNextRegistrationDateTime.rejected, (state, action) => {
+      .addCase(setScheduledOpenTime.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      // setAutoOpenEnabled
+      .addCase(setAutoOpenEnabled.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(setAutoOpenEnabled.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.autoOpenEnabled = action.payload.autoOpenEnabled;
+        // 同時更新 queueStatus 中的 autoOpenEnabled
+        if (state.queueStatus) {
+          state.queueStatus.autoOpenEnabled = action.payload.autoOpenEnabled;
+        }
+      })
+      .addCase(setAutoOpenEnabled.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })

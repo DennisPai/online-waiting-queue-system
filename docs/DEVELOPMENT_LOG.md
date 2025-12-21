@@ -19,7 +19,92 @@
 
 ## 🗓️ 開發時間線
 
-### 2025-12-21 - 新增候位額滿提示訊息自訂功能
+### 2025-12-21 - 開放報名時間功能重構：日期選擇器與定時自動開放
+
+**背景**：用戶需要將「候位額滿提示設定」擴展為更通用的「下次開科辦事開放報名時間」功能，並新增後端定時自動開放報名的機制。
+
+**主要變更**：
+
+1. **參數重命名**（nextRegistrationDateTime → scheduledOpenTime）
+   - 資料型別從 String 改為 Date，提升資料一致性
+   - 統一前後端所有相關 API 和參數命名
+   - 確保可作為定時任務的精確時間參數
+
+2. **前端 UI 改用日期時間選擇器**
+   - 從自由文字輸入改為 `<input type="datetime-local">`
+   - 預設模式自動計算並填入選擇器（開科辦事日 + 1天 + 中午12:00）
+   - 自訂模式可選擇具體日期和時間
+   - 前端顯示時格式化為台北時區的可讀格式
+
+3. **新增後端定時開放功能**
+   - 使用 `node-schedule` 套件（精確時間觸發，非輪詢）
+   - 動態排程：管理員更新時間或開關時立即重新設定任務
+   - 優雅關閉：服務關閉時自動取消所有排程任務
+   - 執行後自動關閉 autoOpenEnabled 開關，避免重複執行
+
+4. **新增 autoOpenEnabled 欄位和 API**
+   - 後端資料庫新增 `autoOpenEnabled` 欄位（Boolean, default: false）
+   - 新增 `PUT /api/v1/admin/settings/auto-open-enabled` API
+   - 前端新增「設定定時開放」開關和 UI
+   - UI 中顯示排程狀態和限制條件提示
+
+**技術實施細節**：
+
+1. **後端排程系統** [`backend/src/services/scheduler.service.js`]
+   ```javascript
+   // 使用 node-schedule 精確時間觸發
+   - schedulePublicRegistrationOpening(): 啟動排程系統
+   - rescheduleRegistrationOpening(): 動態重新設定排程
+   - cancelAllScheduledJobs(): 優雅關閉處理
+   ```
+
+2. **控制器整合重新排程**
+   - `updateScheduledOpenTime`: 更新時間後自動呼叫 rescheduleRegistrationOpening()
+   - `setAutoOpenEnabled`: 切換開關後自動呼叫 rescheduleRegistrationOpening()
+
+3. **前端格式化工具**
+   - 新增台北時區日期時間格式化函數
+   - 內嵌於 HomePage.jsx 和 RegisterPage.jsx
+   - 格式：`toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })`
+
+4. **AdminSettingsPage UI 增強**
+   - 「下次開科辦事開放報名時間」設定區域
+   - 「設定定時開放」開關（需先設定自訂時間才能啟用）
+   - 即時預覽排程狀態和執行時間
+
+**驗收標準**：
+- ✅ 所有參數和 API 已重命名為 scheduledOpenTime
+- ✅ 後台使用日期時間選擇器（datetime-local）
+- ✅ 預設模式自動計算並填入日期時間選擇器
+- ✅ 自訂模式可以選擇具體的日期和時間
+- ✅ 「設定定時開放」開關正常運作
+- ✅ 未設定時間時，定時開放開關被禁用
+- ✅ 後端排程系統正常運作，在指定時間自動開啟
+- ✅ 前台額滿提示訊息正確顯示格式化的日期時間
+- ✅ 時區處理正確（台北時區）
+- ✅ API 文檔已更新
+- ✅ 開發日誌已記錄
+
+**技術重點**：
+- **node-schedule vs node-cron**: 選擇 node-schedule 因為適合一次性預定任務，無輪詢開銷
+- **動態排程**: 管理員變更設定時立即重設任務，無需重啟服務
+- **優雅關閉**: 處理 SIGTERM/SIGINT 信號，確保任務清理
+- **時區一致性**: 前後端統一使用台北時區（Asia/Taipei, UTC+8）
+- **資料型別變更**: String → Date，需要處理舊資料遷移（如有）
+
+**注意事項**：
+- 資料遷移：現有的 nextRegistrationDateTime（String）需轉換為 scheduledOpenTime（Date）
+- 服務重啟：排程系統會在啟動時自動初始化，重新設定任務
+- 定時開放執行後 autoOpenEnabled 自動設為 false，防止重複執行
+- 前端輸入 datetime-local 格式為 `YYYY-MM-DDTHH:mm`，後端儲存為 ISO8601 Date
+
+**相關文件**：
+- API 規格：[`docs/API_SPEC.md`](docs/API_SPEC.md) 已更新
+- 計劃檔案：`c:\Users\a0936\.cursor\plans\調整開放報名時間功能_23d239c1.plan.md`
+
+---
+
+### 2025-12-21 - 新增候位額滿提示訊息自訂功能（已廢棄，由上述重構取代）
 
 **背景**：用戶希望能夠在後台自訂候位額滿時顯示的「下次開科辦事開放報名時間」，而不是固定使用系統計算的值（開科辦事日 + 1天 + 中午12:00整）。同時要求預設保持現有的動態計算邏輯，只有在管理員明確設定時才覆蓋。
 

@@ -69,11 +69,16 @@ router.put('/settings/event-banner', [
   body('buttonTextColor').optional().isString().trim()
 ], validateRequest, adminController.updateEventBanner);
 
-// 新增：候位額滿提示訊息的開放報名時間設定
-router.get('/settings/next-registration-datetime', adminController.getNextRegistrationDateTime);
-router.put('/settings/next-registration-datetime', [
-  body('nextRegistrationDateTime').optional({ nullable: true })
-], validateRequest, adminController.updateNextRegistrationDateTime);
+// 新增：下次開科辦事開放報名時間設定
+router.get('/settings/scheduled-open-time', adminController.getScheduledOpenTime);
+router.put('/settings/scheduled-open-time', [
+  body('scheduledOpenTime').optional({ nullable: true }).isISO8601()
+], validateRequest, adminController.updateScheduledOpenTime);
+
+// 新增：定時開放開關
+router.put('/settings/auto-open-enabled', [
+  body('autoOpenEnabled').isBoolean()
+], validateRequest, adminController.setAutoOpenEnabled);
 
 router.delete('/queue/clear-all', adminController.clearAllQueue);
 

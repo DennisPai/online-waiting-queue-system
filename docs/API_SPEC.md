@@ -22,8 +22,8 @@
 
 ## Queue（公開）
 - GET `/api/v1/queue/status`
-  - 200: `{ success, code, data: { isOpen, currentQueueNumber, waitingCount, nextSessionDate, maxOrderIndex, minutesPerCustomer, simplifiedMode, publicRegistrationEnabled, totalCustomerCount, lastCompletedTime, estimatedEndTime, currentMaxOrderIndex, isFull, eventBanner: { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor }, nextRegistrationDateTime, message } }`
-  - 說明：回傳完整的系統狀態，包含活動報名區塊設定（eventBanner）和候位額滿提示訊息的開放報名時間（nextRegistrationDateTime，可能為 null 表示使用動態計算），確保前端重新整理時不會丟失設定
+  - 200: `{ success, code, data: { isOpen, currentQueueNumber, waitingCount, nextSessionDate, maxOrderIndex, minutesPerCustomer, simplifiedMode, publicRegistrationEnabled, autoOpenEnabled, totalCustomerCount, lastCompletedTime, estimatedEndTime, currentMaxOrderIndex, isFull, eventBanner: { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor }, scheduledOpenTime, message } }`
+  - 說明：回傳完整的系統狀態，包含活動報名區塊設定（eventBanner）和下次開科辦事開放報名時間（scheduledOpenTime，Date 型別，可能為 null 表示使用動態計算）、定時開放開關（autoOpenEnabled），確保前端重新整理時不會丟失設定
 - POST `/api/v1/queue/register`
   - body: `{ name, phone, email?, gender, addresses, familyMembers?, consultationTopics?, ... }`
   - 201: `{ success, code, data: { queueNumber, orderIndex, waitingCount, estimatedWaitTime, ... } }`
@@ -78,13 +78,17 @@
 - PUT `/api/v1/admin/settings/event-banner`
   - body: `{ enabled?, title?, titleSize?, titleColor?, titleAlign?, fontWeight?, backgroundColor?, buttonText?, buttonUrl?, buttonColor?, buttonTextColor? }`
   - 200: `{ success, code, message: '活動報名區塊設定已更新', data: { enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor } }`
-- GET `/api/v1/admin/settings/next-registration-datetime`
-  - 200: `{ success, code, message: '獲取開放報名時間設定成功', data: { nextRegistrationDateTime } }`
-  - 說明：返回 null 表示使用系統自動計算（開科辦事日 + 1天 + 中午12:00整），返回字串表示使用自訂值
-- PUT `/api/v1/admin/settings/next-registration-datetime`
-  - body: `{ nextRegistrationDateTime }`
-  - 200: `{ success, code, message: '開放報名時間設定已更新', data: { nextRegistrationDateTime } }`
-  - 說明：傳入 null 恢復使用系統自動計算，傳入字串設定為自訂值
+- GET `/api/v1/admin/settings/scheduled-open-time`
+  - 200: `{ success, code, message: '獲取開放報名時間設定成功', data: { scheduledOpenTime } }`
+  - 說明：返回 null 表示使用系統自動計算（開科辦事日 + 1天 + 中午12:00整），返回 Date 型別表示使用自訂值
+- PUT `/api/v1/admin/settings/scheduled-open-time`
+  - body: `{ scheduledOpenTime }` (ISO8601 格式字串或 null)
+  - 200: `{ success, code, message: '開放報名時間設定已更新', data: { scheduledOpenTime } }`
+  - 說明：傳入 null 恢復使用系統自動計算，傳入 ISO8601 日期字串設定為自訂值，後端會自動重新設定排程任務
+- PUT `/api/v1/admin/settings/auto-open-enabled`
+  - body: `{ autoOpenEnabled }` (boolean)
+  - 200: `{ success, code, message: '定時開放已啟用/停用', data: { autoOpenEnabled } }`
+  - 說明：設定是否啟用定時自動開放公開候位登記功能，當啟用時，系統會在 scheduledOpenTime 指定的時間自動開啟 publicRegistrationEnabled，後端會自動重新設定排程任務
 - DELETE `/api/v1/admin/queue/clear-all`
 
 ## 注意事項

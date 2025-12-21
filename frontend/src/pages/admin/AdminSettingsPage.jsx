@@ -37,8 +37,9 @@ import {
   setPublicRegistrationEnabled,
   updateEventBanner,
   getEventBanner,
-  setNextRegistrationDateTime,
-  getNextRegistrationDateTime
+  setScheduledOpenTime,
+  getScheduledOpenTime,
+  setAutoOpenEnabled
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
 import { getNextRegistrationDate } from '../../utils/dateUtils';
@@ -53,9 +54,11 @@ const AdminSettingsPage = () => {
   const [minutesPerCustomer, setMinutesPerCustomerLocal] = useState(13);
   const [simplifiedMode, setSimplifiedModeLocal] = useState(false);
   const [publicRegistrationEnabled, setPublicRegistrationEnabledLocal] = useState(false);
-  // 候位額滿提示訊息的開放報名時間設定
-  const [nextRegistrationDateTime, setNextRegistrationDateTimeLocal] = useState('');
-  const [useCustomDateTime, setUseCustomDateTime] = useState(false);
+  // 下次開科辦事開放報名時間設定
+  const [scheduledOpenTime, setScheduledOpenTimeLocal] = useState('');
+  const [useCustomTime, setUseCustomTime] = useState(false);
+  // 定時開放開關
+  const [autoOpenEnabled, setAutoOpenEnabledLocal] = useState(false);
   // 活動報名區塊設定
   const [eventBannerData, setEventBannerData] = useState({
     enabled: false,
@@ -155,6 +158,11 @@ const AdminSettingsPage = () => {
           setPublicRegistrationEnabledLocal(result.publicRegistrationEnabled);
         }
         
+        // 初始化定時開放開關
+        if (typeof result.autoOpenEnabled !== 'undefined') {
+          setAutoOpenEnabledLocal(result.autoOpenEnabled);
+        }
+        
         // 初始化活動報名區塊設定
         if (result.eventBanner) {
           setEventBannerData({
@@ -172,21 +180,24 @@ const AdminSettingsPage = () => {
           });
         }
         
-        // 初始化候位額滿提示訊息的開放報名時間設定
-        const customValue = result.nextRegistrationDateTime;
+        // 初始化下次開科辦事開放報名時間設定
+        const customValue = result.scheduledOpenTime;
         if (customValue) {
-          // 有自訂值
-          setNextRegistrationDateTimeLocal(customValue);
-          setUseCustomDateTime(true);
+          // 有自訂值（Date 型別）
+          setScheduledOpenTimeLocal(formatDateForInput(customValue));
+          setUseCustomTime(true);
         } else {
           // 使用預設計算
           if (result.nextSessionDate) {
-            const dateStr = getNextRegistrationDate(result.nextSessionDate);
-            setNextRegistrationDateTimeLocal(`${dateStr}中午12:00整`);
+            const sessionDate = new Date(result.nextSessionDate);
+            const nextDay = new Date(sessionDate);
+            nextDay.setDate(sessionDate.getDate() + 1);
+            nextDay.setHours(12, 0, 0, 0); // 設定為中午12:00
+            setScheduledOpenTimeLocal(formatDateForInput(nextDay));
           } else {
-            setNextRegistrationDateTimeLocal('未設定開科辦事日期');
+            setScheduledOpenTimeLocal('');
           }
-          setUseCustomDateTime(false);
+          setUseCustomTime(false);
         }
       })
       .catch((error) => {
@@ -461,34 +472,37 @@ const AdminSettingsPage = () => {
   };
 
   // 計算動態預設值的輔助函數
-  const getDefaultDateTime = () => {
+  const getDefaultOpenTime = () => {
     if (queueStatus?.nextSessionDate) {
-      const dateStr = getNextRegistrationDate(queueStatus.nextSessionDate);
-      return `${dateStr}中午12:00整`;
+      const sessionDate = new Date(queueStatus.nextSessionDate);
+      const nextDay = new Date(sessionDate);
+      nextDay.setDate(sessionDate.getDate() + 1);
+      nextDay.setHours(12, 0, 0, 0); // 設定為中午12:00
+      return formatDateForInput(nextDay);
     }
-    return '未設定開科辦事日期';
+    return '';
   };
 
   // 處理切換自訂/預設
-  const handleToggleCustomDateTime = (event) => {
+  const handleToggleCustomTime = (event) => {
     const isCustom = event.target.checked;
-    setUseCustomDateTime(isCustom);
+    setUseCustomTime(isCustom);
     if (!isCustom) {
       // 切換回預設時，顯示計算的值
-      setNextRegistrationDateTimeLocal(getDefaultDateTime());
+      setScheduledOpenTimeLocal(getDefaultOpenTime());
     }
   };
 
-  // 處理儲存候位額滿提示訊息的開放報名時間設定
-  const handleSaveNextRegistrationDateTime = () => {
-    const valueToSave = useCustomDateTime ? nextRegistrationDateTime : null;
+  // 處理儲存下次開科辦事開放報名時間設定
+  const handleSaveScheduledOpenTime = () => {
+    const valueToSave = useCustomTime ? scheduledOpenTime : null;
     
-    dispatch(setNextRegistrationDateTime(valueToSave))
+    dispatch(setScheduledOpenTime(valueToSave))
       .unwrap()
       .then(() => {
         dispatch(
           showAlert({
-            message: useCustomDateTime 
+            message: useCustomTime 
               ? '開放報名時間設定已更新' 
               : '已恢復使用系統自動計算',
             severity: 'success'
@@ -504,6 +518,27 @@ const AdminSettingsPage = () => {
           })
         );
       });
+  };
+
+  // 處理切換定時開放開關
+  const handleToggleAutoOpenEnabled = async (event) => {
+    const newValue = event.target.checked;
+    setAutoOpenEnabledLocal(newValue);
+    
+    try {
+      await dispatch(setAutoOpenEnabled(newValue)).unwrap();
+      dispatch(showAlert({
+        message: `定時開放已${newValue ? '啟用' : '停用'}`,
+        severity: 'success'
+      }));
+      dispatch(getQueueStatus());
+    } catch (error) {
+      dispatch(showAlert({
+        message: error,
+        severity: 'error'
+      }));
+      setAutoOpenEnabledLocal(!newValue);
+    }
   };
 
   // 處理儲存活動報名設定
@@ -821,16 +856,16 @@ const AdminSettingsPage = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={useCustomDateTime}
-                          onChange={handleToggleCustomDateTime}
+                          checked={useCustomTime}
+                          onChange={handleToggleCustomTime}
                           color="primary"
                         />
                       }
-                      label={useCustomDateTime ? '使用自訂時間' : '使用系統自動計算'}
+                      label={useCustomTime ? '使用自訂時間' : '使用系統自動計算'}
                     />
                     <Alert severity="info" sx={{ mt: 2 }}>
-                      {useCustomDateTime 
-                        ? '您可以自由輸入任何日期時間格式' 
+                      {useCustomTime 
+                        ? '您可以選擇具體的日期和時間' 
                         : `系統將自動計算為「開科辦事日期 + 1天 + 中午12:00整」`}
                     </Alert>
                   </Box>
@@ -838,14 +873,15 @@ const AdminSettingsPage = () => {
                   <Box sx={{ mt: 3 }}>
                     <TextField
                       fullWidth
+                      type="datetime-local"
                       label="開放報名時間"
-                      value={nextRegistrationDateTime}
-                      onChange={(e) => setNextRegistrationDateTimeLocal(e.target.value)}
-                      placeholder="例如：12月28日中午12:00整"
-                      helperText={useCustomDateTime 
-                        ? "自訂格式，此文字會直接顯示在候位額滿提示訊息中" 
+                      value={scheduledOpenTime}
+                      onChange={(e) => setScheduledOpenTimeLocal(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      helperText={useCustomTime 
+                        ? "選擇具體的日期和時間" 
                         : "預設值（自動計算），切換為「使用自訂時間」可修改"}
-                      disabled={!useCustomDateTime}
+                      disabled={!useCustomTime}
                     />
                   </Box>
 
@@ -854,7 +890,13 @@ const AdminSettingsPage = () => {
                       <Typography variant="body2">
                         <strong>預覽效果：</strong><br />
                         本次預約人數已達上限，敬請報名下次開科辦事，下次開科辦事開放報名時間為
-                        <strong>{nextRegistrationDateTime}</strong>
+                        <strong>
+                          {scheduledOpenTime && useCustomTime 
+                            ? formatDateForDisplay(scheduledOpenTime)
+                            : queueStatus?.nextSessionDate 
+                              ? `${getNextRegistrationDate(queueStatus.nextSessionDate)}中午12:00整`
+                              : '未設定'}
+                        </strong>
                       </Typography>
                     </Alert>
                   </Box>
@@ -863,7 +905,7 @@ const AdminSettingsPage = () => {
                     <Button
                       variant="contained"
                       color="primary"
-                      onClick={handleSaveNextRegistrationDateTime}
+                      onClick={handleSaveScheduledOpenTime}
                       disabled={isLoading}
                     >
                       儲存設定
@@ -908,6 +950,35 @@ const AdminSettingsPage = () => {
                         </ul>
                       </Typography>
                     </Alert>
+                  </Box>
+
+                  <Divider sx={{ my: 3 }} />
+
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      <strong>設定定時開放</strong>
+                    </Typography>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={autoOpenEnabled}
+                          onChange={handleToggleAutoOpenEnabled}
+                          color="primary"
+                          disabled={!scheduledOpenTime || !useCustomTime}
+                        />
+                      }
+                      label={autoOpenEnabled ? '定時開放已啟用' : '定時開放已停用'}
+                    />
+                    <Alert severity={autoOpenEnabled ? 'success' : 'info'} sx={{ mt: 2 }}>
+                      {autoOpenEnabled && scheduledOpenTime && useCustomTime
+                        ? `系統將在 ${formatDateForDisplay(scheduledOpenTime)} 自動開啟公開候位登記`
+                        : '啟用後，系統會在「下次開科辦事開放報名時間」自動開啟公開候位登記功能'}
+                    </Alert>
+                    {(!scheduledOpenTime || !useCustomTime) && (
+                      <Alert severity="warning" sx={{ mt: 2 }}>
+                        請先在「註冊設定」中設定「下次開科辦事開放報名時間」並選擇「使用自訂時間」，才能啟用定時開放功能
+                      </Alert>
+                    )}
                   </Box>
                 </Paper>
               </Grid>

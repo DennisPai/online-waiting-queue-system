@@ -32,9 +32,26 @@ const RegisterPage = () => {
 
   // 計算顯示的時間：優先使用自訂值，否則使用動態計算
   const getDisplayDateTime = () => {
-    if (queueStatus?.nextRegistrationDateTime) {
-      return queueStatus.nextRegistrationDateTime;
+    // 如果有自訂值，格式化顯示
+    if (queueStatus?.scheduledOpenTime) {
+      try {
+        const date = new Date(queueStatus.scheduledOpenTime);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString('zh-TW', {
+            timeZone: 'Asia/Taipei',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+        }
+      } catch (error) {
+        console.error('格式化日期錯誤:', error);
+      }
     }
+    // 否則使用動態計算
     if (queueStatus?.nextSessionDate) {
       const dateStr = getNextRegistrationDate(queueStatus.nextSessionDate);
       return `${dateStr}中午12:00整`;
