@@ -872,7 +872,7 @@ const CustomerDetailDialog = ({
               取消
             </Button>
             <Button
-              onClick={onSaveData}
+              onClick={() => onSaveData(editedData)}
               variant="contained"
               startIcon={<SaveIcon />}
             >

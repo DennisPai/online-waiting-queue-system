@@ -5,8 +5,8 @@ const ApiError = require('./ApiError');
  * 統一處理所有應用程序錯誤
  */
 const globalErrorHandler = (err, req, res, next) => {
-  let error = { ...err };
-  error.message = err.message;
+  // 直接使用 err，保留原型鏈以便正確識別 ApiError
+  let error = err;
 
   // 記錄錯誤（開發環境顯示詳細信息）
   if (process.env.NODE_ENV === 'development') {
