@@ -446,7 +446,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
     setFormData({ ...formData, familyMembers: newFamilyMembers });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
       // 準備提交的數據
       let submitData = { ...formData };
@@ -591,7 +591,18 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
       delete submitData.convertedGregorianDay;
       
       console.log('準備提交的數據:', submitData);
-      dispatch(registerQueue(submitData));
+      
+      // 使用 unwrap() 來正確捕獲和顯示錯誤訊息
+      try {
+        await dispatch(registerQueue(submitData)).unwrap();
+        // 成功則由 Redux 狀態自動處理（顯示成功頁面）
+      } catch (error) {
+        // 確保錯誤訊息能正確顯示（包括候位額滿等錯誤）
+        dispatch(showAlert({
+          message: error || '候位登記失敗',
+          severity: 'error'
+        }));
+      }
     }
   };
 

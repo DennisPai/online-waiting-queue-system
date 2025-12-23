@@ -82,6 +82,8 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
       processedData = autoFillFamilyMembersDates(processedData);
 
       // 注意：編輯客戶資料時，資料庫中已是西元年格式，不需要轉換
+      // convertMinguoForStorage 接受的是數字（民國年），不是物件
+      // 編輯時資料已經是西元年，不需要再轉換
 
       // 確保數值型欄位的正確類型
       if (processedData.queueNumber) {
