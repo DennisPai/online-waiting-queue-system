@@ -77,13 +77,12 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
     let processedData = { ...data };
 
     try {
-      // 自動填充日期
+      // 自動填充日期（編輯時國曆農曆互補）
       processedData = autoFillDates(processedData);
       processedData = autoFillFamilyMembersDates(processedData);
 
       // 注意：編輯客戶資料時，資料庫中已是西元年格式，不需要轉換
-      // convertMinguoForStorage 接受的是數字（民國年），不是物件
-      // 編輯時資料已經是西元年，不需要再轉換
+      // convertMinguoForStorage 只用於新註冊時將民國年轉為西元年
 
       // 確保數值型欄位的正確類型
       if (processedData.queueNumber) {
@@ -128,10 +127,16 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
   // 保存客戶資料
   const handleSaveData = useCallback(async (editedData) => {
     try {
+      console.log('=== 開始保存客戶資料 ===');
+      console.log('原始編輯資料:', editedData);
+      
       // 驗證數據
       const validationErrors = validateCustomerData(editedData);
+      console.log('驗證結果:', validationErrors);
+      
       if (Object.keys(validationErrors).length > 0) {
         const errorMessage = Object.values(validationErrors).join(', ');
+        console.error('驗證失敗:', errorMessage);
         dispatch(showAlert({
           message: `數據驗證失敗: ${errorMessage}`,
           severity: 'error'
@@ -140,7 +145,9 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
       }
 
       // 格式化數據
+      console.log('開始格式化數據...');
       const processedData = formatSaveData(editedData);
+      console.log('格式化後的數據:', processedData);
 
       // 發送更新請求
       await dispatch(updateQueueData({
