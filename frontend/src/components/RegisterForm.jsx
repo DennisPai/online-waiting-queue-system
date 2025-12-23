@@ -492,14 +492,35 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
       
       // 轉換日期欄位格式以符合後端期望
       if (submitData.calendarType === 'gregorian') {
-        submitData.gregorianBirthYear = submitData.birthYear ? parseInt(submitData.birthYear) : null;
-        submitData.gregorianBirthMonth = submitData.birthMonth ? parseInt(submitData.birthMonth) : null;
-        submitData.gregorianBirthDay = submitData.birthDay ? parseInt(submitData.birthDay) : null;
+        // 處理國曆日期 - 轉換民國年為西元年
+        const { minguoYear } = autoConvertToMinguo(parseInt(submitData.birthYear));
+        submitData.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+        submitData.gregorianBirthMonth = parseInt(submitData.birthMonth);
+        submitData.gregorianBirthDay = parseInt(submitData.birthDay);
+        
+        // 如果有轉換的農曆日期，一併加入
+        if (submitData.convertedLunarYear) {
+          const { minguoYear: lunarMinguoYear } = autoConvertToMinguo(submitData.convertedLunarYear);
+          submitData.lunarBirthYear = convertMinguoForStorage(lunarMinguoYear);
+          submitData.lunarBirthMonth = submitData.convertedLunarMonth;
+          submitData.lunarBirthDay = submitData.convertedLunarDay;
+          submitData.lunarIsLeapMonth = submitData.convertedLunarIsLeapMonth || false;
+        }
       } else if (submitData.calendarType === 'lunar') {
-        submitData.lunarBirthYear = submitData.birthYear ? parseInt(submitData.birthYear) : null;
-        submitData.lunarBirthMonth = submitData.birthMonth ? parseInt(submitData.birthMonth) : null;
-        submitData.lunarBirthDay = submitData.birthDay ? parseInt(submitData.birthDay) : null;
+        // 處理農曆日期 - 轉換民國年為西元年
+        const { minguoYear } = autoConvertToMinguo(parseInt(submitData.birthYear));
+        submitData.lunarBirthYear = convertMinguoForStorage(minguoYear);
+        submitData.lunarBirthMonth = parseInt(submitData.birthMonth);
+        submitData.lunarBirthDay = parseInt(submitData.birthDay);
         submitData.lunarIsLeapMonth = submitData.lunarIsLeapMonth || false;
+        
+        // 如果有轉換的國曆日期，一併加入
+        if (submitData.convertedGregorianYear) {
+          const { minguoYear: gregorianMinguoYear } = autoConvertToMinguo(submitData.convertedGregorianYear);
+          submitData.gregorianBirthYear = convertMinguoForStorage(gregorianMinguoYear);
+          submitData.gregorianBirthMonth = submitData.convertedGregorianMonth;
+          submitData.gregorianBirthDay = submitData.convertedGregorianDay;
+        }
       }
       
       // 處理家人數據的日期欄位
@@ -508,19 +529,66 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
           const processedMember = { ...member };
           
           if (member.calendarType === 'gregorian') {
-            processedMember.gregorianBirthYear = member.birthYear ? parseInt(member.birthYear) : null;
-            processedMember.gregorianBirthMonth = member.birthMonth ? parseInt(member.birthMonth) : null;
-            processedMember.gregorianBirthDay = member.birthDay ? parseInt(member.birthDay) : null;
+            // 處理國曆日期 - 轉換民國年為西元年
+            const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear));
+            processedMember.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+            processedMember.gregorianBirthMonth = parseInt(member.birthMonth);
+            processedMember.gregorianBirthDay = parseInt(member.birthDay);
+            
+            // 如果有轉換的農曆日期，一併加入
+            if (member.convertedLunarYear) {
+              const { minguoYear: lunarMinguoYear } = autoConvertToMinguo(member.convertedLunarYear);
+              processedMember.lunarBirthYear = convertMinguoForStorage(lunarMinguoYear);
+              processedMember.lunarBirthMonth = member.convertedLunarMonth;
+              processedMember.lunarBirthDay = member.convertedLunarDay;
+              processedMember.lunarIsLeapMonth = member.convertedLunarIsLeapMonth || false;
+            }
           } else if (member.calendarType === 'lunar') {
-            processedMember.lunarBirthYear = member.birthYear ? parseInt(member.birthYear) : null;
-            processedMember.lunarBirthMonth = member.birthMonth ? parseInt(member.birthMonth) : null;
-            processedMember.lunarBirthDay = member.birthDay ? parseInt(member.birthDay) : null;
+            // 處理農曆日期 - 轉換民國年為西元年
+            const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear));
+            processedMember.lunarBirthYear = convertMinguoForStorage(minguoYear);
+            processedMember.lunarBirthMonth = parseInt(member.birthMonth);
+            processedMember.lunarBirthDay = parseInt(member.birthDay);
             processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
+            
+            // 如果有轉換的國曆日期，一併加入
+            if (member.convertedGregorianYear) {
+              const { minguoYear: gregorianMinguoYear } = autoConvertToMinguo(member.convertedGregorianYear);
+              processedMember.gregorianBirthYear = convertMinguoForStorage(gregorianMinguoYear);
+              processedMember.gregorianBirthMonth = member.convertedGregorianMonth;
+              processedMember.gregorianBirthDay = member.convertedGregorianDay;
+            }
           }
+          
+          // 清理不需要的欄位
+          delete processedMember.birthYear;
+          delete processedMember.birthMonth;
+          delete processedMember.birthDay;
+          delete processedMember.calendarType;
+          delete processedMember.convertedLunarYear;
+          delete processedMember.convertedLunarMonth;
+          delete processedMember.convertedLunarDay;
+          delete processedMember.convertedLunarIsLeapMonth;
+          delete processedMember.convertedGregorianYear;
+          delete processedMember.convertedGregorianMonth;
+          delete processedMember.convertedGregorianDay;
           
           return processedMember;
         });
       }
+      
+      // 清理主客戶的不需要欄位
+      delete submitData.birthYear;
+      delete submitData.birthMonth;
+      delete submitData.birthDay;
+      delete submitData.calendarType;
+      delete submitData.convertedLunarYear;
+      delete submitData.convertedLunarMonth;
+      delete submitData.convertedLunarDay;
+      delete submitData.convertedLunarIsLeapMonth;
+      delete submitData.convertedGregorianYear;
+      delete submitData.convertedGregorianMonth;
+      delete submitData.convertedGregorianDay;
       
       console.log('準備提交的數據:', submitData);
       dispatch(registerQueue(submitData));

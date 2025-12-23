@@ -67,7 +67,12 @@ export const registerQueue = createAsyncThunk(
       // queueService 已返回正確格式，直接使用
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || '候位登記失敗');
+      // 優先使用後端返回的錯誤訊息，確保候位額滿等錯誤能正確顯示
+      return rejectWithValue(
+        error.response?.data?.message || 
+        error.message || 
+        '候位登記失敗'
+      );
     }
   }
 );
@@ -603,7 +608,7 @@ const queueSlice = createSlice({
           state.queueStatus = state.queueStatus || {};
           state.queueStatus.currentQueueNumber = action.payload.currentQueueNumber;
           state.queueStatus.lastCompletedTime = action.payload.lastCompletedTime;
-        }
+          }
         // 不在這裡更新 queueList，讓前端重新載入列表
         // 這樣可以確保 orderIndex 和狀態的一致性
       })

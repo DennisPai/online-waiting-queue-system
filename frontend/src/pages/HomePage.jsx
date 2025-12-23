@@ -92,12 +92,12 @@ const HomePage = () => {
     let intervalId;
     if (isQueueOpen) {
       intervalId = setInterval(() => {
-        dispatch(getQueueStatus());
-        if (isAuthenticated) {
-          dispatch(getOrderedQueueNumbers());
-        } else {
-          dispatch(getPublicOrderedNumbers());
-        }
+      dispatch(getQueueStatus());
+      if (isAuthenticated) {
+        dispatch(getOrderedQueueNumbers());
+      } else {
+        dispatch(getPublicOrderedNumbers());
+      }
       }, 300000); // 每5分鐘更新一次（300秒 = 300,000毫秒）
     }
     

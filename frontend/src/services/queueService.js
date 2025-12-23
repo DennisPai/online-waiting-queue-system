@@ -361,11 +361,11 @@ const setMinutesPerCustomer = async (minutesPerCustomer, token) => {
   );
   // v1 API 回應格式：{success, code, message, data}，回傳實際數據
   return response.data.data || response.data;
-};
+    };
 
 // 設定簡化模式
 const setSimplifiedMode = async (simplifiedMode, token) => {
-  const response = await axios.put(
+    const response = await axios.put(
     `${API_ENDPOINTS.ADMIN}/settings/simplified-mode`,
     { simplifiedMode },
     {
@@ -373,14 +373,14 @@ const setSimplifiedMode = async (simplifiedMode, token) => {
         Authorization: `Bearer ${token}`
       }
     }
-  );
+    );
   // v1 API 回應格式：{success, code, message, data}，回傳實際數據
   return response.data.data || response.data;
 };
 
 // 設定公開候位登記功能
 const setPublicRegistrationEnabled = async (publicRegistrationEnabled, token) => {
-  const response = await axios.put(
+    const response = await axios.put(
     `${API_ENDPOINTS.ADMIN}/settings/public-registration-enabled`,
     { publicRegistrationEnabled },
     {
@@ -388,7 +388,7 @@ const setPublicRegistrationEnabled = async (publicRegistrationEnabled, token) =>
         Authorization: `Bearer ${token}`
       }
     }
-  );
+    );
   // v1 API 回應格式：{success, code, message, data}，回傳實際數據
   return response.data.data || response.data;
 };

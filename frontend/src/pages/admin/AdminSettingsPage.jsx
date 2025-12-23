@@ -606,7 +606,7 @@ const AdminSettingsPage = () => {
         <>
           {/* Tab 0: 基本設定 */}
           {tabValue === 0 && (
-            <Grid container spacing={3}>
+        <Grid container spacing={3}>
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
@@ -838,7 +838,7 @@ const AdminSettingsPage = () => {
           {/* Tab 1: 候位設定 */}
           {tabValue === 1 && (
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+            <Grid item xs={12}>
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" gutterBottom>
                     候位設定（請返回程式碼重新組織）
@@ -847,7 +847,7 @@ const AdminSettingsPage = () => {
                     此Tab尚未完成重構。請保留現有的候位設定內容。
                   </Alert>
                 </Paper>
-              </Grid>
+                    </Grid>
             </Grid>
           )}
 
@@ -858,10 +858,10 @@ const AdminSettingsPage = () => {
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" gutterBottom>
                     下次開科辦事開放報名時間
-                  </Typography>
+                      </Typography>
                   <Typography variant="body2" color="text.secondary" paragraph>
                     當候位人數達到上限時，系統會顯示此時間提示民眾何時可再次報名。
-                  </Typography>
+                      </Typography>
                   
                   <Box sx={{ mt: 3 }}>
                     <FormControlLabel
@@ -923,14 +923,14 @@ const AdminSettingsPage = () => {
                     </Button>
                   </Box>
                 </Paper>
-              </Grid>
+                    </Grid>
 
               {/* 保留現有的公開候位登記設置 */}
               <Grid item xs={12}>
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" gutterBottom>
                     公開候位登記設置
-                  </Typography>
+                      </Typography>
                   <Box sx={{ mt: 2 }}>
                     <FormControlLabel
                       control={
@@ -996,7 +996,7 @@ const AdminSettingsPage = () => {
                     )}
                   </Box>
                 </Paper>
-              </Grid>
+                    </Grid>
             </Grid>
           )}
 
@@ -1008,7 +1008,7 @@ const AdminSettingsPage = () => {
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" gutterBottom>
                     活動報名區塊設定
-                  </Typography>
+                      </Typography>
                   
                   {/* 啟用開關 */}
                   <FormControlLabel
@@ -1064,7 +1064,7 @@ const AdminSettingsPage = () => {
                           <MenuItem value="em">em</MenuItem>
                         </Select>
                       </FormControl>
-                    </Grid>
+                  </Grid>
                     <Grid item xs={6}>
                       <TextField
                         fullWidth
@@ -1207,11 +1207,11 @@ const AdminSettingsPage = () => {
                       >
                         {eventBannerData.buttonText || '（按鈕文字）'}
                       </Button>
-                    </CardContent>
-                  </Card>
+                </CardContent>
+              </Card>
                 </Paper>
-              </Grid>
             </Grid>
+        </Grid>
           )}
         </>
       )}

@@ -59,10 +59,11 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
       errors.birthDate = '必須提供國曆或農曆出生日期';
     }
 
-    // 地址驗證
-    if (data.addresses && Array.isArray(data.addresses)) {
+    // 地址驗證 - 只在有地址時才驗證
+    if (data.addresses && Array.isArray(data.addresses) && data.addresses.length > 0) {
       data.addresses.forEach((addr, index) => {
-        if (!addr.address?.trim()) {
+        // 只驗證非空地址
+        if (addr && addr.address !== undefined && !addr.address?.trim()) {
           errors[`addresses.${index}.address`] = '地址不能為空';
         }
       });
@@ -96,9 +97,21 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
         processedData.consultationTopics = [processedData.consultationTopics];
       }
 
-      // 清理空值
+      // 清理空值 - 但保留必填欄位和數字0
+      const requiredFields = ['_id', 'name', 'phone', 'queueNumber', 'status'];
       Object.keys(processedData).forEach(key => {
-        if (processedData[key] === '' || processedData[key] === null) {
+        // 不刪除必填欄位
+        if (requiredFields.includes(key)) {
+          return;
+        }
+        
+        // 不刪除數字 0（因為出生日期可能是 0）
+        if (processedData[key] === 0) {
+          return;
+        }
+        
+        // 只刪除空字串、null 和 undefined
+        if (processedData[key] === '' || processedData[key] === null || processedData[key] === undefined) {
           delete processedData[key];
         }
       });
