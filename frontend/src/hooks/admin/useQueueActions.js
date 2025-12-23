@@ -4,7 +4,6 @@ import {
   callNextQueue,
   updateQueueStatus,
   updateQueueOrder,
-  updateOrderLocal,
   updateQueueData,
   deleteCustomer,
   clearAllQueue
@@ -44,8 +43,8 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
       await Promise.all(
         updates.map(update =>
           dispatch(updateQueueOrder({
-            queueId: update.id,
-            newOrder: update.orderIndex
+          queueId: update.id,
+          newOrder: update.orderIndex
           })).unwrap()
         )
       );
@@ -146,7 +145,7 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
   }, [dispatch, loadQueueList]);
 
   // 拖曳結束處理
-  const handleDragEnd = useCallback((result) => {
+  const handleDragEnd = useCallback(async (result) => {
     if (!result.destination) return;
 
     const items = Array.from(localQueueList);
@@ -162,15 +161,35 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
     setLocalQueueList(updatedItems);
 
     // 批量更新後端
-    updatedItems.forEach((item, index) => {
-      if (item.orderIndex !== localQueueList[result.source.index + (index - result.source.index)]?.orderIndex) {
-        dispatch(updateOrderLocal({
-          id: item._id,
-          orderIndex: index + 1
-        }));
-      }
-    });
-  }, [localQueueList, setLocalQueueList, dispatch]);
+    const updatePromises = updatedItems
+      .filter((item, index) => {
+        const originalItem = localQueueList.find(q => q._id === item._id);
+        return originalItem && originalItem.orderIndex !== item.orderIndex;
+      })
+      .map(item => 
+        dispatch(updateQueueOrder({
+          queueId: item._id,
+          newOrder: item.orderIndex
+        })).unwrap()
+      );
+
+    // 等待所有更新完成
+    try {
+      await Promise.all(updatePromises);
+      dispatch(showAlert({
+        message: '拖曳順序已更新',
+        severity: 'success'
+      }));
+      loadQueueList(); // 重新載入以確保資料一致
+    } catch (error) {
+      console.error('更新拖曳順序失敗:', error);
+      dispatch(showAlert({
+        message: '更新順序失敗，請重試',
+        severity: 'error'
+      }));
+      loadQueueList(); // 失敗時也重新載入以還原
+    }
+  }, [localQueueList, setLocalQueueList, dispatch, loadQueueList]);
 
   // 清空所有候位
   const handleClearAllQueue = useCallback(() => {
@@ -181,21 +200,21 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
       message: '此操作將清空所有候位記錄（包括等待中、已完成、已取消），且無法復原。確定要繼續嗎？',
       onConfirm: async () => {
         handleCloseConfirmDialog();
-        try {
+    try {
           await dispatch(clearAllQueue()).unwrap();
-          dispatch(showAlert({
-            message: '已清空所有候位記錄',
-            severity: 'success'
-          }));
-          loadQueueList();
-        } catch (error) {
-          console.error('清空候位失敗:', error);
+      dispatch(showAlert({
+        message: '已清空所有候位記錄',
+        severity: 'success'
+      }));
+      loadQueueList();
+    } catch (error) {
+      console.error('清空候位失敗:', error);
           dispatch(showAlert({
             message: '清空候位失敗',
             severity: 'error'
           }));
         }
-      }
+    }
     });
   }, [dispatch, loadQueueList, setConfirmDialog, handleCloseConfirmDialog]);
 

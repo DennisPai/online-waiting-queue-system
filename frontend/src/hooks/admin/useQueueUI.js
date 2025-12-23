@@ -57,6 +57,135 @@ export const useQueueUI = () => {
     setEditMode(true);
   }, []);
 
+  // 處理基本輸入變更
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setEditedData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  }, []);
+
+  // 處理地址變更
+  const handleAddressChange = useCallback((index, field, value) => {
+    setEditedData(prev => {
+      const newAddresses = [...(prev.addresses || [])];
+      newAddresses[index] = {
+        ...newAddresses[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        addresses: newAddresses
+      };
+    });
+  }, []);
+
+  // 新增地址
+  const addAddress = useCallback(() => {
+    setEditedData(prev => {
+      const currentAddresses = prev.addresses || [];
+      if (currentAddresses.length < 3) {
+        return {
+          ...prev,
+          addresses: [...currentAddresses, { address: '', addressType: 'home' }]
+        };
+      }
+      return prev;
+    });
+  }, []);
+
+  // 移除地址
+  const removeAddress = useCallback((index) => {
+    setEditedData(prev => {
+      const currentAddresses = prev.addresses || [];
+      if (currentAddresses.length > 1) {
+        return {
+          ...prev,
+          addresses: currentAddresses.filter((_, i) => i !== index)
+        };
+      }
+      return prev;
+    });
+  }, []);
+
+  // 處理家人資料變更
+  const handleFamilyMemberChange = useCallback((index, field, value) => {
+    setEditedData(prev => {
+      const newFamilyMembers = [...(prev.familyMembers || [])];
+      newFamilyMembers[index] = {
+        ...newFamilyMembers[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        familyMembers: newFamilyMembers
+      };
+    });
+  }, []);
+
+  // 新增家人
+  const addFamilyMember = useCallback(() => {
+    setEditedData(prev => {
+      const currentFamilyMembers = prev.familyMembers || [];
+      if (currentFamilyMembers.length < 5) {
+        return {
+          ...prev,
+          familyMembers: [
+            ...currentFamilyMembers,
+            {
+              name: '',
+              gender: 'male',
+              gregorianBirthYear: '',
+              gregorianBirthMonth: '',
+              gregorianBirthDay: '',
+              lunarBirthYear: '',
+              lunarBirthMonth: '',
+              lunarBirthDay: '',
+              lunarIsLeapMonth: false,
+              addresses: [{ address: '', addressType: 'home' }]
+            }
+          ]
+        };
+      }
+      return prev;
+    });
+  }, []);
+
+  // 移除家人
+  const removeFamilyMember = useCallback((index) => {
+    setEditedData(prev => {
+      const currentFamilyMembers = prev.familyMembers || [];
+      return {
+        ...prev,
+        familyMembers: currentFamilyMembers.filter((_, i) => i !== index)
+      };
+    });
+  }, []);
+
+  // 處理諮詢主題變更
+  const handleTopicChange = useCallback((topic) => {
+    setEditedData(prev => {
+      const currentTopics = [...(prev.consultationTopics || [])];
+      const topicIndex = currentTopics.indexOf(topic);
+      
+      let newEditedData = { ...prev };
+      
+      if (topicIndex === -1) {
+        currentTopics.push(topic);
+      } else {
+        currentTopics.splice(topicIndex, 1);
+        // 如果取消勾選"其他"，清空其他詳細內容
+        if (topic === 'other') {
+          newEditedData.otherDetails = '';
+        }
+      }
+      
+      newEditedData.consultationTopics = currentTopics;
+      return newEditedData;
+    });
+  }, []);
+
   // 匯出對話框
   const handleOpenExportDialog = useCallback(() => {
     setExportDialogOpen(true);
@@ -177,6 +306,16 @@ export const useQueueUI = () => {
     handleOpenConfirmDialog,
     handleCloseConfirmDialog,
     handleConfirmAction,
+
+    // 表單處理函數
+    handleInputChange,
+    handleAddressChange,
+    addAddress,
+    removeAddress,
+    handleFamilyMemberChange,
+    addFamilyMember,
+    removeFamilyMember,
+    handleTopicChange,
 
     // 欄位控制
     handleColumnToggle,

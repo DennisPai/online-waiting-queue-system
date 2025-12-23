@@ -123,9 +123,9 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
 
       // 發送更新請求
       await dispatch(updateQueueData({
-        id: processedData._id,
-        data: processedData
-      }));
+        queueId: processedData._id,
+        customerData: processedData
+      })).unwrap();
 
       dispatch(showAlert({
         message: '客戶資料更新成功',
