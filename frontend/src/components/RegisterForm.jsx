@@ -218,6 +218,45 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
     return Object.keys(errors).length === 0;
   };
 
+  // 自動轉換日期的功能函數
+  const autoConvertDate = (newFormData) => {
+    if (newFormData.birthYear && newFormData.birthMonth && newFormData.birthDay) {
+      const inputYear = parseInt(newFormData.birthYear);
+      const month = parseInt(newFormData.birthMonth);
+      const day = parseInt(newFormData.birthDay);
+
+      if (inputYear && month && day) {
+        try {
+          if (newFormData.calendarType === 'gregorian') {
+            // 國曆：先轉換為西元年，再進行轉換
+            const { minguoYear } = autoConvertToMinguo(inputYear);
+            const gregorianYear = convertMinguoForStorage(minguoYear);
+            const lunarDate = gregorianToLunar(gregorianYear, month, day);
+            if (lunarDate) {
+              newFormData.convertedLunarYear = lunarDate.year;
+              newFormData.convertedLunarMonth = lunarDate.month;
+              newFormData.convertedLunarDay = lunarDate.day;
+              newFormData.convertedLunarIsLeapMonth = lunarDate.isLeapMonth;
+            }
+          } else {
+            // 農曆：先轉換為西元年，再進行轉換
+            const { minguoYear } = autoConvertToMinguo(inputYear);
+            const lunarYear = convertMinguoForStorage(minguoYear);
+            const gregorianDate = lunarToGregorian(lunarYear, month, day, newFormData.lunarIsLeapMonth);
+            if (gregorianDate) {
+              newFormData.convertedGregorianYear = gregorianDate.year;
+              newFormData.convertedGregorianMonth = gregorianDate.month;
+              newFormData.convertedGregorianDay = gregorianDate.day;
+            }
+          }
+        } catch (error) {
+          console.error('日期轉換錯誤:', error);
+        }
+      }
+    }
+    return newFormData;
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     
@@ -235,7 +274,25 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
       
       setFormData(newFormData);
     } else {
-      setFormData({ ...formData, [name]: value });
+      let newFormData = { ...formData, [name]: value };
+      
+      // 如果是曆法類型改變，清除轉換結果
+      if (name === 'calendarType') {
+        delete newFormData.convertedLunarYear;
+        delete newFormData.convertedLunarMonth;
+        delete newFormData.convertedLunarDay;
+        delete newFormData.convertedLunarIsLeapMonth;
+        delete newFormData.convertedGregorianYear;
+        delete newFormData.convertedGregorianMonth;
+        delete newFormData.convertedGregorianDay;
+      }
+      
+      // 如果是日期相關欄位，進行自動轉換
+      if (['birthYear', 'birthMonth', 'birthDay', 'calendarType', 'lunarIsLeapMonth'].includes(name)) {
+        newFormData = autoConvertDate(newFormData);
+      }
+      
+      setFormData(newFormData);
     }
     
     // 清除該欄位的錯誤
@@ -273,10 +330,66 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
     }
   };
 
+  // 家人自動轉換日期
+  const autoConvertFamilyMemberDate = (member) => {
+    if (member.birthYear && member.birthMonth && member.birthDay) {
+      const inputYear = parseInt(member.birthYear);
+      const month = parseInt(member.birthMonth);
+      const day = parseInt(member.birthDay);
+
+      if (inputYear && month && day) {
+        try {
+          if (member.calendarType === 'gregorian') {
+            // 國曆：先轉換為西元年，再進行轉換
+            const { minguoYear } = autoConvertToMinguo(inputYear);
+            const gregorianYear = convertMinguoForStorage(minguoYear);
+            const lunarDate = gregorianToLunar(gregorianYear, month, day);
+            if (lunarDate) {
+              member.convertedLunarYear = lunarDate.year;
+              member.convertedLunarMonth = lunarDate.month;
+              member.convertedLunarDay = lunarDate.day;
+              member.convertedLunarIsLeapMonth = lunarDate.isLeapMonth;
+            }
+          } else {
+            // 農曆：先轉換為西元年，再進行轉換
+            const { minguoYear } = autoConvertToMinguo(inputYear);
+            const lunarYear = convertMinguoForStorage(minguoYear);
+            const gregorianDate = lunarToGregorian(lunarYear, month, day, member.lunarIsLeapMonth);
+            if (gregorianDate) {
+              member.convertedGregorianYear = gregorianDate.year;
+              member.convertedGregorianMonth = gregorianDate.month;
+              member.convertedGregorianDay = gregorianDate.day;
+            }
+          }
+        } catch (error) {
+          console.error('家人日期轉換錯誤:', error);
+        }
+      }
+    }
+    return member;
+  };
+
   // 處理家人變更
   const handleFamilyMemberChange = (index, field, value) => {
     const newFamilyMembers = [...formData.familyMembers];
     newFamilyMembers[index] = { ...newFamilyMembers[index], [field]: value };
+    
+    // 如果是曆法類型改變，清除轉換結果
+    if (field === 'calendarType') {
+      delete newFamilyMembers[index].convertedLunarYear;
+      delete newFamilyMembers[index].convertedLunarMonth;
+      delete newFamilyMembers[index].convertedLunarDay;
+      delete newFamilyMembers[index].convertedLunarIsLeapMonth;
+      delete newFamilyMembers[index].convertedGregorianYear;
+      delete newFamilyMembers[index].convertedGregorianMonth;
+      delete newFamilyMembers[index].convertedGregorianDay;
+    }
+    
+    // 如果是日期相關欄位，進行自動轉換
+    if (['birthYear', 'birthMonth', 'birthDay', 'calendarType', 'lunarIsLeapMonth'].includes(field)) {
+      newFamilyMembers[index] = autoConvertFamilyMemberDate(newFamilyMembers[index]);
+    }
+    
     setFormData({ ...formData, familyMembers: newFamilyMembers });
     
     // 清除錯誤

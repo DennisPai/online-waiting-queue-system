@@ -44,9 +44,16 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
       errors.queueNumber = '候位號碼必須是正整數';
     }
 
-    // 出生日期驗證
-    const hasGregorianBirth = data.gregorianBirthYear && data.gregorianBirthMonth && data.gregorianBirthDay;
-    const hasLunarBirth = data.lunarBirthYear && data.lunarBirthMonth && data.lunarBirthDay;
+    // 出生日期驗證 - 使用嚴格的存在性檢查
+    const hasGregorianBirth = 
+      data.gregorianBirthYear != null && 
+      data.gregorianBirthMonth != null && 
+      data.gregorianBirthDay != null;
+    
+    const hasLunarBirth = 
+      data.lunarBirthYear != null && 
+      data.lunarBirthMonth != null && 
+      data.lunarBirthDay != null;
     
     if (!hasGregorianBirth && !hasLunarBirth) {
       errors.birthDate = '必須提供國曆或農曆出生日期';

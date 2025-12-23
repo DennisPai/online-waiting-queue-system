@@ -175,19 +175,41 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
 
     // 等待所有更新完成
     try {
-      await Promise.all(updatePromises);
-      dispatch(showAlert({
-        message: '拖曳順序已更新',
-        severity: 'success'
-      }));
+      const results = await Promise.allSettled(updatePromises);
+      
+      // 統計成功和失敗的數量
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failCount = results.filter(r => r.status === 'rejected').length;
+      
+      if (failCount === 0) {
+        // 全部成功
+        dispatch(showAlert({
+          message: '拖曳順序已更新',
+          severity: 'success'
+        }));
+      } else if (successCount > 0) {
+        // 部分成功
+        dispatch(showAlert({
+          message: `已更新 ${successCount} 筆，${failCount} 筆失敗`,
+          severity: 'warning'
+        }));
+      } else {
+        // 全部失敗
+        dispatch(showAlert({
+          message: '更新順序失敗，請重試',
+          severity: 'error'
+        }));
+      }
+      
       loadQueueList(); // 重新載入以確保資料一致
     } catch (error) {
+      // Promise.allSettled 不會拋出錯誤，這裡是預防性處理
       console.error('更新拖曳順序失敗:', error);
       dispatch(showAlert({
         message: '更新順序失敗，請重試',
         severity: 'error'
       }));
-      loadQueueList(); // 失敗時也重新載入以還原
+      loadQueueList();
     }
   }, [localQueueList, setLocalQueueList, dispatch, loadQueueList]);
 
@@ -219,18 +241,31 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
   }, [dispatch, loadQueueList, setConfirmDialog, handleCloseConfirmDialog]);
 
   // 刪除客戶
-  const handleDeleteCustomer = useCallback(async (customerId) => {
-    try {
-      await dispatch(deleteCustomer(customerId));
-      dispatch(showAlert({
-        message: '客戶資料已刪除',
-        severity: 'success'
-      }));
-      loadQueueList();
-    } catch (error) {
-      console.error('刪除客戶失敗:', error);
-    }
-  }, [dispatch, loadQueueList]);
+  const handleDeleteCustomer = useCallback((customerId, customerName) => {
+    // 顯示確認對話框
+    setConfirmDialog({
+      open: true,
+      title: '確認刪除客戶',
+      message: `確定要刪除 ${customerName || '此客戶'} 的資料嗎？此操作無法復原。`,
+      onConfirm: async () => {
+        handleCloseConfirmDialog();
+        try {
+          await dispatch(deleteCustomer(customerId)).unwrap();
+          dispatch(showAlert({
+            message: '客戶資料已刪除',
+            severity: 'success'
+          }));
+          loadQueueList();
+        } catch (error) {
+          console.error('刪除客戶失敗:', error);
+          dispatch(showAlert({
+            message: '刪除失敗，請稍後再試',
+            severity: 'error'
+          }));
+        }
+      }
+    });
+  }, [dispatch, loadQueueList, setConfirmDialog, handleCloseConfirmDialog]);
 
   return {
     handleReorderQueue,
