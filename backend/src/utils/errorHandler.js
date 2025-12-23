@@ -5,8 +5,7 @@ const ApiError = require('./ApiError');
  * 統一處理所有應用程序錯誤
  */
 const globalErrorHandler = (err, req, res, next) => {
-  let error = { ...err };
-  error.message = err.message;
+  let error = err;
 
   // 記錄錯誤（開發環境顯示詳細信息）
   if (process.env.NODE_ENV === 'development') {
@@ -43,8 +42,8 @@ const globalErrorHandler = (err, req, res, next) => {
   }
 
   // 如果不是 ApiError，轉換為內部錯誤
-  if (!(error instanceof ApiError)) {
-    error = ApiError.internal(error.message || '伺服器內部錯誤');
+  if (!(err instanceof ApiError)) {
+    error = ApiError.internal(err.message || '伺服器內部錯誤');
   }
 
   // 發送錯誤響應
