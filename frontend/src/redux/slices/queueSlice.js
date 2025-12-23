@@ -413,7 +413,8 @@ export const updateQueueData = createAsyncThunk(
     try {
       const { token } = getState().auth;
       const response = await queueService.updateQueueData(queueId, customerData, token);
-      return response.data;
+      // queueService 已返回正確格式，直接使用
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || '更新客戶資料失敗');
     }

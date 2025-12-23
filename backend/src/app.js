@@ -13,6 +13,9 @@ dotenv.config();
 
 // 導入 v1 路由（已完成重構遷移）
 
+// 導入錯誤處理中間件
+const { globalErrorHandler, notFoundHandler } = require('./utils/errorHandler');
+
 // 導入初始化數據功能
 const initializeData = require('./utils/init-data');
 
@@ -79,15 +82,11 @@ app.get('/', (req, res) => {
 // v1 API 路由（重構完成後的統一路由）
 app.use('/api/v1', require('./routes/v1'));
 
-// 錯誤處理中間件
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    message: '伺服器內部錯誤',
-    error: process.env.NODE_ENV === 'development' ? err.message : {}
-  });
-});
+// 404 處理 - 未匹配的路由
+app.use(notFoundHandler);
+
+// 全局錯誤處理中間件 - 統一處理所有錯誤，保留 ApiError 的錯誤訊息
+app.use(globalErrorHandler);
 
 // Socket.io 連接處理
 require('./services/socket.service')(io);
