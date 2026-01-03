@@ -4,7 +4,9 @@ import { updateQueueData } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
 import { 
   autoFillDates, 
-  autoFillFamilyMembersDates
+  autoFillFamilyMembersDates,
+  autoConvertToMinguo,
+  convertMinguoForStorage
 } from '../../utils/calendarConverter';
 
 /**
@@ -75,12 +77,42 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
     let processedData = { ...data };
 
     try {
+      // 處理年份轉換：將表單中的民國年轉換為西元年（用於資料庫儲存）
+      // 參考 StatusPage.jsx 的正確實現
+      
+      // 處理主客戶的年份轉換
+      if (processedData.gregorianBirthYear) {
+        const { minguoYear } = autoConvertToMinguo(processedData.gregorianBirthYear);
+        processedData.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+      }
+
+      if (processedData.lunarBirthYear) {
+        const { minguoYear } = autoConvertToMinguo(processedData.lunarBirthYear);
+        processedData.lunarBirthYear = convertMinguoForStorage(minguoYear);
+      }
+
+      // 處理家人的年份轉換
+      if (processedData.familyMembers && Array.isArray(processedData.familyMembers)) {
+        processedData.familyMembers = processedData.familyMembers.map(member => {
+          const processedMember = { ...member };
+          
+          if (processedMember.gregorianBirthYear) {
+            const { minguoYear } = autoConvertToMinguo(processedMember.gregorianBirthYear);
+            processedMember.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+          }
+          
+          if (processedMember.lunarBirthYear) {
+            const { minguoYear } = autoConvertToMinguo(processedMember.lunarBirthYear);
+            processedMember.lunarBirthYear = convertMinguoForStorage(minguoYear);
+          }
+          
+          return processedMember;
+        });
+      }
+
       // 自動填充日期（編輯時國曆農曆互補）
       processedData = autoFillDates(processedData);
       processedData = autoFillFamilyMembersDates(processedData);
-
-      // 注意：編輯客戶資料時，資料庫中已是西元年格式，不需要轉換
-      // convertMinguoForStorage 只用於新註冊時將民國年轉為西元年
 
       // 確保數值型欄位的正確類型
       if (processedData.queueNumber) {
