@@ -2,6 +2,7 @@ const queueRepository = require('../repositories/QueueRepository');
 const SystemSetting = require('../models/system-setting.model');
 const WaitingRecord = require('../models/waiting-record.model');
 const ApiError = require('../utils/ApiError');
+const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = require('../utils/calendarConverter');
 
 /**
  * 候位系統業務邏輯層
@@ -302,6 +303,7 @@ class QueueService {
       lunarBirthDay: record.lunarBirthDay,
       lunarIsLeapMonth: record.lunarIsLeapMonth,
       virtualAge: record.virtualAge,
+      zodiac: record.zodiac,
       addresses: record.addresses,
       familyMembers: record.familyMembers,
       consultationTopics: record.consultationTopics,
@@ -327,7 +329,7 @@ class QueueService {
    * 私有方法：處理候位數據
    */
   processQueueData(data, settings) {
-    const processedData = { ...data };
+    let processedData = { ...data };
 
     // 獲取候位號碼
     if (!processedData.queueNumber) {
@@ -342,6 +344,21 @@ class QueueService {
 
     // 處理家人數據
     this.processFamilyMembers(processedData);
+
+    // 自動填充日期（國曆轉農曆或農曆轉國曆）
+    processedData = autoFillDates(processedData);
+    
+    // 處理家人資料的日期轉換
+    if (processedData.familyMembers && processedData.familyMembers.length > 0) {
+      const familyData = autoFillFamilyMembersDates({ familyMembers: processedData.familyMembers });
+      processedData.familyMembers = familyData.familyMembers;
+    }
+    
+    // 計算生肖
+    processedData = addZodiac(processedData);
+    
+    // 計算虛歲
+    processedData = addVirtualAge(processedData);
 
     return processedData;
   }

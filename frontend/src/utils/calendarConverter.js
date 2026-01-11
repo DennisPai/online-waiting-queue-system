@@ -188,6 +188,53 @@ export function formatMinguoDate(gregorianYear, month, day) {
 }
 
 /**
+ * 計算生肖（基於農曆年）
+ * @param {number} lunarBirthYear - 農曆出生年（西元年）
+ * @returns {string|null} - 生肖（如：「鼠」、「牛」、「虎」等）
+ */
+export function calculateZodiac(lunarBirthYear) {
+  if (!lunarBirthYear) return null;
+  
+  try {
+    // 使用 lunar-javascript 獲取生肖
+    // 創建農曆日期對象（使用年份的第一天即可獲取生肖）
+    const lunar = Lunar.fromYmd(lunarBirthYear, 1, 1);
+    
+    // 取得生肖
+    const zodiac = lunar.getYearShengXiao();
+    
+    return zodiac;
+  } catch (error) {
+    console.error('生肖計算錯誤:', error);
+    return null;
+  }
+}
+
+/**
+ * 為數據自動計算並添加生肖
+ * @param {object} data - 客戶數據
+ * @returns {object} - 添加生肖後的數據
+ */
+export function addZodiac(data) {
+  const result = { ...data };
+  
+  // 計算主客戶生肖
+  if (result.lunarBirthYear) {
+    result.zodiac = calculateZodiac(result.lunarBirthYear);
+  }
+  
+  // 計算家人生肖
+  if (result.familyMembers && Array.isArray(result.familyMembers)) {
+    result.familyMembers = result.familyMembers.map(member => ({
+      ...member,
+      zodiac: member.lunarBirthYear ? calculateZodiac(member.lunarBirthYear) : null
+    }));
+  }
+  
+  return result;
+}
+
+/**
  * 計算虛歲（基於農曆年）
  * @param {number} lunarBirthYear - 農曆出生年（西元年）
  * @returns {number} - 虛歲

@@ -1,6 +1,6 @@
 const WaitingRecord = require('../models/waiting-record.model');
 const SystemSetting = require('../models/system-setting.model');
-const { autoFillDates, autoFillFamilyMembersDates, addVirtualAge, autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
+const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge, autoConvertToMinguo, convertMinguoForStorage } = require('../utils/calendarConverter');
 
 // 確保 orderIndex 的一致性和連續性 - 與queue.controller.js保持完全一致
 async function ensureOrderIndexConsistency() {
@@ -554,6 +554,9 @@ exports.updateQueueData = async (req, res) => {
       updateData.familyMembers = familyData.familyMembers;
     }
 
+    // 計算生肖
+    updateData = addZodiac(updateData);
+
     // 計算虛歲
     updateData = addVirtualAge(updateData);
 
@@ -563,7 +566,7 @@ exports.updateQueueData = async (req, res) => {
       'name', 'email', 'phone', 'gender',
       'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
-      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'remarks', 'virtualAge'
+      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'remarks', 'virtualAge', 'zodiac'
     ];
 
     allowedFields.forEach(field => {

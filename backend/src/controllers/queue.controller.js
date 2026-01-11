@@ -3,7 +3,7 @@ const { catchAsync } = require('../utils/errorHandler');
 const ApiError = require('../utils/ApiError');
 const WaitingRecord = require('../models/waiting-record.model');
 const SystemSetting = require('../models/system-setting.model');
-const { autoFillDates, autoFillFamilyMembersDates, addVirtualAge } = require('../utils/calendarConverter');
+const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = require('../utils/calendarConverter');
 
 /**
  * 重構後的候位系統控制器
@@ -383,6 +383,9 @@ const updateQueueByCustomer = catchAsync(async (req, res) => {
       processedUpdateData.familyMembers = familyData.familyMembers;
     }
 
+    // 計算生肖
+    processedUpdateData = addZodiac(processedUpdateData);
+
     // 計算虛歲
     processedUpdateData = addVirtualAge(processedUpdateData);
     
@@ -391,7 +394,7 @@ const updateQueueByCustomer = catchAsync(async (req, res) => {
       'name', 'phone', 'email', 'gender',
       'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
       'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
-      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'remarks', 'virtualAge'
+      'addresses', 'familyMembers', 'consultationTopics', 'otherDetails', 'remarks', 'virtualAge', 'zodiac'
     ];
     
     // 更新資料

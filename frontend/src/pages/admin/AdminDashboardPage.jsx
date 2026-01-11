@@ -45,6 +45,7 @@ const AVAILABLE_COLUMNS = {
   email: { key: 'email', label: '電子郵件', defaultVisible: false },
   gender: { key: 'gender', label: '性別', defaultVisible: false },
   birthDate: { key: 'birthDate', label: '出生日期', defaultVisible: false },
+  zodiac: { key: 'zodiac', label: '生肖', defaultVisible: false },
   virtualAge: { key: 'virtualAge', label: '虛歲', defaultVisible: false },
   addresses: { key: 'addresses', label: '地址', defaultVisible: false },
   familyMembers: { key: 'familyMembers', label: '家人資訊', defaultVisible: false },

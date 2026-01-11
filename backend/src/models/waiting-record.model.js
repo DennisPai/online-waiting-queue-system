@@ -68,6 +68,11 @@ const familyMemberSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  // 生肖
+  zodiac: {
+    type: String,
+    default: null
+  },
   address: {
     type: String,
     default: '臨時地址'
@@ -157,6 +162,11 @@ const waitingRecordSchema = new mongoose.Schema({
   // 虛歲
   virtualAge: {
     type: Number,
+    default: null
+  },
+  // 生肖
+  zodiac: {
+    type: String,
     default: null
   },
   // 修改為支持多地址

@@ -176,6 +176,8 @@ const QueueTable = ({
         return formatGender(row.gender);
       case 'birthDate':
         return formatBirthDateColumn(row);
+      case 'zodiac':
+        return row.zodiac || '未計算';
       case 'virtualAge':
         return row.virtualAge ? `${row.virtualAge}歲` : '未計算';
       case 'addresses':

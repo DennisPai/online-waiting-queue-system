@@ -26,15 +26,18 @@
   - 說明：回傳完整的系統狀態，包含活動報名區塊設定（eventBanner）和下次開科辦事開放報名時間（scheduledOpenTime，Date 型別，可能為 null 表示使用動態計算）、定時開放開關（autoOpenEnabled），確保前端重新整理時不會丟失設定
 - POST `/api/v1/queue/register`
   - body: `{ name, phone, email?, gender, addresses, familyMembers?, consultationTopics?, ... }`
-  - 201: `{ success, code, data: { queueNumber, orderIndex, waitingCount, estimatedWaitTime, ... } }`
+  - 201: `{ success, code, data: { queueNumber, orderIndex, waitingCount, estimatedWaitTime, zodiac?, ... } }`
+  - 說明：回應中的 `zodiac` 欄位為系統自動根據農曆出生年份計算的生肖
 - GET `/api/v1/queue/number/:queueNumber`
-  - 200: `{ success, code, data: { queueNumber, status, orderIndex, statusMessage, ... } }`
+  - 200: `{ success, code, data: { queueNumber, status, orderIndex, statusMessage, zodiac?, ... } }`
+  - 說明：回應中的 `zodiac` 欄位為客戶的生肖
 - GET `/api/v1/queue/search?name&phone`
   - query: `name` (string, optional) - 客戶姓名（支持家人姓名搜尋）
   - query: `phone` (string, optional) - 客戶電話
   - 注意：name 和 phone 至少須提供一個
-  - 200: `{ success, code, data: [{ queueNumber, orderIndex, status, statusMessage, peopleAhead, estimatedStartTime, name, phone, ... }], message }`
+  - 200: `{ success, code, data: [{ queueNumber, orderIndex, status, statusMessage, peopleAhead, estimatedStartTime, name, phone, zodiac?, ... }], message }`
   - 404: `{ success: false, code: 'NOT_FOUND', message: '查無候位記錄，請確認姓名和電話是否正確' }`
+  - 說明：回應中的 `zodiac` 欄位為客戶的生肖
 - GET `/api/v1/queue/ordered-numbers`
   - 200: `{ success, code, data: { currentProcessingNumber, nextWaitingNumber } }`
 - GET `/api/v1/queue/max-order`
@@ -45,12 +48,15 @@
 - PUT `/api/v1/queue/update`
   - body: `{ queueNumber, phone, ...updateData }`
   - 200: `{ success, code, message: '更新成功', data: updatedRecord }`
+  - 說明：更新客戶資料時，系統會自動重新計算生肖（若出生日期有變更）
 
 ## Admin（需 Bearer）
 - GET `/api/v1/admin/queue/list?status=&page=&limit=`
+  - 說明：回應中的每筆客戶資料包含 `zodiac` 欄位
 - PUT `/api/v1/admin/queue/next`
 - PUT `/api/v1/admin/queue/:queueId/status`
 - PUT `/api/v1/admin/queue/:queueId/update`
+  - 說明：更新客戶資料時，系統會自動重新計算生肖（若出生日期有變更）
 - DELETE `/api/v1/admin/queue/:queueId/delete`
 - PUT `/api/v1/admin/queue/order`
   - body: `{ queueId, newOrder }`
@@ -91,8 +97,20 @@
   - 說明：設定是否啟用定時自動開放公開候位登記功能，當啟用時，系統會在 scheduledOpenTime 指定的時間自動開啟 publicRegistrationEnabled，後端會自動重新設定排程任務
 - DELETE `/api/v1/admin/queue/clear-all`
 
+## 客戶資料欄位說明
+### 生肖欄位（zodiac）
+- **類型**：String（可選）
+- **說明**：系統自動根據客戶的農曆出生年份計算生肖
+- **計算時機**：
+  - 客戶報名時自動計算
+  - 編輯客戶出生日期後自動重新計算
+  - 家人資料也支援生肖計算
+- **可能值**：鼠、牛、虎、兔、龍、蛇、馬、羊、猴、雞、狗、豬
+- **注意**：生肖計算依賴農曆年份，系統會先進行國農曆轉換（若需要），再計算生肖
+
 ## 注意事項
 - 所有路由已統一使用 v1 API，舊路由已移除
 - 路由命名統一使用 kebab-case（如 `max-order-index`）
 - 所有回應格式已統一為 `{ success, code, message, data }`
+- 生肖欄位為自動計算欄位，前端不需要也不應該手動設定此欄位
 

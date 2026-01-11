@@ -41,7 +41,8 @@ import {
   convertMinguoForStorage,
   formatMinguoYear,
   formatMinguoDate,
-  addVirtualAge
+  addVirtualAge,
+  calculateZodiac
 } from '../utils/calendarConverter';
 
 // 表單初始值
@@ -827,6 +828,29 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                 />
               </Grid>
             )}
+
+            {/* 生肖顯示 */}
+            {(() => {
+              const lunarYear = formData.calendarType === 'gregorian' 
+                ? formData.convertedLunarYear 
+                : (formData.birthYear ? convertMinguoForStorage(autoConvertToMinguo(parseInt(formData.birthYear)).minguoYear) : null);
+              const zodiac = lunarYear ? calculateZodiac(lunarYear) : null;
+              
+              return zodiac && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="生肖"
+                    value={zodiac}
+                    InputProps={{
+                      readOnly: true,
+                    }}
+                    variant="filled"
+                    helperText="系統自動根據農曆年份計算"
+                  />
+                </Grid>
+              );
+            })()}
           </>
         )}
 

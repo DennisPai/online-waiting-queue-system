@@ -44,7 +44,8 @@ import {
   formatMinguoYear, 
   formatMinguoDate,
   autoConvertToMinguo,
-  convertMinguoForStorage 
+  convertMinguoForStorage,
+  calculateZodiac
 } from '../../utils/calendarConverter';
 
 const CustomerDetailDialog = ({
@@ -251,6 +252,12 @@ const CustomerDetailDialog = ({
                       <Typography variant="body2" color="text.secondary">出生日期</Typography>
                       <Typography variant="body1">{formatBirthDate(selectedRecord)}</Typography>
                     </Grid>
+                    {selectedRecord.zodiac && (
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">生肖</Typography>
+                        <Typography variant="body1">{selectedRecord.zodiac}</Typography>
+                      </Grid>
+                    )}
                     {selectedRecord.virtualAge && (
                       <Grid item xs={6}>
                         <Typography variant="body2" color="text.secondary">虛歲</Typography>
