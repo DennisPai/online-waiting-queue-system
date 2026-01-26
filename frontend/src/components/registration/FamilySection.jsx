@@ -46,7 +46,7 @@ const FamilySection = ({
           家人資訊
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          如需為家人一併請示，請填寫家人資訊（最多5人）
+          如需為家人一併請示，請填寫家人資訊（最多3人）
         </Typography>
       </Grid>
 
@@ -274,7 +274,7 @@ const FamilySection = ({
       ))}
 
       {/* 新增家人按鈕 */}
-      {(!formData.familyMembers || formData.familyMembers.length < 5) && (
+      {(!formData.familyMembers || formData.familyMembers.length < 3) && (
         <Grid item xs={12}>
           <Button
             variant="outlined"

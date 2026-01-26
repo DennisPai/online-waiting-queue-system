@@ -16,6 +16,15 @@ const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = 
 const registerQueue = catchAsync(async (req, res) => {
   console.log('接收到的登記數據:', req.body);
   
+  // 驗證家人數量：前台用戶最多3人，管理員最多5人
+  const isAdmin = req.user !== undefined; // 有 JWT token 則為管理員
+  const familyMembers = req.body.familyMembers || [];
+  const maxFamilyMembers = isAdmin ? 5 : 3;
+  
+  if (familyMembers.length > maxFamilyMembers) {
+    throw new ApiError(400, `${isAdmin ? '管理員' : '前台報名'}最多可添加${maxFamilyMembers}位家人`, 'VALIDATION_ERROR');
+  }
+  
   const result = await queueService.registerQueue(req.body);
   
   res.status(201).json({

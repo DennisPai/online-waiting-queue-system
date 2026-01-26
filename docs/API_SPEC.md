@@ -27,7 +27,10 @@
 - POST `/api/v1/queue/register`
   - body: `{ name, phone, email?, gender, addresses, familyMembers?, consultationTopics?, ... }`
   - 201: `{ success, code, data: { queueNumber, orderIndex, waitingCount, estimatedWaitTime, zodiac?, ... } }`
-  - 說明：回應中的 `zodiac` 欄位為系統自動根據農曆出生年份計算的生肖
+  - 說明：
+    - 回應中的 `zodiac` 欄位為系統自動根據農曆出生年份計算的生肖
+    - 家人數量限制：前台報名最多 3 人，管理員報名（帶 JWT token）最多 5 人
+    - 超過限制時回傳 400 錯誤：`{ success: false, code: 'VALIDATION_ERROR', message: '前台報名最多可添加3位家人' }`
 - GET `/api/v1/queue/number/:queueNumber`
   - 200: `{ success, code, data: { queueNumber, status, orderIndex, statusMessage, zodiac?, ... } }`
   - 說明：回應中的 `zodiac` 欄位為客戶的生肖
@@ -45,10 +48,14 @@
 - POST `/api/v1/queue/cancel`
   - body: `{ queueNumber, phone }`
   - 200: `{ success, code, message: '取消成功' }`
-- PUT `/api/v1/queue/update`
+- PUT `/api/v1/queue/update` [需要認證]
+  - headers: `Authorization: Bearer <token>` (必須)
   - body: `{ queueNumber, phone, ...updateData }`
   - 200: `{ success, code, message: '更新成功', data: updatedRecord }`
-  - 說明：更新客戶資料時，系統會自動重新計算生肖（若出生日期有變更）
+  - 401: `{ success: false, code: 'UNAUTHORIZED', message: '未提供認證令牌' }`
+  - 說明：
+    - 此端點需要管理員認證，前台用戶無法直接修改資料
+    - 更新客戶資料時，系統會自動重新計算生肖（若出生日期有變更）
 
 ## Admin（需 Bearer）
 - GET `/api/v1/admin/queue/list?status=&page=&limit=`

@@ -271,7 +271,7 @@ export const useRegistrationForm = (embedded = false) => {
 
   // 新增家人
   const addFamilyMember = useCallback(() => {
-    if (formData.familyMembers.length < 5) {
+    if (formData.familyMembers.length < 3) {
       setFormData(prev => ({
         ...prev,
         familyMembers: [
