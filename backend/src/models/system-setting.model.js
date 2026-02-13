@@ -31,6 +31,10 @@ const systemSettingSchema = new mongoose.Schema({
     type: Boolean,
     default: false  // 預設為false，即預設關閉公開候位登記
   },
+  showQueueNumberInQuery: {
+    type: Boolean,
+    default: true  // 預設顯示，管理員可關閉
+  },
   totalCustomerCount: {
     type: Number,
     default: 0,

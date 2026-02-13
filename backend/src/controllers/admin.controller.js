@@ -841,6 +841,40 @@ exports.setPublicRegistrationEnabled = async (req, res) => {
   }
 };
 
+// 設定查詢頁號碼顯示開關
+exports.setShowQueueNumberInQuery = async (req, res) => {
+  try {
+    const { showQueueNumberInQuery } = req.body;
+    
+    if (typeof showQueueNumberInQuery !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'showQueueNumberInQuery 必須是布爾值'
+      });
+    }
+    
+    const settings = await SystemSetting.getSettings();
+    settings.showQueueNumberInQuery = showQueueNumberInQuery;
+    settings.updatedBy = req.user.id;
+    await settings.save();
+    
+    res.status(200).json({
+      success: true,
+      message: `查詢頁號碼顯示已${showQueueNumberInQuery ? '開啟' : '關閉'}`,
+      data: {
+        showQueueNumberInQuery: settings.showQueueNumberInQuery
+      }
+    });
+  } catch (error) {
+    console.error('設定查詢頁號碼顯示錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器內部錯誤',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};
+
 // 獲取活動報名區塊設定
 exports.getEventBanner = async (req, res) => {
   try {

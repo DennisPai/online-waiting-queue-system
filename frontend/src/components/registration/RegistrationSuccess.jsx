@@ -76,26 +76,8 @@ const RegistrationSuccess = ({
         {/* 候位資訊卡片 */}
         <Card>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h6" color="text.secondary">
-                您的候位號碼：
-              </Typography>
-              <Typography variant="h3" color="primary" sx={{ ml: 2 }}>
-                {registeredQueueNumber}
-              </Typography>
-            </Box>
-
             <Grid container spacing={3} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={3}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  您的編號
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
-                  {registeredQueueNumber || '?'} 號
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={4}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   前方等待組數
                 </Typography>
@@ -104,7 +86,7 @@ const RegistrationSuccess = ({
                 </Typography>
               </Grid>
               
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={4}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   預估等待時間
                 </Typography>
@@ -113,7 +95,7 @@ const RegistrationSuccess = ({
                 </Typography>
               </Grid>
               
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={4}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   預估叫號時間
                 </Typography>
@@ -130,9 +112,6 @@ const RegistrationSuccess = ({
           <CardContent>
             <Typography variant="h6" gutterBottom sx={{ color: 'warning.main' }}>
               ⚠️ 重要提醒
-            </Typography>
-            <Typography variant="body2" paragraph>
-              • 請記住您的候位號碼 <strong>{registeredQueueNumber}</strong>，叫號時會使用此號碼
             </Typography>
             <Typography variant="body2" paragraph>
               • 預估時間僅供參考，實際叫號時間可能因現場狀況而有所調整

@@ -49,6 +49,7 @@ const StatusPage = () => {
   const [searchName, setSearchName] = useState('');
   const [searchPhone, setSearchPhone] = useState('');
   const { currentQueueStatus, queueStatus, isLoading, error } = useSelector((state) => state.queue);
+  const showQueueNumber = queueStatus?.showQueueNumberInQuery !== false;
   
   // 詳細資料對話框狀態
   const [detailsDialog, setDetailsDialog] = useState({
@@ -310,12 +311,16 @@ const StatusPage = () => {
                 <Card key={record.queueNumber} sx={{ mb: 2 }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="h5" component="div">
-                        編號: 
-                      </Typography>
-                      <Typography variant="h4" color="primary" component="div" sx={{ ml: 2, fontWeight: 'bold', fontSize: { xs: '1.75rem', md: '2rem' } }}>
-                        {record.queueNumber}
-                      </Typography>
+                      {showQueueNumber && (
+                        <>
+                          <Typography variant="h5" component="div">
+                            編號: 
+                          </Typography>
+                          <Typography variant="h4" color="primary" component="div" sx={{ ml: 2, fontWeight: 'bold', fontSize: { xs: '1.75rem', md: '2rem' } }}>
+                            {record.queueNumber}
+                          </Typography>
+                        </>
+                      )}
                       <Box sx={{ ml: 'auto' }}>
                         {record.status && (
                           <Chip
@@ -385,12 +390,16 @@ const StatusPage = () => {
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h5" component="div">
-                    編號: 
-                  </Typography>
-                  <Typography variant="h4" color="primary" component="div" sx={{ ml: 2, fontWeight: 'bold', fontSize: { xs: '1.75rem', md: '2rem' } }}>
-                    {currentQueueStatus.queueNumber}
-                  </Typography>
+                  {showQueueNumber && (
+                    <>
+                      <Typography variant="h5" component="div">
+                        編號: 
+                      </Typography>
+                      <Typography variant="h4" color="primary" component="div" sx={{ ml: 2, fontWeight: 'bold', fontSize: { xs: '1.75rem', md: '2rem' } }}>
+                        {currentQueueStatus.queueNumber}
+                      </Typography>
+                    </>
+                  )}
                   <Box sx={{ ml: 'auto' }}>
                     {currentQueueStatus.status && (
                       <Chip

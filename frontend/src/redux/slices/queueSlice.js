@@ -241,6 +241,20 @@ export const setPublicRegistrationEnabled = createAsyncThunk(
   }
 );
 
+// 設定查詢頁號碼顯示開關
+export const setShowQueueNumberInQuery = createAsyncThunk(
+  'queue/setShowQueueNumberInQuery',
+  async (showQueueNumberInQuery, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.setShowQueueNumberInQuery(showQueueNumberInQuery, token);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '設定查詢頁號碼顯示失敗');
+    }
+  }
+);
+
 // 獲取活動報名區塊設定
 export const getEventBanner = createAsyncThunk(
   'queue/getEventBanner',
@@ -749,6 +763,21 @@ const queueSlice = createSlice({
         };
       })
       .addCase(setPublicRegistrationEnabled.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      // 設定查詢頁號碼顯示開關
+      .addCase(setShowQueueNumberInQuery.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(setShowQueueNumberInQuery.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.queueStatus = {
+          ...state.queueStatus,
+          showQueueNumberInQuery: action.payload.showQueueNumberInQuery
+        };
+      })
+      .addCase(setShowQueueNumberInQuery.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })

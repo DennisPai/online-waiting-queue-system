@@ -39,7 +39,8 @@ import {
   getEventBanner,
   setScheduledOpenTime,
   getScheduledOpenTime,
-  setAutoOpenEnabled
+  setAutoOpenEnabled,
+  setShowQueueNumberInQuery
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
 import { getNextRegistrationDate } from '../../utils/dateUtils';
@@ -59,6 +60,7 @@ const AdminSettingsPage = () => {
   const [useCustomTime, setUseCustomTime] = useState(false);
   // 定時開放開關
   const [autoOpenEnabled, setAutoOpenEnabledLocal] = useState(false);
+  const [showQueueNumberInQuery, setShowQueueNumberInQueryLocal] = useState(true);
   // 活動報名區塊設定
   const [eventBannerData, setEventBannerData] = useState({
     enabled: false,
@@ -158,6 +160,11 @@ const AdminSettingsPage = () => {
         
         if (typeof result.publicRegistrationEnabled !== 'undefined') {
           setPublicRegistrationEnabledLocal(result.publicRegistrationEnabled);
+        }
+        
+        // 初始化查詢頁號碼顯示開關
+        if (typeof result.showQueueNumberInQuery !== 'undefined') {
+          setShowQueueNumberInQueryLocal(result.showQueueNumberInQuery);
         }
         
         // 初始化定時開放開關
@@ -459,6 +466,31 @@ const AdminSettingsPage = () => {
         dispatch(
           showAlert({
             message: newStatus ? '公開候位登記已開啟' : '公開候位登記已關閉',
+            severity: 'success'
+          })
+        );
+      })
+      .catch((error) => {
+        dispatch(
+          showAlert({
+            message: error,
+            severity: 'error'
+          })
+        );
+      });
+  };
+
+  // 處理查詢頁號碼顯示開關
+  const handleToggleShowQueueNumberInQuery = () => {
+    const newStatus = !showQueueNumberInQuery;
+    
+    dispatch(setShowQueueNumberInQuery(newStatus))
+      .unwrap()
+      .then(() => {
+        setShowQueueNumberInQueryLocal(newStatus);
+        dispatch(
+          showAlert({
+            message: newStatus ? '查詢頁號碼顯示已開啟' : '查詢頁號碼顯示已關閉',
             severity: 'success'
           })
         );
@@ -827,6 +859,33 @@ const AdminSettingsPage = () => {
                       <li>適用於需要控制候位開放時間或特殊情況</li>
                     </ul>
                   </Typography>
+                </Alert>
+              </Box>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                查詢頁號碼顯示設置
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={showQueueNumberInQuery}
+                      onChange={handleToggleShowQueueNumberInQuery}
+                      color="primary"
+                    />
+                  }
+                  label={showQueueNumberInQuery ? '查詢頁號碼顯示已開啟' : '查詢頁號碼顯示已關閉'}
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Alert severity={showQueueNumberInQuery ? 'info' : 'warning'}>
+                  {showQueueNumberInQuery
+                    ? '客戶透過查詢功能查看候位狀態時，會顯示候位號碼'
+                    : '客戶透過查詢功能查看候位狀態時，不會顯示候位號碼'}
                 </Alert>
               </Box>
             </Paper>

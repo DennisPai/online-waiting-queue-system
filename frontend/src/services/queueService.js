@@ -393,6 +393,20 @@ const setPublicRegistrationEnabled = async (publicRegistrationEnabled, token) =>
   return response.data.data || response.data;
 };
 
+// 設定查詢頁號碼顯示開關
+const setShowQueueNumberInQuery = async (showQueueNumberInQuery, token) => {
+    const response = await axios.put(
+    `${API_ENDPOINTS.ADMIN}/settings/show-queue-number-in-query`,
+    { showQueueNumberInQuery },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+    );
+  return response.data.data || response.data;
+};
+
 // 獲取活動報名區塊設定
 const getEventBanner = async () => {
   const response = await axios.get(
@@ -579,6 +593,7 @@ const queueService = {
   setMinutesPerCustomer,
   setSimplifiedMode,
   setPublicRegistrationEnabled,
+  setShowQueueNumberInQuery,
   getEventBanner,
   updateEventBanner,
   getScheduledOpenTime,

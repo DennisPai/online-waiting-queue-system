@@ -44,6 +44,7 @@ router.put('/settings/max-order-index', [body('maxOrderIndex').isInt({ min: 1 })
 router.put('/settings/minutes-per-customer', [body('minutesPerCustomer').isInt({ min: 1, max: 120 })], validateRequest, adminController.setMinutesPerCustomer);
 router.put('/settings/simplified-mode', [body('simplifiedMode').isBoolean()], validateRequest, adminController.setSimplifiedMode);
 router.put('/settings/public-registration-enabled', [body('publicRegistrationEnabled').isBoolean()], validateRequest, adminController.setPublicRegistrationEnabled);
+router.put('/settings/show-queue-number-in-query', [body('showQueueNumberInQuery').isBoolean()], validateRequest, adminController.setShowQueueNumberInQuery);
 
 // 新增：客戶總數管理
 router.put('/settings/total-customer-count', [body('totalCustomerCount').isInt({ min: 0 })], validateRequest, adminController.setTotalCustomerCount);
