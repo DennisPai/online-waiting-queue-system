@@ -77,16 +77,7 @@ const RegistrationSuccess = ({
         <Card>
           <CardContent>
             <Grid container spacing={3} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={4}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  前方等待組數
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {registeredOrderIndex ? `${Math.max(0, registeredOrderIndex - 1)} 組` : '計算中...'}
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   預估等待時間
                 </Typography>
@@ -95,7 +86,7 @@ const RegistrationSuccess = ({
                 </Typography>
               </Grid>
               
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   預估叫號時間
                 </Typography>
