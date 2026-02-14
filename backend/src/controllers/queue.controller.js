@@ -191,6 +191,7 @@ const getQueueStatus = catchAsync(async (req, res) => {
           isFull: currentMaxOrderIndex >= settings.maxOrderIndex,
         eventBanner: settings.eventBanner,
         scheduledOpenTime: settings.scheduledOpenTime || null,
+          autoOpenEnabled: settings.autoOpenEnabled || false,
           message: '辦事服務目前已停止'
         }
       });
@@ -248,6 +249,7 @@ const getQueueStatus = catchAsync(async (req, res) => {
         isFull: currentMaxOrderIndex >= settings.maxOrderIndex,
       eventBanner: settings.eventBanner,
       scheduledOpenTime: settings.scheduledOpenTime || null,
+      autoOpenEnabled: settings.autoOpenEnabled || false,
         message: `目前叫號: ${currentQueueNumber}, 等待組數: ${waitingCount}`
       }
     });
