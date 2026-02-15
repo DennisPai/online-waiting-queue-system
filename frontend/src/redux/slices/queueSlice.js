@@ -553,6 +553,11 @@ const queueSlice = createSlice({
           ? action.payload.scheduledOpenTime 
           : state.scheduledOpenTime;
         
+        // 更新 autoOpenEnabled
+        state.autoOpenEnabled = action.payload.autoOpenEnabled !== undefined 
+          ? action.payload.autoOpenEnabled 
+          : state.autoOpenEnabled;
+        
         if (action.payload.isOpen) {
           state.currentQueue = action.payload.currentQueueNumber;
           state.waitingCount = action.payload.waitingCount;
