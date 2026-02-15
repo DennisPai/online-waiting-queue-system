@@ -336,51 +336,63 @@ const StatusPage = () => {
 
                     <Divider sx={{ my: 2 }} />
 
-                    <Typography variant="body1" paragraph>
-                      {record.statusMessage}
-                    </Typography>
-
-                    <Grid container spacing={3} sx={{ mt: 1 }}>
-                      <Grid item xs={12} sm={6}>
-                        <Typography variant="body2" color="text.secondary">
-                          目前叫號
+                    {record.status === 'waiting' ? (
+                      <>
+                        <Typography variant="body1" paragraph>
+                          您已報名成功，問事號碼會在接近{' '}
+                          {queueStatus?.nextSessionDate 
+                            ? new Date(queueStatus.nextSessionDate).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })
+                            : '開科辦事日'}{' '}
+                          時公布。
                         </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
-                          {record.currentQueueNumber || 0}
+                        <Box sx={{ mt: 2 }}>
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            fullWidth
+                            onClick={() => handleShowDetails(record)}
+                            sx={{ height: '56px' }}
+                          >
+                            查看詳細資料
+                          </Button>
+                        </Box>
+                      </>
+                    ) : (
+                      <>
+                        <Typography variant="body1" paragraph>
+                          {record.statusMessage}
                         </Typography>
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <Typography variant="body2" color="text.secondary">
-                          前面還有人數
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
-                          {record.peopleAhead || 0} 人
-                        </Typography>
-                      </Grid>
-                      {record.status === 'waiting' && (
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" color="text.secondary">
-                            預估開始時間
-                          </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
-                            {record.estimatedStartTime ? 
-                              formatTimeWithAmPm(new Date(record.estimatedStartTime)) : 
-                              '無法計算'}
-                          </Typography>
+                        <Grid container spacing={3} sx={{ mt: 1 }}>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2" color="text.secondary">
+                              目前叫號
+                            </Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
+                              {record.currentQueueNumber || 0}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2" color="text.secondary">
+                              前面還有人數
+                            </Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
+                              {record.peopleAhead || 0} 人
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Button
+                              variant="outlined"
+                              color="primary"
+                              fullWidth
+                              onClick={() => handleShowDetails(record)}
+                              sx={{ height: '56px' }}
+                            >
+                              查看詳細資料
+                            </Button>
+                          </Grid>
                         </Grid>
-                      )}
-                      <Grid item xs={12} sm={6}>
-                        <Button
-                          variant="outlined"
-                          color="primary"
-                          fullWidth
-                          onClick={() => handleShowDetails(record)}
-                          sx={{ height: '56px' }}
-                        >
-                          查看詳細資料
-                        </Button>
-                      </Grid>
-                    </Grid>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -415,51 +427,63 @@ const StatusPage = () => {
 
                 <Divider sx={{ my: 2 }} />
 
-                <Typography variant="body1" paragraph>
-                  {currentQueueStatus.statusMessage}
-                </Typography>
-
-                <Grid container spacing={3} sx={{ mt: 1 }}>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      目前叫號
+                {currentQueueStatus.status === 'waiting' ? (
+                  <>
+                    <Typography variant="body1" paragraph>
+                      您已報名成功，問事號碼會在接近{' '}
+                      {queueStatus?.nextSessionDate 
+                        ? new Date(queueStatus.nextSessionDate).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })
+                        : '開科辦事日'}{' '}
+                      時公布。
                     </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
-                      {currentQueueStatus.currentQueueNumber || 0}
+                    <Box sx={{ mt: 2 }}>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        fullWidth
+                        onClick={() => handleShowDetails(currentQueueStatus)}
+                        sx={{ height: '56px' }}
+                      >
+                        查看詳細資料
+                      </Button>
+                    </Box>
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="body1" paragraph>
+                      {currentQueueStatus.statusMessage}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      前面還有人數
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
-                      {currentQueueStatus.peopleAhead || 0} 人
-                    </Typography>
-                  </Grid>
-                  {currentQueueStatus.status === 'waiting' && (
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" color="text.secondary">
-                        預估開始時間
-                      </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
-                        {currentQueueStatus.estimatedStartTime ? 
-                          formatTimeWithAmPm(new Date(currentQueueStatus.estimatedStartTime)) : 
-                          '無法計算'}
-                      </Typography>
+                    <Grid container spacing={3} sx={{ mt: 1 }}>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body2" color="text.secondary">
+                          目前叫號
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
+                          {currentQueueStatus.currentQueueNumber || 0}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body2" color="text.secondary">
+                          前面還有人數
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
+                          {currentQueueStatus.peopleAhead || 0} 人
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          fullWidth
+                          onClick={() => handleShowDetails(currentQueueStatus)}
+                          sx={{ height: '56px' }}
+                        >
+                          查看詳細資料
+                        </Button>
+                      </Grid>
                     </Grid>
-                  )}
-                  <Grid item xs={12} sm={6}>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      fullWidth
-                      onClick={() => handleShowDetails(currentQueueStatus)}
-                      sx={{ height: '56px' }}
-                    >
-                      查看詳細資料
-                    </Button>
-                  </Grid>
-                </Grid>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
