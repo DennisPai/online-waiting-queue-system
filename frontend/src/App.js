@@ -16,10 +16,6 @@ import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import ExcelPreviewPage from './pages/admin/ExcelPreviewPage';
 import PDFPreviewPage from './pages/admin/PDFPreviewPage';
 
-// 匯入客戶資料庫頁面
-import CustomerListPage from './pages/admin/CustomerListPage';
-import CustomerDetailPage from './pages/admin/CustomerDetailPage';
-
 // 匯入元件
 import { ProtectedRoute, ConditionalRegistrationRoute } from './components/common';
 import { Layout, AdminLayout } from './components/layout';
@@ -86,10 +82,6 @@ function App() {
             {/* 新增預覽頁面路由 */}
             <Route path="excel-preview" element={<ExcelPreviewPage />} />
             <Route path="pdf-preview" element={<PDFPreviewPage />} />
-            
-            {/* 客戶資料庫 */}
-            <Route path="customers" element={<CustomerListPage />} />
-            <Route path="customers/:id" element={<CustomerDetailPage />} />
           </Route>
           
           {/* 錯誤路由 */}
