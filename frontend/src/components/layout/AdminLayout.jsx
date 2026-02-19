@@ -181,7 +181,7 @@ const AdminLayout = () => {
       </Box>
 
       {/* 強制修改密碼對話框（阻擋其他操作）*/}
-      <ChangePasswordDialog open={forceChangeOpen} />
+      <ChangePasswordDialog open={forceChangeOpen} forceChange={true} />
 
       <Snackbar
         open={alert.open}

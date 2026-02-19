@@ -44,6 +44,7 @@ import {
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
 import { getNextRegistrationDate } from '../../utils/dateUtils';
+import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 
 const AdminSettingsPage = () => {
   const dispatch = useDispatch();
@@ -61,6 +62,7 @@ const AdminSettingsPage = () => {
   // 定時開放開關
   const [autoOpenEnabled, setAutoOpenEnabledLocal] = useState(false);
   const [showQueueNumberInQuery, setShowQueueNumberInQueryLocal] = useState(true);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   // 活動報名區塊設定
   const [eventBannerData, setEventBannerData] = useState({
     enabled: false,
@@ -609,6 +611,7 @@ const AdminSettingsPage = () => {
   };
 
   return (
+    <>
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
         系統設置
@@ -888,6 +891,22 @@ const AdminSettingsPage = () => {
                     : '客戶透過查詢功能查看候位狀態時，不會顯示候位號碼'}
                 </Alert>
               </Box>
+            </Paper>
+          </Grid>
+
+          {/* 更改密碼區塊 */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                帳號安全
+              </Typography>
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => setChangePasswordOpen(true)}
+              >
+                更改密碼
+              </Button>
             </Paper>
           </Grid>
 
@@ -1275,6 +1294,11 @@ const AdminSettingsPage = () => {
         </>
       )}
     </Container>
+    <ChangePasswordDialog
+      open={changePasswordOpen}
+      onClose={() => setChangePasswordOpen(false)}
+    />
+    </>
   );
 };
 

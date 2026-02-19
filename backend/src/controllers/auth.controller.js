@@ -149,12 +149,19 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    // 密碼強度簡單校驗：至少10字元，包含字母與數字
-    const strong = typeof newPassword === 'string' && newPassword.length >= 10 && /[A-Za-z]/.test(newPassword) && /\d/.test(newPassword);
+    // 密碼強度校驗：至少8字元，包含字母與數字
+    const strong = typeof newPassword === 'string' && newPassword.length >= 8 && /[A-Za-z]/.test(newPassword) && /\d/.test(newPassword);
     if (!strong) {
       return res.status(400).json({
         success: false,
-        message: '新密碼需至少10位，且包含字母與數字'
+        message: '新密碼需至少8位，且包含字母與數字'
+      });
+    }
+
+    if (oldPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: '新密碼不能與舊密碼相同'
       });
     }
 
