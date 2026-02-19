@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const adminController = require('../../controllers/admin.controller');
+const adminController = require('../../controllers/admin/index');
 const queueController = require('../../controllers/queue.controller');
 const { validateRequest, protect } = require('../../utils/middleware');
 
