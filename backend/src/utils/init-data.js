@@ -16,7 +16,7 @@ const initializeData = async () => {
       
       const admin = await User.create({
         username: 'admin',
-        password: 'admin123', // 這將在保存時自動加密
+        password: process.env.ADMIN_PASSWORD || 'admin123', // 優先使用環境變數
         email: 'admin@example.com',
         role: 'admin'
       });

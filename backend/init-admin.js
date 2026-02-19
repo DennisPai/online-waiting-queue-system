@@ -114,7 +114,7 @@ async function createAdmin() {
       // 創建新管理員
       const admin = new User({
         username: 'admin',
-        password: 'admin123', // 這將被自動加密
+        password: process.env.ADMIN_PASSWORD || 'admin123', // 優先使用環境變數
         email: 'admin@example.com',
         role: 'admin'
       });
@@ -122,7 +122,7 @@ async function createAdmin() {
       await admin.save();
       console.log('成功創建管理員用戶');
       console.log('用戶名: admin');
-      console.log('密碼: admin123');
+      console.log('密碼:', process.env.ADMIN_PASSWORD ? '(使用環境變數 ADMIN_PASSWORD)' : 'admin123');
       console.log('請登入後立即修改此密碼!');
     }
     
