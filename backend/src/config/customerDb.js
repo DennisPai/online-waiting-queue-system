@@ -2,44 +2,56 @@ const logger = require('../utils/logger');
 const mongoose = require('mongoose');
 
 /**
- * 客戶資料庫獨立連線
- * 使用與主資料庫相同的 host，但指向 customer_archive database
+ * 客戶資料庫獨立連線（lazy init）
+ * 使用主資料庫同一個 MongoDB host，指向 customer_archive database
+ * 連線失敗時優雅降級，不影響主服務
  */
 let customerConnection = null;
+let connectionFailed = false;
 
 function getCustomerConnection() {
   if (customerConnection) return customerConnection;
+  if (connectionFailed) return null;
 
-  const mainUri = process.env.MONGODB_URI ||
-    process.env.DATABASE_URL ||
-    process.env.MONGO_CONNECTION_STRING;
-
-  // 將主連線 URI 的 database 名稱替換為 customer_archive
-  let customerUri;
   try {
-    const url = new URL(mainUri);
-    // 保留 path 中的 query string（如 ?retryWrites=true）
-    const queryIndex = url.pathname.indexOf('?');
-    const query = queryIndex > -1 ? url.pathname.substring(queryIndex) : '';
-    url.pathname = '/customer_archive' + query;
-    customerUri = url.toString();
-  } catch {
-    // fallback: 簡單替換最後一段路徑
-    customerUri = mainUri.replace(/\/[^/?]+(\?|$)/, '/customer_archive$1');
+    const mainUri = process.env.MONGODB_URI ||
+      process.env.DATABASE_URL ||
+      process.env.MONGO_CONNECTION_STRING;
+
+    if (!mainUri) {
+      logger.warn('客戶資料庫：無可用的 MongoDB 連線字串，功能停用');
+      connectionFailed = true;
+      return null;
+    }
+
+    // 替換 database 名稱為 customer_archive
+    // 支援 mongodb:// 和 mongodb+srv:// 格式
+    let customerUri;
+    // 匹配 mongodb(+srv)://.../<dbname>?... 中的 dbname 部分
+    const dbMatch = mainUri.match(/^(mongodb(?:\+srv)?:\/\/[^/]+\/)([^?]*)(.*)$/);
+    if (dbMatch) {
+      customerUri = dbMatch[1] + 'customer_archive' + dbMatch[3];
+    } else {
+      // fallback：直接附加 database 名稱
+      customerUri = mainUri + '/customer_archive';
+    }
+
+    customerConnection = mongoose.createConnection(customerUri);
+
+    customerConnection.on('connected', () => {
+      logger.info('客戶資料庫連線成功 (customer_archive)');
+    });
+
+    customerConnection.on('error', (err) => {
+      logger.error('客戶資料庫連線錯誤:', err.message);
+    });
+
+    return customerConnection;
+  } catch (err) {
+    logger.error('客戶資料庫初始化失敗:', err.message);
+    connectionFailed = true;
+    return null;
   }
-
-  logger.info('建立客戶資料庫連線...');
-  customerConnection = mongoose.createConnection(customerUri);
-
-  customerConnection.on('connected', () => {
-    logger.info('客戶資料庫連線成功 (customer_archive)');
-  });
-
-  customerConnection.on('error', (err) => {
-    logger.error('客戶資料庫連線錯誤:', err);
-  });
-
-  return customerConnection;
 }
 
 module.exports = { getCustomerConnection };

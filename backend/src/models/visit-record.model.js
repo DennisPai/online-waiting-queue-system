@@ -21,7 +21,6 @@ const visitRecordSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  // 該次候位號碼（從 waiting-record 帶過來）
   queueNumber: Number
 }, {
   timestamps: true
@@ -29,7 +28,13 @@ const visitRecordSchema = new mongoose.Schema({
 
 visitRecordSchema.index({ customerId: 1, sessionDate: -1 });
 
-const conn = getCustomerConnection();
-const VisitRecord = conn.model('VisitRecord', visitRecordSchema);
+let VisitRecord = null;
+function getVisitRecordModel() {
+  if (VisitRecord) return VisitRecord;
+  const conn = getCustomerConnection();
+  if (!conn) return null;
+  VisitRecord = conn.model('VisitRecord', visitRecordSchema);
+  return VisitRecord;
+}
 
-module.exports = VisitRecord;
+module.exports = { getVisitRecordModel, visitRecordSchema };

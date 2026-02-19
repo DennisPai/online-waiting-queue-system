@@ -39,19 +39,16 @@ const customerSchema = new mongoose.Schema({
       default: 'home'
     }
   }],
-  // 戶籍關聯（同一家人共用一個 householdId）
+  // 戶籍關聯
   householdId: {
     type: String,
     index: true
   },
-  // 標籤
   tags: [String],
-  // 備註
   notes: {
     type: String,
     default: ''
   },
-  // 累計來訪次數
   totalVisits: {
     type: Number,
     default: 0
@@ -60,12 +57,17 @@ const customerSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// 建立索引
 customerSchema.index({ name: 1 });
 customerSchema.index({ phone: 1 });
-customerSchema.index({ name: 'text' });
 
-const conn = getCustomerConnection();
-const Customer = conn.model('Customer', customerSchema);
+// Lazy model：連線可能不存在
+let Customer = null;
+function getCustomerModel() {
+  if (Customer) return Customer;
+  const conn = getCustomerConnection();
+  if (!conn) return null;
+  Customer = conn.model('Customer', customerSchema);
+  return Customer;
+}
 
-module.exports = Customer;
+module.exports = { getCustomerModel, customerSchema };
