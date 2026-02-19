@@ -1,16 +1,15 @@
+// 啟動時檢查必要環境變數（必須最先 require）
+require('./config/env');
+
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const http = require('http');
 const socketIo = require('socket.io');
-const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const mongoSanitize = require('express-mongo-sanitize');
-
-// 載入環境變數
-dotenv.config();
 
 // 導入 v1 路由（已完成重構遷移）
 
