@@ -42,7 +42,8 @@ console.log('==================');
 export const API_ENDPOINTS = {
   AUTH: `${API_BASE_URL}${API_PREFIX}/auth`,
   QUEUE: `${API_BASE_URL}${API_PREFIX}/queue`, 
-  ADMIN: `${API_BASE_URL}${API_PREFIX}/admin`
+  ADMIN: `${API_BASE_URL}${API_PREFIX}/admin`,
+  CUSTOMERS: `${API_BASE_URL}${API_PREFIX}/customers`
 };
 
 // 健康檢查端點
