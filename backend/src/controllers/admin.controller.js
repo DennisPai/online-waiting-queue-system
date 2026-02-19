@@ -1237,12 +1237,27 @@ exports.resetLastCompletedTime = async (req, res) => {
 exports.getScheduledOpenTime = async (req, res) => {
   try {
     const settings = await SystemSetting.getSettings();
+    
+    let scheduledOpenTime = null;
+    let isExpired = false;
+    
+    if (settings?.scheduledOpenTime) {
+      const date = new Date(settings.scheduledOpenTime);
+      // 確認是有效日期
+      if (!isNaN(date.getTime())) {
+        scheduledOpenTime = date.toISOString();
+        isExpired = date < new Date();
+      }
+    }
+    
     return res.status(200).json({
       success: true,
       code: 'OK',
       message: '獲取開放報名時間設定成功',
       data: {
-        scheduledOpenTime: settings?.scheduledOpenTime || null
+        scheduledOpenTime,
+        isExpired,
+        autoOpenEnabled: settings?.autoOpenEnabled || false
       }
     });
   } catch (error) {
@@ -1265,7 +1280,19 @@ exports.updateScheduledOpenTime = async (req, res) => {
     const settings = await SystemSetting.getSettings();
     
     // 更新設定（允許 null 值，表示使用系統自動計算）
-    settings.scheduledOpenTime = scheduledOpenTime ? new Date(scheduledOpenTime) : null;
+    if (scheduledOpenTime) {
+      const date = new Date(scheduledOpenTime);
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_DATE',
+          message: '日期格式無效'
+        });
+      }
+      settings.scheduledOpenTime = date;
+    } else {
+      settings.scheduledOpenTime = null;
+    }
     settings.updatedBy = req.user.id;
     
     await settings.save();
