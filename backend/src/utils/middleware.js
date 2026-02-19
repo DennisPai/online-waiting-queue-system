@@ -1,3 +1,4 @@
+const logger = require('./logger');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const User = require('../models/user.model');
@@ -66,7 +67,7 @@ exports.protect = async (req, res, next) => {
       });
     }
     
-    console.error('JWT驗證錯誤:', error);
+    logger.error('JWT驗證錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤'

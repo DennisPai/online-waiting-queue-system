@@ -1,3 +1,4 @@
+const logger = require('./logger');
 const { Lunar, Solar } = require('lunar-javascript');
 
 /**
@@ -72,7 +73,7 @@ function gregorianToLunar(year, month, day) {
       isLeapMonth: lunar.getMonth() < 0  // 負數表示閏月
     };
   } catch (error) {
-    console.error('國曆轉農曆錯誤:', error);
+    logger.error('國曆轉農曆錯誤:', error);
     throw new Error('國曆日期轉換失敗');
   }
 }
@@ -100,7 +101,7 @@ function lunarToGregorian(year, month, day, isLeapMonth = false) {
       day: solar.getDay()
     };
   } catch (error) {
-    console.error('農曆轉國曆錯誤:', error);
+    logger.error('農曆轉國曆錯誤:', error);
     throw new Error('農曆日期轉換失敗');
   }
 }
@@ -148,7 +149,7 @@ function autoFillDates(data) {
     
     return result;
   } catch (error) {
-    console.error('自動填充日期失敗:', error);
+    logger.error('自動填充日期失敗:', error);
     return data;
   }
 }
@@ -171,7 +172,7 @@ function calculateZodiac(lunarBirthYear) {
     
     return zodiac;
   } catch (error) {
-    console.error('生肖計算錯誤:', error);
+    logger.error('生肖計算錯誤:', error);
     return null;
   }
 }
@@ -218,7 +219,7 @@ function calculateVirtualAge(lunarBirthYear) {
     // 虛歲計算：當前農曆年 - 出生農曆年 + 1
     return currentLunarYear - lunarBirthYear + 1;
   } catch (error) {
-    console.error('虛歲計算錯誤:', error);
+    logger.error('虛歲計算錯誤:', error);
     return null;
   }
 }

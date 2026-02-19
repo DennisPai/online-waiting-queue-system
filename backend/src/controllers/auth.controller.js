@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 
@@ -47,7 +48,7 @@ exports.login = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('登入錯誤:', error);
+    logger.error('登入錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',
@@ -96,7 +97,7 @@ exports.register = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('註冊錯誤:', error);
+    logger.error('註冊錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',
@@ -128,7 +129,7 @@ exports.getMe = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('獲取用戶資訊錯誤:', error);
+    logger.error('獲取用戶資訊錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',
@@ -185,7 +186,7 @@ exports.changePassword = async (req, res) => {
       data: { updatedAt: user.updatedAt }
     });
   } catch (error) {
-    console.error('修改密碼錯誤:', error);
+    logger.error('修改密碼錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',

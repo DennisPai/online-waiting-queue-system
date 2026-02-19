@@ -1,3 +1,4 @@
+const logger = require('./utils/logger');
 // 啟動時檢查必要環境變數（必須最先 require）
 require('./config/env');
 
@@ -98,65 +99,65 @@ const mongoUri = process.env.MONGODB_URI ||
                  process.env.MONGO_CONNECTION_STRING ||
                  'mongodb://localhost:27017/queue_system';
 
-console.log('嘗試連接到MongoDB:', mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'));
+logger.info('嘗試連接到MongoDB:', mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'));
 
 mongoose.connect(mongoUri)
   .then(async () => {
-    console.log('成功連接到MongoDB');
+    logger.info('成功連接到MongoDB');
     
     // 移除舊的唯一索引（如果存在）
-    console.log('檢查並移除queueNumber唯一索引...');
+    logger.info('檢查並移除queueNumber唯一索引...');
     try {
       const removeUniqueIndex = require('./utils/removeUniqueIndex');
       await removeUniqueIndex();
-      console.log('索引檢查完成');
+      logger.debug('索引檢查完成');
     } catch (error) {
-      console.error('索引處理時發生錯誤:', error);
+      logger.error('索引處理時發生錯誤:', error);
       // 不要因為索引錯誤而停止服務器啟動
     }
     
     // 初始化數據
-    console.log('開始執行數據初始化...');
+    logger.info('開始執行數據初始化...');
     const initResult = await initializeData();
-    console.log('數據初始化結果:', initResult ? '成功' : '失敗');
+    logger.info('數據初始化結果:', initResult ? '成功' : '失敗');
     
     // 啟動排程系統（在資料庫連接成功後）
-    console.log('啟動排程系統...');
+    logger.info('啟動排程系統...');
     await schedulePublicRegistrationOpening();
     
     // 啟動伺服器
     const PORT = process.env.PORT || 8080;
     server.listen(PORT, '0.0.0.0', () => {
-      console.log(`伺服器運行在連接埠 ${PORT}`);
-      console.log(`CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:3100'}`);
-      console.log(`Socket CORS Origin: ${process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3100'}`);
+      logger.info(`伺服器運行在連接埠 ${PORT}`);
+      logger.info(`CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:3100'}`);
+      logger.info(`Socket CORS Origin: ${process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3100'}`);
     });
   })
   .catch(err => {
-    console.error('無法連接到MongoDB:', err);
+    logger.error('無法連接到MongoDB:', err);
     process.exit(1);
   });
 
 // 優雅關閉處理
 process.on('SIGTERM', () => {
-  console.log('SIGTERM 信號收到，正在關閉服務...');
+  logger.info('SIGTERM 信號收到，正在關閉服務...');
   cancelAllScheduledJobs();
   server.close(() => {
-    console.log('HTTP 伺服器已關閉');
+    logger.info('HTTP 伺服器已關閉');
     mongoose.connection.close(false, () => {
-      console.log('MongoDB 連接已關閉');
+      logger.info('MongoDB 連接已關閉');
       process.exit(0);
     });
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT 信號收到，正在關閉服務...');
+  logger.info('SIGINT 信號收到，正在關閉服務...');
   cancelAllScheduledJobs();
   server.close(() => {
-    console.log('HTTP 伺服器已關閉');
+    logger.info('HTTP 伺服器已關閉');
     mongoose.connection.close(false, () => {
-      console.log('MongoDB 連接已關閉');
+      logger.info('MongoDB 連接已關閉');
       process.exit(0);
     });
   });

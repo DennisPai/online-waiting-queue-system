@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 
@@ -36,14 +37,14 @@ module.exports = (io) => {
       
       next();
     } catch (error) {
-      console.error('Socket身份驗證錯誤:', error);
+      logger.error('Socket身份驗證錯誤:', error);
       next(new Error('身份驗證失敗'));
     }
   });
 
   // 連接處理
   io.on('connection', (socket) => {
-    console.log('新用戶連接:', socket.id);
+    logger.debug('新用戶連接:', socket.id);
     
     // 加入公共候位頻道
     socket.join('queue-updates');
@@ -63,7 +64,7 @@ module.exports = (io) => {
     
     // 斷開連接處理
     socket.on('disconnect', () => {
-      console.log('用戶斷開連接:', socket.id);
+      logger.debug('用戶斷開連接:', socket.id);
     });
   });
   

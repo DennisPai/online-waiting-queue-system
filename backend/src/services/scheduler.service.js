@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const schedule = require('node-schedule');
 const SystemSetting = require('../models/system-setting.model');
 
@@ -15,7 +16,7 @@ const schedulePublicRegistrationOpening = async () => {
     if (scheduledJob) {
       scheduledJob.cancel();
       scheduledJob = null;
-      console.log('[排程系統] 已取消舊的排程任務');
+      logger.info('[排程系統] 已取消舊的排程任務');
     }
     
     // 檢查是否需要設定新任務
@@ -25,15 +26,15 @@ const schedulePublicRegistrationOpening = async () => {
       // 優先使用自訂時間，否則使用動態計算（nextSessionDate + 1天 + 中午12:00）
       if (settings.scheduledOpenTime) {
         scheduledTime = new Date(settings.scheduledOpenTime);
-        console.log('[排程系統] 使用自訂時間');
+        logger.info('[排程系統] 使用自訂時間');
       } else if (settings.nextSessionDate) {
         const sessionDate = new Date(settings.nextSessionDate);
         scheduledTime = new Date(sessionDate);
         scheduledTime.setDate(sessionDate.getDate() + 1);
         scheduledTime.setHours(12, 0, 0, 0);
-        console.log('[排程系統] 使用動態計算時間（開科辦事日 + 1天 + 中午12:00）');
+        logger.info('[排程系統] 使用動態計算時間（開科辦事日 + 1天 + 中午12:00）');
       } else {
-        console.log('[排程系統] ⚠️ 未設定開科辦事日期，無法計算排程時間');
+        logger.info('[排程系統] ⚠️ 未設定開科辦事日期，無法計算排程時間');
         return;
       }
       
@@ -43,7 +44,7 @@ const schedulePublicRegistrationOpening = async () => {
       if (scheduledTime > now) {
         scheduledJob = schedule.scheduleJob(scheduledTime, async () => {
           try {
-            console.log('[排程系統] 開始執行定時開放任務...');
+            logger.info('[排程系統] 開始執行定時開放任務...');
             
             const currentSettings = await SystemSetting.findOne();
             
@@ -52,27 +53,27 @@ const schedulePublicRegistrationOpening = async () => {
               currentSettings.autoOpenEnabled = false; // 執行後自動關閉
               await currentSettings.save();
               
-              console.log(`[排程系統] ✅ 已在 ${new Date().toISOString()} 自動開啟公開候位登記`);
+              logger.info(`[排程系統] ✅ 已在 ${new Date().toISOString()} 自動開啟公開候位登記`);
             } else {
-              console.log('[排程系統] ⚠️ 任務已被取消或設定已變更');
+              logger.info('[排程系統] ⚠️ 任務已被取消或設定已變更');
             }
           } catch (error) {
-            console.error('[排程系統] ❌ 執行失敗:', error);
+            logger.error('[排程系統] ❌ 執行失敗:', error);
           } finally {
             scheduledJob = null;
           }
         });
         
-        console.log(`[排程系統] ✅ 已設定在 ${scheduledTime.toISOString()} (台北時間) 自動開啟公開候位登記`);
-        console.log(`[排程系統] 距離執行還有 ${Math.round((scheduledTime - now) / 1000 / 60)} 分鐘`);
+        logger.info(`[排程系統] ✅ 已設定在 ${scheduledTime.toISOString()} (台北時間) 自動開啟公開候位登記`);
+        logger.info(`[排程系統] 距離執行還有 ${Math.round((scheduledTime - now) / 1000 / 60)} 分鐘`);
       } else {
-        console.log('[排程系統] ⚠️ 排程時間已過期，不設定任務');
+        logger.info('[排程系統] ⚠️ 排程時間已過期，不設定任務');
       }
     } else {
-      console.log('[排程系統] ℹ️ 未啟用定時開放');
+      logger.info('[排程系統] ℹ️ 未啟用定時開放');
     }
   } catch (error) {
-    console.error('[排程系統] ❌ 初始化失敗:', error);
+    logger.error('[排程系統] ❌ 初始化失敗:', error);
   }
 };
 
@@ -80,7 +81,7 @@ const schedulePublicRegistrationOpening = async () => {
  * 重新設定排程（當管理員更新時間或開關時呼叫）
  */
 const rescheduleRegistrationOpening = async () => {
-  console.log('[排程系統] 🔄 管理員更新設定，重新設定排程任務...');
+  logger.info('[排程系統] 🔄 管理員更新設定，重新設定排程任務...');
   await schedulePublicRegistrationOpening();
 };
 
@@ -91,7 +92,7 @@ const cancelAllScheduledJobs = () => {
   if (scheduledJob) {
     scheduledJob.cancel();
     scheduledJob = null;
-    console.log('[排程系統] 🛑 已取消所有排程任務');
+    logger.info('[排程系統] 🛑 已取消所有排程任務');
   }
 };
 

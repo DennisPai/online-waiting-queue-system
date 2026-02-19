@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const queueRepository = require('../repositories/QueueRepository');
 const SystemSetting = require('../models/system-setting.model');
 const WaitingRecord = require('../models/waiting-record.model');
@@ -147,7 +148,7 @@ class QueueService {
       throw ApiError.badRequest('請提供姓名或電話其中一個');
     }
 
-    console.log(`查詢條件 - 姓名: ${name || '未提供'}, 電話: ${phone || '未提供'}`);
+    logger.info(`查詢條件 - 姓名: ${name || '未提供'}, 電話: ${phone || '未提供'}`);
     
     let searchQuery = {};
     

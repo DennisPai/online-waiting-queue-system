@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const mongoose = require('mongoose');
 
 const systemSettingSchema = new mongoose.Schema({
@@ -140,7 +141,7 @@ systemSettingSchema.statics.getSettings = async function() {
       });
       updateFields.totalCustomerCount = totalCount;
       needsUpdate = true;
-      console.log(`初始化 totalCustomerCount: ${totalCount}`);
+      logger.info(`初始化 totalCustomerCount: ${totalCount}`);
     }
     
     if (settings.lastCompletedTime === undefined) {
@@ -154,10 +155,10 @@ systemSettingSchema.statics.getSettings = async function() {
       
       if (lastCompleted) {
         updateFields.lastCompletedTime = lastCompleted.completedAt;
-        console.log(`初始化 lastCompletedTime: ${lastCompleted.completedAt}`);
+        logger.info(`初始化 lastCompletedTime: ${lastCompleted.completedAt}`);
       } else {
         updateFields.lastCompletedTime = settings.nextSessionDate || new Date();
-        console.log(`初始化 lastCompletedTime: ${updateFields.lastCompletedTime} (無已完成客戶)`);
+        logger.info(`初始化 lastCompletedTime: ${updateFields.lastCompletedTime} (無已完成客戶)`);
       }
       needsUpdate = true;
     }
@@ -166,7 +167,7 @@ systemSettingSchema.statics.getSettings = async function() {
     if (settings.maxOrderIndex === undefined && settings.maxQueueNumber !== undefined) {
       updateFields.maxOrderIndex = settings.maxQueueNumber;
       needsUpdate = true;
-      console.log(`遷移欄位 maxQueueNumber → maxOrderIndex: ${settings.maxQueueNumber}`);
+      logger.info(`遷移欄位 maxQueueNumber → maxOrderIndex: ${settings.maxQueueNumber}`);
     }
     
     // 初始化 eventBanner 欄位
@@ -185,7 +186,7 @@ systemSettingSchema.statics.getSettings = async function() {
         buttonTextColor: '#ffffff'
       };
       needsUpdate = true;
-      console.log('初始化 eventBanner 設定');
+      logger.debug('初始化 eventBanner 設定');
     } else if (settings.eventBanner) {
       // 為現有的 eventBanner 添加新欄位
       let eventBannerNeedsUpdate = false;
@@ -215,14 +216,14 @@ systemSettingSchema.statics.getSettings = async function() {
       if (eventBannerNeedsUpdate) {
         updateFields.eventBanner = updatedEventBanner;
         needsUpdate = true;
-        console.log('更新 eventBanner 設定，添加新欄位');
+        logger.debug('更新 eventBanner 設定，添加新欄位');
       }
     }
     
     if (needsUpdate) {
       await this.updateOne({}, { $set: updateFields });
       settings = await this.findOne(); // 重新獲取更新後的設定
-      console.log('系統設定已自動更新新欄位');
+      logger.debug('系統設定已自動更新新欄位');
     }
   }
   

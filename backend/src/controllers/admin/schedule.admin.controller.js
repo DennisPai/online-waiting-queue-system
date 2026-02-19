@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const SystemSetting = require('../../models/system-setting.model');
 
 // 獲取下次開科辦事開放報名時間設定
@@ -23,7 +24,7 @@ exports.getScheduledOpenTime = async (req, res) => {
       data: { scheduledOpenTime, isExpired, autoOpenEnabled: settings?.autoOpenEnabled || false }
     });
   } catch (error) {
-    console.error('獲取開放報名時間設定錯誤:', error);
+    logger.error('獲取開放報名時間設定錯誤:', error);
     return res.status(500).json({ success: false, code: 'INTERNAL_ERROR', message: '獲取設定時發生錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -51,7 +52,7 @@ exports.updateScheduledOpenTime = async (req, res) => {
     
     return res.status(200).json({ success: true, code: 'OK', message: '開放報名時間設定已更新', data: { scheduledOpenTime: settings.scheduledOpenTime } });
   } catch (error) {
-    console.error('更新開放報名時間設定錯誤:', error);
+    logger.error('更新開放報名時間設定錯誤:', error);
     return res.status(500).json({ success: false, code: 'INTERNAL_ERROR', message: '更新設定時發生錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -76,7 +77,7 @@ exports.setAutoOpenEnabled = async (req, res) => {
       data: { autoOpenEnabled: settings.autoOpenEnabled }
     });
   } catch (error) {
-    console.error('設定定時開放錯誤:', error);
+    logger.error('設定定時開放錯誤:', error);
     return res.status(500).json({ success: false, code: 'INTERNAL_ERROR', message: '設定失敗' });
   }
 };

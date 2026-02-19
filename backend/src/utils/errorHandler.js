@@ -1,3 +1,4 @@
+const logger = require('./logger');
 const ApiError = require('./ApiError');
 
 /**
@@ -10,9 +11,9 @@ const globalErrorHandler = (err, req, res, next) => {
 
   // 記錄錯誤（開發環境顯示詳細信息）
   if (process.env.NODE_ENV === 'development') {
-    console.error('Error Stack:', err.stack);
+    logger.error('Error Stack:', err.stack);
   }
-  console.error('Error:', err.message);
+  logger.error('Error:', err.message);
 
   // Mongoose 驗證錯誤
   if (err.name === 'ValidationError') {

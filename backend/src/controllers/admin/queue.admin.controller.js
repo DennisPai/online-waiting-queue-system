@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const WaitingRecord = require('../../models/waiting-record.model');
 const SystemSetting = require('../../models/system-setting.model');
 const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = require('../../utils/calendarConverter');
@@ -48,7 +49,7 @@ exports.getQueueList = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('獲取候位列表錯誤:', error);
+    logger.error('獲取候位列表錯誤:', error);
     res.status(500).json({
       success: false,
       message: '伺服器內部錯誤',
@@ -112,7 +113,7 @@ exports.callNext = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('叫號下一位錯誤:', error);
+    logger.error('叫號下一位錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -158,7 +159,7 @@ exports.updateQueueStatus = async (req, res) => {
     
     res.status(200).json({ success: true, message: '候位狀態更新成功', data: record });
   } catch (error) {
-    console.error('更新候位狀態錯誤:', error);
+    logger.error('更新候位狀態錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -213,7 +214,7 @@ exports.updateQueueOrder = async (req, res) => {
       data: { record: recordToUpdate, allRecords: updatedRecords }
     });
   } catch (error) {
-    console.error('更新候位順序錯誤:', error);
+    logger.error('更新候位順序錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: error.message || '未知錯誤' });
   }
 };
@@ -261,7 +262,7 @@ exports.updateQueueData = async (req, res) => {
     
     res.status(200).json({ success: true, message: '客戶資料更新成功', data: record });
   } catch (error) {
-    console.error('更新客戶資料錯誤:', error);
+    logger.error('更新客戶資料錯誤:', error);
     
     if (error.code === 11000) {
       try {
@@ -295,7 +296,7 @@ exports.getOrderedQueueNumbers = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('獲取排序候位號碼錯誤:', error);
+    logger.error('獲取排序候位號碼錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -317,7 +318,7 @@ exports.deleteCustomer = async (req, res) => {
       orderIndex: record.orderIndex
     };
     
-    console.log(`管理員刪除客戶記錄: ${customerInfo.name} (${customerInfo.queueNumber}號)`);
+    logger.info(`管理員刪除客戶記錄: ${customerInfo.name} (${customerInfo.queueNumber}號)`);
     
     const deletedOrderIndex = record.orderIndex;
     await WaitingRecord.findByIdAndDelete(queueId);
@@ -330,7 +331,7 @@ exports.deleteCustomer = async (req, res) => {
       data: { deletedCustomer: customerInfo }
     });
   } catch (error) {
-    console.error('刪除客戶記錄錯誤:', error);
+    logger.error('刪除客戶記錄錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -339,7 +340,7 @@ exports.deleteCustomer = async (req, res) => {
 exports.clearAllQueue = async (req, res) => {
   try {
     const totalCustomers = await WaitingRecord.countDocuments();
-    console.log(`管理員清除所有候位資料，共 ${totalCustomers} 筆記錄`);
+    logger.info(`管理員清除所有候位資料，共 ${totalCustomers} 筆記錄`);
     
     await WaitingRecord.deleteMany({});
     
@@ -357,7 +358,7 @@ exports.clearAllQueue = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('清除所有候位資料錯誤:', error);
+    logger.error('清除所有候位資料錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };

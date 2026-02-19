@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const queueService = require('../services/QueueService');
 const { catchAsync } = require('../utils/errorHandler');
 const ApiError = require('../utils/ApiError');
@@ -14,7 +15,7 @@ const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = 
  * 登記候位
  */
 const registerQueue = catchAsync(async (req, res) => {
-  console.log('接收到的登記數據:', req.body);
+  logger.debug('接收到的登記數據:', req.body);
   
   // 驗證家人數量：前台用戶最多3人，管理員最多5人
   const isAdmin = req.user !== undefined; // 有 JWT token 則為管理員

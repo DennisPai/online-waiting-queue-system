@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const WaitingRecord = require('../../models/waiting-record.model');
 const SystemSetting = require('../../models/system-setting.model');
 
@@ -16,7 +17,7 @@ exports.setNextSessionDate = async (req, res) => {
     
     res.status(200).json({ success: true, message: '下次辦事時間設置成功', data: { nextSessionDate: settings.nextSessionDate } });
   } catch (error) {
-    console.error('設置下次辦事時間錯誤:', error);
+    logger.error('設置下次辦事時間錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -36,7 +37,7 @@ exports.toggleQueueStatus = async (req, res) => {
     
     res.status(200).json({ success: true, message: `辦事服務已${isOpen ? '開始' : '停止'}`, data: { isQueueOpen: settings.isQueueOpen } });
   } catch (error) {
-    console.error('切換候位狀態錯誤:', error);
+    logger.error('切換候位狀態錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -64,7 +65,7 @@ exports.setMaxOrderIndex = async (req, res) => {
     
     res.status(200).json({ success: true, message: `最大叫號順序上限已設定為 ${maxOrderIndex}`, data: { maxOrderIndex: settings.maxOrderIndex } });
   } catch (error) {
-    console.error('設定最大叫號順序上限錯誤:', error);
+    logger.error('設定最大叫號順序上限錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -84,7 +85,7 @@ exports.setMinutesPerCustomer = async (req, res) => {
     
     res.status(200).json({ success: true, message: `每位客戶預估處理時間已設定為 ${minutesPerCustomer} 分鐘`, data: { minutesPerCustomer: settings.minutesPerCustomer } });
   } catch (error) {
-    console.error('設定每位客戶預估處理時間錯誤:', error);
+    logger.error('設定每位客戶預估處理時間錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -104,7 +105,7 @@ exports.setSimplifiedMode = async (req, res) => {
     
     res.status(200).json({ success: true, message: `簡化模式已${simplifiedMode ? '開啟' : '關閉'}`, data: { simplifiedMode: settings.simplifiedMode } });
   } catch (error) {
-    console.error('設定簡化模式錯誤:', error);
+    logger.error('設定簡化模式錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -124,7 +125,7 @@ exports.setPublicRegistrationEnabled = async (req, res) => {
     
     res.status(200).json({ success: true, message: `公開候位登記功能已${publicRegistrationEnabled ? '開啟' : '關閉'}`, data: { publicRegistrationEnabled: settings.publicRegistrationEnabled } });
   } catch (error) {
-    console.error('設定公開候位登記功能錯誤:', error);
+    logger.error('設定公開候位登記功能錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -144,7 +145,7 @@ exports.setShowQueueNumberInQuery = async (req, res) => {
     
     res.status(200).json({ success: true, message: `查詢頁號碼顯示已${showQueueNumberInQuery ? '開啟' : '關閉'}`, data: { showQueueNumberInQuery: settings.showQueueNumberInQuery } });
   } catch (error) {
-    console.error('設定查詢頁號碼顯示錯誤:', error);
+    logger.error('設定查詢頁號碼顯示錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -164,7 +165,7 @@ exports.setTotalCustomerCount = async (req, res) => {
     
     res.status(200).json({ success: true, message: `客戶總數已設定為 ${totalCustomerCount}`, data: { totalCustomerCount: settings.totalCustomerCount } });
   } catch (error) {
-    console.error('設定客戶總數錯誤:', error);
+    logger.error('設定客戶總數錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -191,7 +192,7 @@ exports.resetTotalCustomerCount = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('重設客戶總數錯誤:', error);
+    logger.error('重設客戶總數錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -211,7 +212,7 @@ exports.setLastCompletedTime = async (req, res) => {
     
     res.status(200).json({ success: true, message: '上一位辦完時間設置成功', data: { lastCompletedTime: settings.lastCompletedTime } });
   } catch (error) {
-    console.error('設置上一位辦完時間錯誤:', error);
+    logger.error('設置上一位辦完時間錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -256,7 +257,7 @@ exports.resetLastCompletedTime = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('重設上一位辦完時間錯誤:', error);
+    logger.error('重設上一位辦完時間錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };

@@ -1,3 +1,4 @@
+const logger = require('./logger');
 const WaitingRecord = require('../models/waiting-record.model');
 
 /**
@@ -21,10 +22,10 @@ async function ensureOrderIndexConsistency() {
     }
     
     if (needsUpdate) {
-      console.log('已完成 orderIndex 一致性修正');
+      logger.info('已完成 orderIndex 一致性修正');
     }
   } catch (error) {
-    console.error('確保 orderIndex 一致性時發生錯誤:', error);
+    logger.error('確保 orderIndex 一致性時發生錯誤:', error);
   }
 }
 

@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const SystemSetting = require('../../models/system-setting.model');
 
 // 獲取活動報名區塊設定
@@ -6,7 +7,7 @@ exports.getEventBanner = async (req, res) => {
     const settings = await SystemSetting.getSettings();
     res.status(200).json({ success: true, message: '獲取活動報名設定成功', data: settings.eventBanner });
   } catch (error) {
-    console.error('獲取活動報名區塊設定錯誤:', error);
+    logger.error('獲取活動報名區塊設定錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -67,7 +68,7 @@ exports.updateEventBanner = async (req, res) => {
     
     res.status(200).json({ success: true, message: '活動報名區塊設定已更新', data: settings.eventBanner });
   } catch (error) {
-    console.error('更新活動報名區塊設定錯誤:', error);
+    logger.error('更新活動報名區塊設定錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
