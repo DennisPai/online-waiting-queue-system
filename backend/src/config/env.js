@@ -6,12 +6,6 @@
 const dotenv = require('dotenv');
 dotenv.config();
 
-// 必要環境變數（缺少任一個就終止啟動）
-const REQUIRED_VARS = [
-  'MONGODB_URI',
-  'JWT_SECRET',
-];
-
 // 非必要環境變數預設值
 const DEFAULTS = {
   PORT: '8080',
@@ -19,16 +13,19 @@ const DEFAULTS = {
   CORS_ORIGIN: 'http://localhost:3100',
   SOCKET_CORS_ORIGIN: 'http://localhost:3100',
   JWT_EXPIRES_IN: '7d',
+  JWT_SECRET: 'default-jwt-secret-please-change',
 };
 
-// 檢查必要變數
-const missing = REQUIRED_VARS.filter((key) => !process.env[key]);
-if (missing.length > 0) {
-  missing.forEach((key) => {
-    console.error(`[ERROR] Missing required env: ${key}`);
-  });
-  console.error('[ERROR] 請設定以上環境變數後再啟動服務');
+// 檢查 MongoDB 連線字串（支援多種環境變數名稱）
+if (!process.env.MONGODB_URI && !process.env.DATABASE_URL && !process.env.MONGO_CONNECTION_STRING) {
+  console.error('[ERROR] Missing required env: MONGODB_URI (or DATABASE_URL / MONGO_CONNECTION_STRING)');
+  console.error('[ERROR] 請設定資料庫連線字串後再啟動服務');
   process.exit(1);
+}
+
+// JWT_SECRET 未設定時給預設值並警告
+if (!process.env.JWT_SECRET) {
+  console.warn('[WARN] JWT_SECRET 未設定，使用預設值。正式環境請務必設定！');
 }
 
 // 套用預設值
