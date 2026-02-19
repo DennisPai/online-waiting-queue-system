@@ -34,7 +34,7 @@ router.put(
   protect,
   [
     body('oldPassword').notEmpty(),
-    body('newPassword').notEmpty().isLength({ min: 10 })
+    body('newPassword').notEmpty().isLength({ min: 8 })
   ],
   validateRequest,
   authController.changePassword
