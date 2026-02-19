@@ -8,6 +8,7 @@ router.use(v1Response);
 router.use('/auth', require('./auth.routes'));
 router.use('/queue', require('./queue.routes'));
 router.use('/admin', require('./admin.routes'));
+router.use('/customers', require('./customer.routes'));
 
 module.exports = router;
 
