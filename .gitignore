@@ -65,7 +65,8 @@ Thumbs.db
 # Docker 相關（保留docker-compose.yml）
 .dockerignore
 
-# 測試文件（開發用）
+# 測試文件（開發用，排除 backend/tests/ 正式測試）
+!backend/tests/**
 *test*.js
 debug-*.js
 api-test*.js
