@@ -51,7 +51,7 @@ exports.getCustomer = async (req, res) => {
 exports.createCustomer = async (req, res) => {
   try {
     const customer = await Customer.create(req.body);
-    res.status(201).json({ success: true, message: '客戶新增成功', data: customer });
+    res.status(201).json({ success: true, message: '客戶新增成功', data: customer.toJSON() });
   } catch (error) {
     logger.error('新增客戶錯誤:', error);
     if (error.name === 'ValidationError') return res.status(400).json({ success: false, message: error.message });
