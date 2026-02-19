@@ -7,6 +7,7 @@ const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const mongoSanitize = require('express-mongo-sanitize');
 
 // 載入環境變數
 dotenv.config();
@@ -69,6 +70,7 @@ app.get('/ready', (req, res) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(mongoSanitize()); // 防護 MongoDB operator injection
 
 // 基本路由
 app.get('/', (req, res) => {
