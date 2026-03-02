@@ -99,9 +99,10 @@ Base URL: `/api/v1`
 ### 候位管理（queue.admin.controller）
 
 #### GET `/admin/queue/list`
-取得候位列表（含 `zodiac` 欄位）。
+取得候位列表（含 `zodiac` 欄位與新客戶標示）。
 - **Query:** `status`（可選，逗號分隔多狀態）、`page`、`limit`
 - **回傳:** `{ records: [...], pagination: { total, page, limit, pages } }`
+- 每筆 record 含 `isNewCustomer: true | false | null`（三層匹配查 customer_profiles：農曆年月日 → 電話 → 同名同年；無可匹配資料時為 null）
 
 #### GET `/admin/queue/ordered-numbers`
 取得叫號順序（同 Queue API）。
@@ -124,13 +125,20 @@ Base URL: `/api/v1`
 #### PUT `/admin/queue/order`
 更新候位順序（拖曳排序）。
 - **Body:** `{ queueId, newOrder }`
-- **回傳:** `{ record, allRecords }`
+- **回傳:** `{ record, allRecords }`（allRecords 只包含 waiting/processing，不含 completed/cancelled）
+- **注意:** `countDocuments`/`updateMany` 只操作 waiting/processing 狀態，不影響其他記錄
 
 #### POST `/admin/queue/end-session`
 **結束本期** — 將所有非取消候位記錄歸檔至客戶永久資料庫，並清空候位資料。
 - **Body:** 無
 - **回傳:** `{ totalProcessed, newCustomers, returningCustomers, newHouseholds, skippedCancelled, sessionDate }`
 - **409:** 無需歸檔的記錄（候位已清空）
+
+#### POST `/admin/customers/rebuild-households`
+重建 Household 歸組（修正臨時地址污染後使用）。
+- **Body:** 無
+- **動作:** 刪除所有 Household → 清除所有客戶的 householdId → 按真實地址重新歸組（跳過「臨時地址」，同地址 ≥ 2 人才建立）
+- **回傳:** `{ deletedHouseholds, newHouseholds, assignedCustomers, skippedTempAddress }`
 
 #### DELETE `/admin/queue/clear-all`
 ⚠️ **已棄用（Deprecated）** — 請改用 `POST /admin/queue/end-session`。  
@@ -218,8 +226,13 @@ Base URL: `/api/v1`
 - **回傳:** `{ customers: [...], pagination: { total, page, limit, pages } }`
 
 ### GET `/customers/:id`
-客戶詳情。
-- **回傳:** Customer 物件
+客戶詳情（含同住家人）。
+- **回傳:** Customer 物件 + `householdMembers: [{ _id, name, gender, zodiac, totalVisits }]`（排除自己）
+
+### DELETE `/customers/:id`
+刪除客戶。
+- **動作:** 刪除客戶本身 + 所有 customer_visits 記錄 + 從 Household.memberIds 移除
+- **回傳:** `{ message: "客戶已刪除（同時刪除 N 筆來訪記錄）" }`
 
 ### POST `/customers`
 新增客戶。
@@ -235,6 +248,12 @@ Base URL: `/api/v1`
 客戶歷史來訪記錄。
 - **Query:** `page`、`limit`
 - **回傳:** `{ visits: [...], pagination: { total, page, limit, pages } }`
+
+### POST `/customers/:id/visits`
+建立來訪記錄（歷史資料匯入 / 手動補登）。
+- **Body:** `{ sessionDate (必填, ISO 8601), consultationTopics?, remarks?, queueNumber?, otherDetails? }`
+- **動作:** 建立 VisitRecord + 自動更新 totalVisits+1、firstVisitDate、lastVisitDate
+- **回傳:** 建立的 VisitRecord 物件
 
 ---
 
