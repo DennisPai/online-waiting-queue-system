@@ -36,8 +36,22 @@ const customerSchema = new mongoose.Schema({
     }
   }],
   householdId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Household',
+    index: true,
+    default: null
+  },
+  zodiac: {
     type: String,
-    index: true
+    default: null
+  },
+  firstVisitDate: {
+    type: Date,
+    default: null
+  },
+  lastVisitDate: {
+    type: Date,
+    default: null
   },
   tags: [String],
   notes: {
@@ -55,5 +69,7 @@ const customerSchema = new mongoose.Schema({
 
 customerSchema.index({ name: 1 });
 customerSchema.index({ phone: 1 });
+customerSchema.index({ name: 1, lunarBirthYear: 1, lunarBirthMonth: 1, lunarBirthDay: 1 });
+customerSchema.index({ householdId: 1 });
 
 module.exports = mongoose.model('Customer', customerSchema);

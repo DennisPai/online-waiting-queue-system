@@ -20,7 +20,15 @@ const visitRecordSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  queueNumber: Number
+  queueNumber: Number,
+  familyMembers: [{
+    name: String,
+    zodiac: String
+  }],
+  sourceQueueId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null
+  }
 }, {
   timestamps: true,
   collection: 'customer_visits'
