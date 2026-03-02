@@ -124,10 +124,10 @@ export const callNextQueue = createAsyncThunk(
 // 更新候位狀態（管理員）
 export const updateQueueStatus = createAsyncThunk(
   'queue/updateStatus',
-  async ({ queueId, status }, { rejectWithValue, getState }) => {
+  async ({ queueId, id, status }, { rejectWithValue, getState }) => {
     try {
       const { token } = getState().auth;
-      const response = await queueService.updateQueueStatus(queueId, status, token);
+      const response = await queueService.updateQueueStatus(queueId || id, status, token);
       // queueService 已經處理了 v1 格式，直接回傳
       return response;
     } catch (error) {
