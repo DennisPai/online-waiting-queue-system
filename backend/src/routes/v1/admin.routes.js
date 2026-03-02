@@ -84,6 +84,9 @@ router.put('/settings/auto-open-enabled', [
 // 結束本期（歸檔 + 清空）
 router.post('/queue/end-session', adminController.endSession);
 
+// 重建 Household 歸組（修正臨時地址污染後使用）
+router.post('/customers/rebuild-households', adminController.rebuildHouseholds);
+
 // 清空全部（已棄用，緊急使用）
 router.delete('/queue/clear-all', (req, res, next) => {
   res.setHeader('X-Deprecated', 'Use POST /admin/queue/end-session instead');

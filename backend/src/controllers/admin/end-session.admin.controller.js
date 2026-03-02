@@ -137,8 +137,10 @@ exports.endSession = async (req, res) => {
 
       // 3. 家人歸檔
       for (const fm of (record.familyMembers || [])) {
-        const fmAddresses = fm.address
-          ? [{ address: fm.address, addressType: fm.addressType || 'home' }]
+        // 家人地址：排除預設佔位值 '臨時地址'，否則 fallback 主客戶地址
+        const fmHasRealAddress = fm.address && fm.address.trim() !== '' && fm.address.trim() !== '臨時地址';
+        const fmAddresses = fmHasRealAddress
+          ? [{ address: fm.address.trim(), addressType: fm.addressType || 'home' }]
           : record.addresses;
 
         const { customer: fmCustomer, isNew: fmIsNew } = await findOrCreateCustomer({
