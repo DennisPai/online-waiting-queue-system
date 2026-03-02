@@ -883,5 +883,15 @@ node update-existing-customers.js
 - 環境變數正確配置
 - 詳細部署指南: [`DEPLOYMENT.md`](./DEPLOYMENT.md)
 
+## 文檔說明
+
+### 活文件（持續維護）
+- [`docs/API.md`](./docs/API.md) — API 規格文檔（**API 變動時必須同步更新**）
+- [`docs/PRD.md`](./docs/PRD.md) — 產品需求文件（大功能擴充時更新）
+- [`docs/TODO.md`](./docs/TODO.md) — 待辦追蹤
+
+### 一次性文件（開發完成後歸檔，不再維護）
+- [`docs/specs/`](./docs/specs/) — 各功能的 Tech Spec（設計文件，事後查考用）
+
 ## 授權協議
 MIT 

@@ -1,11 +1,15 @@
 # API 文檔
 
-Base URL: `/api/v1`
+> **⚠️ 這是活文件，API 有任何新增/修改/刪除時必須同步更新此文件。**
+
+Base URL: `/api/v1`  
+認證：`Authorization: Bearer <token>`（管理端）
 
 所有回應格式：
 ```json
 {
-  "success": true|false,
+  "success": true | false,
+  "code": "OK | VALIDATION_ERROR | UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | INTERNAL_ERROR",
   "message": "描述",
   "data": { ... }
 }
@@ -46,20 +50,25 @@ Base URL: `/api/v1`
 ### GET `/queue/status`
 取得系統候位狀態（含設定值）。
 - **回傳:** `{ isOpen, currentQueueNumber, maxOrderIndex, minutesPerCustomer, simplifiedMode, publicRegistrationEnabled, showQueueNumberInQuery, waitingCount, totalCustomerCount, lastCompletedTime, nextSessionDate, estimatedEndTime, currentMaxOrderIndex, isFull, eventBanner, scheduledOpenTime, autoOpenEnabled }`
+- **說明:** `eventBanner` 含 `{ enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor }`；`scheduledOpenTime` 為 Date 或 null（null 表示使用系統自動計算）
 
 ### POST `/queue/register`
 公開候位登記。
 - **Body:** `{ name, phone, email?, gender?, gregorianBirthYear?, ... , addresses?, familyMembers?, consultationTopics?, otherDetails?, remarks? }`
-- **回傳:** `{ queueNumber, orderIndex, ... }`
+- **回傳:** `{ queueNumber, orderIndex, waitingCount, estimatedWaitTime, zodiac?, ... }`
+- **說明:**
+  - 前台報名家人上限：**3 人**；管理員（帶 JWT）上限：**5 人**；超過回傳 400
+  - `zodiac` 欄位由系統依農曆生日自動計算（鼠/牛/虎/兔/龍/蛇/馬/羊/猴/雞/狗/豬），前端不需傳入
 
 ### GET `/queue/number/:queueNumber`
 依候位號碼查詢狀態。
-- **回傳:** `{ queueNumber, status, statusMessage, currentQueueNumber, peopleAhead, estimatedStartTime, ... }`
+- **回傳:** `{ queueNumber, status, statusMessage, currentQueueNumber, peopleAhead, estimatedStartTime, zodiac?, ... }`
 
 ### GET `/queue/search`
-依姓名或電話搜尋候位記錄。
+依姓名或電話搜尋候位記錄（含家人姓名搜尋）。
 - **Query:** `name`, `phone`（至少一個）
-- **回傳:** 匹配的候位記錄陣列
+- **回傳:** 匹配的候位記錄陣列（含 `zodiac` 欄位）
+- **404:** 查無記錄時回傳 `{ success: false, code: 'NOT_FOUND', message: '查無候位記錄' }`
 
 ### POST `/queue/cancel`
 客戶自行取消候位。
@@ -79,7 +88,7 @@ Base URL: `/api/v1`
 - **回傳:** `{ maxOrderIndex, currentMaxOrderIndex, isFull }`
 
 ### PUT `/queue/update`
-管理員更新候位資料（需登入）。
+管理員更新候位資料（更新後自動重新計算 zodiac）。
 - **Body:** 候位記錄欄位
 - **權限:** 需登入
 
@@ -90,7 +99,7 @@ Base URL: `/api/v1`
 ### 候位管理（queue.admin.controller）
 
 #### GET `/admin/queue/list`
-取得候位列表。
+取得候位列表（含 `zodiac` 欄位）。
 - **Query:** `status`（可選，逗號分隔多狀態）、`page`、`limit`
 - **回傳:** `{ records: [...], pagination: { total, page, limit, pages } }`
 
@@ -106,7 +115,7 @@ Base URL: `/api/v1`
 - **Body:** `{ status }` — `waiting` | `processing` | `completed` | `cancelled`
 
 #### PUT `/admin/queue/:queueId/update`
-更新客戶資料（姓名、生日、地址、家人等）。
+更新客戶資料（姓名、生日、地址、家人等；更新出生日期後自動重新計算 zodiac）。
 - **Body:** 候位記錄允許更新的欄位
 
 #### DELETE `/admin/queue/:queueId/delete`
@@ -117,8 +126,15 @@ Base URL: `/api/v1`
 - **Body:** `{ queueId, newOrder }`
 - **回傳:** `{ record, allRecords }`
 
+#### POST `/admin/queue/end-session`
+**結束本期** — 將所有非取消候位記錄歸檔至客戶永久資料庫，並清空候位資料。
+- **Body:** 無
+- **回傳:** `{ totalProcessed, newCustomers, returningCustomers, newHouseholds, skippedCancelled, sessionDate }`
+- **409:** 無需歸檔的記錄（候位已清空）
+
 #### DELETE `/admin/queue/clear-all`
-清除所有候位資料。
+⚠️ **已棄用（Deprecated）** — 請改用 `POST /admin/queue/end-session`。  
+緊急清空所有候位資料（不歸檔）。回應 header 含 `X-Deprecated: Use POST /admin/queue/end-session instead`。
 
 ### 系統設定（settings.admin.controller）
 
@@ -169,19 +185,23 @@ Base URL: `/api/v1`
 #### GET `/admin/settings/scheduled-open-time`
 取得定時開放報名時間設定。
 - **回傳:** `{ scheduledOpenTime, isExpired, autoOpenEnabled }`
+- **說明:** `scheduledOpenTime` 為 Date 或 null；null 表示使用系統自動計算（辦事日 +1 天 中午 12:00）
 
 #### PUT `/admin/settings/scheduled-open-time`
 更新定時開放報名時間。
-- **Body:** `{ scheduledOpenTime }` — ISO 8601 或 null
+- **Body:** `{ scheduledOpenTime }` — ISO 8601 或 null（null 恢復自動計算）
+- **說明:** 設定後後端自動重新設定排程任務
 
 #### PUT `/admin/settings/auto-open-enabled`
 開關定時自動開放。
 - **Body:** `{ autoOpenEnabled }` — boolean
+- **說明:** 啟用時系統在 scheduledOpenTime 到達後自動開啟 publicRegistrationEnabled
 
 ### 活動報名（event.admin.controller）
 
 #### GET `/admin/settings/event-banner`
 取得活動報名區塊設定。
+- **回傳:** `{ enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor }`
 
 #### PUT `/admin/settings/event-banner`
 更新活動報名區塊設定。
@@ -204,7 +224,7 @@ Base URL: `/api/v1`
 ### POST `/customers`
 新增客戶。
 - **Body:** `{ name (必填), phone?, email?, gender?, lunarBirthYear?, ..., addresses?, householdId?, tags?, notes? }`
-- **回傳:** Customer 物件
+- **回傳:** Customer 物件（使用 `.toJSON()`，不含 mongoose 內部欄位）
 
 ### PUT `/customers/:id`
 編輯客戶。
@@ -230,11 +250,14 @@ Base URL: `/api/v1`
 | lunarBirthYear/Month/Day | Number | 農曆生日 |
 | gregorianBirthYear/Month/Day | Number | 國曆生日 |
 | lunarIsLeapMonth | Boolean | 農曆閏月 |
+| zodiac | String | 生肖（系統自動計算） |
 | addresses | Array | 地址（address, addressType） |
-| householdId | String | 戶籍關聯 ID |
+| householdId | ObjectId | 所屬家庭 ID |
 | tags | [String] | 標籤 |
 | notes | String | 備註 |
 | totalVisits | Number | 累計來訪次數 |
+| firstVisitDate | Date | 首次來訪日期 |
+| lastVisitDate | Date | 最近來訪日期 |
 
 ### VisitRecord（collection: `customer_visits`）
 | 欄位 | 型別 | 說明 |
@@ -245,6 +268,22 @@ Base URL: `/api/v1`
 | otherDetails | String | 其他說明 |
 | remarks | String | 備註 |
 | queueNumber | Number | 該次候位號碼 |
+| familyMembers | [{ name, zodiac }] | 本次同行家人 |
+| sourceQueueId | ObjectId | 來源候位記錄 ID（可追溯） |
+
+### Household（collection: `customer_households`）
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| address | String | 住家地址（index） |
+| addressType | String | home / work / hospital / other |
+| memberIds | [ObjectId] | 成員的 Customer ID |
+
+---
+
+## 生肖欄位（zodiac）
+- 系統自動根據農曆生日計算，前端**不應手動傳入**
+- 計算時機：候位登記、編輯出生日期後自動重算
+- 可能值：鼠、牛、虎、兔、龍、蛇、馬、羊、猴、雞、狗、豬
 
 ---
 
@@ -252,16 +291,25 @@ Base URL: `/api/v1`
 ```json
 {
   "success": false,
-  "message": "錯誤描述",
-  "error": {}  // 僅 development 環境
+  "code": "VALIDATION_ERROR | UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | INTERNAL_ERROR",
+  "message": "錯誤描述"
 }
 ```
 
 HTTP 狀態碼：
 - `200` 成功
 - `201` 新增成功
-- `400` 參數錯誤
-- `401` 未授權 / 密碼錯誤
-- `404` 找不到資源
-- `500` 伺服器錯誤
-- `503` 服務不可用（如客戶資料庫離線）
+- `400` 參數錯誤（VALIDATION_ERROR）
+- `401` 未授權（UNAUTHORIZED）
+- `403` 禁止存取（FORBIDDEN）
+- `404` 找不到資源（NOT_FOUND）
+- `409` 衝突（CONFLICT）
+- `500` 伺服器錯誤（INTERNAL_ERROR）
+- `503` 服務不可用
+
+---
+
+## 注意事項
+- 所有路由使用 v1 API，舊路由已移除
+- 路由命名統一使用 kebab-case（如 `max-order-index`）
+- `zodiac` 為自動計算欄位，前端不需傳入
