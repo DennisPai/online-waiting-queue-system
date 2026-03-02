@@ -99,9 +99,10 @@ const mongoUri = process.env.MONGODB_URI ||
                  process.env.MONGO_CONNECTION_STRING ||
                  'mongodb://localhost:27017/queue_system';
 
-// 指定 DB 名稱：優先用環境變數 MONGO_DB_NAME，否則用 queue_system
-// 避免 Zeabur 注入的 URI 沒有 DB 名稱而連到預設的 test DB
-const mongoDbName = process.env.MONGO_DB_NAME || 'queue_system';
+// 指定 DB 名稱：優先用環境變數 MONGO_DB_NAME
+// Zeabur 注入的 URI 沒有指定 DB 名稱，預設會連到 'test'
+// 懷特的資料在 'test' DB（歷史原因），所以這裡 fallback 也用 'test'
+const mongoDbName = process.env.MONGO_DB_NAME || 'test';
 
 logger.info('嘗試連接到MongoDB:', mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'));
 logger.info('目標 DB 名稱:', mongoDbName);
