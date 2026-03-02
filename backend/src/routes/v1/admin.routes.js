@@ -103,11 +103,16 @@ router.get('/diag/db-stats', async (req, res) => {
     const adminDb = db.admin();
     const dbList = await adminDb.listDatabases();
     const allDbs = dbList.databases.map(d => ({ name: d.name, sizeOnDisk: d.sizeOnDisk }));
-    // 查 test DB 的 waitingrecords 數量
+    // 查 test DB 的所有 collection 和各自筆數
     const testDb = mongoose.connection.client.db('test');
-    const testCount = await testDb.collection('waitingrecords').countDocuments({});
-    const testSample = await testDb.collection('waitingrecords').find({}).limit(2).toArray();
-    res.json({ success: true, data: { dbName, collections: collNames, waitingRecordTotal: totalAll, byStatus, sample, allDbs, testDb: { count: testCount, sample: testSample } } });
+    const testCollections = await testDb.listCollections().toArray();
+    const testStats = {};
+    for (const col of testCollections) {
+      testStats[col.name] = await testDb.collection(col.name).countDocuments({});
+    }
+    // 查 waitingrecords 的前3筆樣本
+    const testWaitingSample = await testDb.collection('waitingrecords').find({}).limit(3).toArray();
+    res.json({ success: true, data: { dbName, collections: collNames, waitingRecordTotal: totalAll, byStatus, sample, allDbs, testDb: { collections: testStats, waitingSample: testWaitingSample } } });
   } catch(e) {
     res.json({ success: false, error: e.message, stack: e.stack });
   }
