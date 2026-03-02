@@ -95,6 +95,7 @@ describe('結束本期 API', () => {
       json: jest.fn()
     };
 
+    // 預設：無記錄（各測試自己設定）
     WaitingRecord.countDocuments.mockResolvedValue(0);
     SystemSetting.getSettings.mockResolvedValue({ nextSessionDate: '2026-03-01T00:00:00.000Z' });
     SystemSetting.findOneAndUpdate.mockReturnValue(makeChainable({}));
@@ -110,8 +111,7 @@ describe('結束本期 API', () => {
   });
 
   test('4.5 - 空候位列表回傳 409', async () => {
-    WaitingRecord.find.mockReturnValue(makeChainable([]));
-
+    // countDocuments 預設已是 0，不需另外設定
     await endSession(req, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
@@ -128,7 +128,8 @@ describe('結束本期 API', () => {
       { _id: 'r3', name: '王五', phone: '0914', status: 'completed', queueNumber: 3, zodiac: '鼠', gender: 'female', addresses: [{ address: '台北市中正區', addressType: 'home' }], familyMembers: [], consultationTopics: ['fate'], remarks: '備註' }
     ];
     WaitingRecord.find.mockReturnValue(makeChainable(records));
-    WaitingRecord.countDocuments.mockResolvedValue(1);
+    WaitingRecord.countDocuments.mockResolvedValueOnce(3) // recordCount（非取消）
+      .mockResolvedValueOnce(1); // cancelledCount
     Customer.findOne.mockReturnValue(makeChainable(null));
     let cnt = 0;
     Customer.create.mockImplementation(() => Promise.resolve([makeCustDoc(`c${cnt++}`)]));
@@ -146,6 +147,7 @@ describe('結束本期 API', () => {
   });
 
   test('4.1 - VisitRecord 正確建立（含 consultationTopics, queueNumber）', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
     WaitingRecord.find.mockReturnValue(makeChainable([
       { _id: 'r1', name: '甲', phone: '0912', status: 'waiting', queueNumber: 7, zodiac: '馬', gender: 'male', addresses: [], familyMembers: [], consultationTopics: ['body', 'fate'], remarks: '測試備註' }
     ]));
@@ -168,6 +170,7 @@ describe('結束本期 API', () => {
   });
 
   test('4.2 - 舊客：同名同農曆生日 → totalVisits +1', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
     const existing = makeCustDoc('c_old', { totalVisits: 2, name: '張三', lunarBirthYear: 1990, lunarBirthMonth: 3, lunarBirthDay: 15 });
     WaitingRecord.find.mockReturnValue(makeChainable([{
       _id: 'r1', name: '張三', phone: '0912', status: 'waiting', queueNumber: 1,
@@ -187,6 +190,7 @@ describe('結束本期 API', () => {
   });
 
   test('4.2 - 新客：同名不同生日 → 建新客戶', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
     WaitingRecord.find.mockReturnValue(makeChainable([{
       _id: 'r1', name: '張三', phone: '0912', status: 'waiting', queueNumber: 1,
       lunarBirthYear: 1991, lunarBirthMonth: 5, lunarBirthDay: 10,
@@ -203,6 +207,7 @@ describe('結束本期 API', () => {
   });
 
   test('4.3 - 主客戶帶 2 位家人 → 3 Customer + 3 VisitRecord', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
     WaitingRecord.find.mockReturnValue(makeChainable([{
       _id: 'r1', name: '主客', phone: '0912', status: 'waiting', queueNumber: 1,
       zodiac: '龍', gender: 'male', addresses: [{ address: '台北', addressType: 'home' }],
@@ -225,6 +230,7 @@ describe('結束本期 API', () => {
   });
 
   test('4.4 - 2 人同地址 → 建立 1 Household', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
     const custA = makeCustDoc('custA', { addresses: [{ address: '台北市中正區1號', addressType: 'home' }] });
     const custB = makeCustDoc('custB', { addresses: [{ address: '台北市中正區1號', addressType: 'home' }] });
     WaitingRecord.find.mockReturnValue(makeChainable([
@@ -247,6 +253,7 @@ describe('結束本期 API', () => {
   });
 
   test('4.4 - 地址不同 → 不同 Household，單人不建', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
     const custA = makeCustDoc('custA', { addresses: [{ address: '地址A', addressType: 'home' }] });
     WaitingRecord.find.mockReturnValue(makeChainable([
       { _id: 'r1', name: '甲', phone: '0912', status: 'waiting', queueNumber: 1, addresses: [{ address: '地址A', addressType: 'home' }], familyMembers: [], consultationTopics: [], remarks: '' }
@@ -262,8 +269,7 @@ describe('結束本期 API', () => {
   });
 
   test('4.5 - 重複點擊（候位已清空）回傳 409', async () => {
-    WaitingRecord.find.mockReturnValue(makeChainable([]));
-
+    // countDocuments 預設已是 0
     await endSession(req, res);
 
     expect(res.status).toHaveBeenCalledWith(409);

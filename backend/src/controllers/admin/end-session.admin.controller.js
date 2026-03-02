@@ -70,23 +70,24 @@ async function findOrCreateCustomer(session, data, sessionDate) {
  * 結束本期：歸檔候位記錄 → 客戶永久資料庫，清空候位列表
  */
 exports.endSession = async (req, res) => {
+  // 前置檢查：在開 transaction 之前先確認有資料可歸檔
+  const recordCount = await WaitingRecord.countDocuments({ status: { $ne: 'cancelled' } });
+  const cancelledCount = await WaitingRecord.countDocuments({ status: 'cancelled' });
+
+  if (recordCount === 0) {
+    return res.status(409).json({
+      success: false,
+      code: 'CONFLICT',
+      message: '目前沒有需要歸檔的候位記錄'
+    });
+  }
+
   const dbSession = await mongoose.startSession();
   dbSession.startTransaction();
 
   try {
     // 查詢所有非取消的候位記錄
     const records = await WaitingRecord.find({ status: { $ne: 'cancelled' } }).session(dbSession);
-    const cancelledCount = await WaitingRecord.countDocuments({ status: 'cancelled' });
-
-    if (records.length === 0) {
-      await dbSession.abortTransaction();
-      dbSession.endSession();
-      return res.status(409).json({
-        success: false,
-        code: 'CONFLICT',
-        message: '目前沒有需要歸檔的候位記錄'
-      });
-    }
 
     // 取得 sessionDate（用系統設定的 nextSessionDate，否則今天）
     const settings = await SystemSetting.getSettings();
