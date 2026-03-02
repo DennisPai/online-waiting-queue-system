@@ -37,19 +37,42 @@ exports.getQueueList = async (req, res) => {
     const records = await WaitingRecord.aggregate(pipeline);
     const total = await WaitingRecord.countDocuments(query);
 
-    // 標記新客戶：用 name + lunarBirthYear/Month/Day 查 customer_profiles
-    // 只對有生日資料的主客戶做查詢，批次查詢減少 DB 往返
+    // 標記新客戶：多層寬鬆匹配查 customer_profiles
     const recordsWithNewFlag = await Promise.all(records.map(async (record) => {
-      // 沒有農曆生日資料就無法匹配，標為未知（isNewCustomer: null）
-      if (!record.lunarBirthYear && !record.lunarBirthMonth && !record.lunarBirthDay) {
-        return { ...record, isNewCustomer: null };
+      const name = record.name;
+      if (!name) return { ...record, isNewCustomer: null };
+
+      let existing = null;
+
+      // 第1層：name + 農曆年月日 精確匹配
+      if (record.lunarBirthYear && record.lunarBirthMonth && record.lunarBirthDay) {
+        existing = await Customer.findOne({
+          name,
+          lunarBirthYear: record.lunarBirthYear,
+          lunarBirthMonth: record.lunarBirthMonth,
+          lunarBirthDay: record.lunarBirthDay
+        }).select('_id').lean();
       }
-      const query = { name: record.name };
-      if (record.lunarBirthYear) query.lunarBirthYear = record.lunarBirthYear;
-      if (record.lunarBirthMonth) query.lunarBirthMonth = record.lunarBirthMonth;
-      if (record.lunarBirthDay) query.lunarBirthDay = record.lunarBirthDay;
-      const existing = await Customer.findOne(query).select('_id').lean();
-      return { ...record, isNewCustomer: !existing };
+
+      // 第2層：name + phone（phone 不為空）
+      if (!existing && record.phone) {
+        existing = await Customer.findOne({
+          name,
+          phone: record.phone
+        }).select('_id').lean();
+      }
+
+      // 第3層：name + 農曆年（同名同年，容許月日誤差）
+      if (!existing && record.lunarBirthYear) {
+        existing = await Customer.findOne({
+          name,
+          lunarBirthYear: record.lunarBirthYear
+        }).select('_id').lean();
+      }
+
+      // 都找不到才是新客戶；無任何可匹配資料時標 null（不顯示 badge）
+      const hasMatchableData = (record.lunarBirthYear || record.phone);
+      return { ...record, isNewCustomer: hasMatchableData ? !existing : null };
     }));
 
     res.status(200).json({
