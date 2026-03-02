@@ -84,6 +84,27 @@ router.put('/settings/auto-open-enabled', [
 // 結束本期（歸檔 + 清空）
 router.post('/queue/end-session', adminController.endSession);
 
+// 暫時診斷 endpoint（查 DB 實際狀態）
+router.get('/diag/db-stats', async (req, res) => {
+  const mongoose = require('mongoose');
+  const WaitingRecord = require('../../models/waiting-record.model');
+  try {
+    const db = mongoose.connection.db;
+    const dbName = db.databaseName;
+    const collections = await db.listCollections().toArray();
+    const collNames = collections.map(c => c.name);
+    const totalAll = await WaitingRecord.countDocuments({});
+    const byStatus = {};
+    for (const s of ['waiting','processing','completed','cancelled']) {
+      byStatus[s] = await WaitingRecord.countDocuments({ status: s });
+    }
+    const sample = await WaitingRecord.find({}).limit(3).lean();
+    res.json({ success: true, data: { dbName, collections: collNames, waitingRecordTotal: totalAll, byStatus, sample } });
+  } catch(e) {
+    res.json({ success: false, error: e.message });
+  }
+});
+
 // 清空全部（已棄用，緊急使用）
 router.delete('/queue/clear-all', (req, res, next) => {
   res.setHeader('X-Deprecated', 'Use POST /admin/queue/end-session instead');
