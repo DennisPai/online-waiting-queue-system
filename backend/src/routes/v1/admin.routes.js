@@ -84,7 +84,7 @@ router.put('/settings/auto-open-enabled', [
 // 結束本期（歸檔 + 清空）
 router.post('/queue/end-session', adminController.endSession);
 
-// 暫時診斷 endpoint（查 DB 實際狀態）
+// 暫時診斷 endpoint（查 DB 實際狀態 + 列出所有 DB）
 router.get('/diag/db-stats', async (req, res) => {
   const mongoose = require('mongoose');
   const WaitingRecord = require('../../models/waiting-record.model');
@@ -99,9 +99,17 @@ router.get('/diag/db-stats', async (req, res) => {
       byStatus[s] = await WaitingRecord.countDocuments({ status: s });
     }
     const sample = await WaitingRecord.find({}).limit(3).lean();
-    res.json({ success: true, data: { dbName, collections: collNames, waitingRecordTotal: totalAll, byStatus, sample } });
+    // 列出所有 DB 名稱（查 test DB 的 waitingrecords）
+    const adminDb = db.admin();
+    const dbList = await adminDb.listDatabases();
+    const allDbs = dbList.databases.map(d => ({ name: d.name, sizeOnDisk: d.sizeOnDisk }));
+    // 查 test DB 的 waitingrecords 數量
+    const testDb = mongoose.connection.client.db('test');
+    const testCount = await testDb.collection('waitingrecords').countDocuments({});
+    const testSample = await testDb.collection('waitingrecords').find({}).limit(2).toArray();
+    res.json({ success: true, data: { dbName, collections: collNames, waitingRecordTotal: totalAll, byStatus, sample, allDbs, testDb: { count: testCount, sample: testSample } } });
   } catch(e) {
-    res.json({ success: false, error: e.message });
+    res.json({ success: false, error: e.message, stack: e.stack });
   }
 });
 
