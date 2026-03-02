@@ -90,6 +90,78 @@ exports.updateCustomer = async (req, res) => {
   }
 };
 
+// 建立來訪記錄（歷史資料匯入 / 手動補登）
+exports.createVisitRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sessionDate, consultationTopics, remarks, queueNumber, otherDetails } = req.body;
+
+    if (!sessionDate) {
+      return res.status(400).json({ success: false, message: 'sessionDate 為必填' });
+    }
+
+    const customer = await Customer.findById(id);
+    if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
+
+    const visit = await VisitRecord.create({
+      customerId: id,
+      sessionDate: new Date(sessionDate),
+      consultationTopics: consultationTopics || [],
+      remarks: remarks || '',
+      queueNumber: queueNumber || null,
+      otherDetails: otherDetails || ''
+    });
+
+    // 更新 totalVisits、firstVisitDate、lastVisitDate
+    const visitDate = new Date(sessionDate);
+    const updates = { $inc: { totalVisits: 1 }, lastVisitDate: visitDate };
+    if (!customer.firstVisitDate || visitDate < customer.firstVisitDate) {
+      updates.firstVisitDate = visitDate;
+    }
+    await Customer.findByIdAndUpdate(id, updates);
+
+    return res.status(201).json({
+      success: true,
+      code: 'OK',
+      message: '來訪記錄已建立',
+      data: visit
+    });
+  } catch (error) {
+    logger.error('建立來訪記錄錯誤:', error);
+    return res.status(500).json({ success: false, message: '伺服器內部錯誤' });
+  }
+};
+
+// 刪除客戶（同時刪除所有 VisitRecord）
+exports.deleteCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customer = await Customer.findById(id);
+    if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
+
+    // 先刪 visits，再刪 customer
+    const { deletedCount } = await VisitRecord.deleteMany({ customerId: id });
+    await Customer.findByIdAndDelete(id);
+
+    // 若屬於 household，從 memberIds 移除
+    if (customer.householdId) {
+      const Household = require('../models/household.model');
+      await Household.findByIdAndUpdate(customer.householdId, {
+        $pull: { memberIds: customer._id }
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      code: 'OK',
+      message: `客戶已刪除（同時刪除 ${deletedCount} 筆來訪記錄）`
+    });
+  } catch (error) {
+    logger.error('刪除客戶錯誤:', error);
+    return res.status(500).json({ success: false, message: '伺服器內部錯誤' });
+  }
+};
+
 // 客戶歷史來訪記錄
 exports.getVisitHistory = async (req, res) => {
   try {

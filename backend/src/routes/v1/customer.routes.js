@@ -13,6 +13,10 @@ router.post('/', [
   body('name').notEmpty().withMessage('姓名為必填')
 ], validateRequest, customerController.createCustomer);
 router.put('/:id', customerController.updateCustomer);
+router.delete('/:id', customerController.deleteCustomer);
 router.get('/:id/visits', customerController.getVisitHistory);
+router.post('/:id/visits', [
+  body('sessionDate').notEmpty().withMessage('sessionDate 為必填')
+], validateRequest, customerController.createVisitRecord);
 
 module.exports = router;
