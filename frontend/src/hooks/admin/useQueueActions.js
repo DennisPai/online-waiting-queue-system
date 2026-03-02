@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import {
   callNextQueue,
@@ -6,7 +6,8 @@ import {
   updateQueueOrder,
   updateQueueData,
   deleteCustomer,
-  clearAllQueue
+  clearAllQueue,
+  endSession
 } from '../../redux/slices/queueSlice';
 import { showAlert } from '../../redux/slices/uiSlice';
 
@@ -240,6 +241,30 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
     });
   }, [dispatch, loadQueueList, setConfirmDialog, handleCloseConfirmDialog]);
 
+  // 結束本期（歸檔 + 清空）
+  const [endSessionResult, setEndSessionResult] = React.useState(null);
+  const handleEndSession = useCallback((waitingCount) => {
+    setConfirmDialog({
+      open: true,
+      title: '結束本期',
+      message: `確定要結束本期嗎？本期 ${waitingCount || 0} 位客戶（不含已取消）的資料將歸檔至永久客戶資料庫。此操作不可撤銷。`,
+      onConfirm: async () => {
+        handleCloseConfirmDialog();
+        try {
+          const result = await dispatch(endSession()).unwrap();
+          setEndSessionResult(result);
+          dispatch(showAlert({
+            message: `本期結束！已歸檔 ${result.totalProcessed} 位客戶（新客 ${result.newCustomers}，回頭客 ${result.returningCustomers}，新建家庭 ${result.newHouseholds} 組）`,
+            severity: 'success'
+          }));
+          loadQueueList();
+        } catch (error) {
+          dispatch(showAlert({ message: '結束本期失敗', severity: 'error' }));
+        }
+      }
+    });
+  }, [dispatch, loadQueueList, setConfirmDialog, handleCloseConfirmDialog]);
+
   // 刪除客戶
   const handleDeleteCustomer = useCallback((customerId, customerName) => {
     // 顯示確認對話框
@@ -275,6 +300,7 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
     handleRestoreCustomer,
     handleDragEnd,
     handleClearAllQueue,
+    handleEndSession,
     handleDeleteCustomer
   };
 };

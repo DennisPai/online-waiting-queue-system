@@ -553,6 +553,18 @@ const resetLastCompletedTime = async (token) => {
   return response.data.data || response.data;
 };
 
+// 結束本期（歸檔 + 清空）
+const endSession = async (token) => {
+  try {
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const response = await axios.post(`${API_ENDPOINTS.ADMIN}/queue/end-session`, {}, config);
+    return response.data.data || response.data;
+  } catch (error) {
+    console.error('結束本期錯誤:', error);
+    throw error;
+  }
+};
+
 // 清空所有候位
 const clearAllQueue = async (token) => {
   try {
@@ -604,6 +616,7 @@ const queueService = {
   setLastCompletedTime,
   resetLastCompletedTime,
   clearAllQueue,
+  endSession,
   getOrderedQueueNumbers
 };
 

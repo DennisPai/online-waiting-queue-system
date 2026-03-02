@@ -105,6 +105,7 @@ const AdminDashboardPage = () => {
     handleCloseExportDialog,
     handleDeleteCustomer,
     handleClearAllQueue,
+    handleEndSession,
     handleColumnMenuOpen,
     handleColumnMenuClose,
     handleColumnToggle,
@@ -174,6 +175,16 @@ const AdminDashboardPage = () => {
             sx={{ mr: 1 }}
           >
             重新排序
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={<DeleteSweepIcon />}
+            onClick={() => handleEndSession(queueStatus?.waitingCount)}
+            sx={{ mr: 1 }}
+            disabled={isLoading}
+          >
+            結束本期
           </Button>
           <Button
             variant="outlined"

@@ -450,6 +450,19 @@ export const deleteCustomer = createAsyncThunk(
 );
 
 // 清除所有候位資料（管理員）
+export const endSession = createAsyncThunk(
+  'queue/endSession',
+  async (_, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.endSession(token);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '結束本期失敗');
+    }
+  }
+);
+
 export const clearAllQueue = createAsyncThunk(
   'queue/clearAllQueue',
   async (_, { rejectWithValue, getState }) => {
@@ -1050,6 +1063,29 @@ const queueSlice = createSlice({
         };
       })
       .addCase(clearAllQueue.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+
+      // 結束本期
+      .addCase(endSession.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(endSession.fulfilled, (state) => {
+        state.isLoading = false;
+        state.queueList = [];
+        state.currentQueue = 0;
+        state.waitingCount = 0;
+        state.registeredQueueNumber = null;
+        state.currentQueueStatus = null;
+        state.queueStatus = {
+          ...state.queueStatus,
+          currentQueueNumber: 0,
+          nextWaitingNumber: null
+        };
+        state.pagination = { page: 1, limit: 20, total: 0, pages: 0 };
+      })
+      .addCase(endSession.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });
