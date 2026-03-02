@@ -1,6 +1,7 @@
 const logger = require('../utils/logger');
 const Customer = require('../models/customer.model');
 const VisitRecord = require('../models/visit-record.model');
+const Household = require('../models/household.model');
 
 // 客戶列表（分頁 + 搜尋）
 exports.listCustomers = async (req, res) => {
@@ -35,12 +36,30 @@ exports.listCustomers = async (req, res) => {
   }
 };
 
-// 客戶詳情
+// 客戶詳情（含 household 成員）
 exports.getCustomer = async (req, res) => {
   try {
     const customer = await Customer.findById(req.params.id).lean();
     if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
-    res.status(200).json({ success: true, data: customer });
+
+    // 附帶 household 成員（排除自己）
+    let householdMembers = [];
+    if (customer.householdId) {
+      const household = await Household.findById(customer.householdId).lean();
+      if (household && household.memberIds.length > 0) {
+        const memberIds = household.memberIds.filter(
+          mid => mid.toString() !== customer._id.toString()
+        );
+        if (memberIds.length > 0) {
+          householdMembers = await Customer.find(
+            { _id: { $in: memberIds } },
+            { _id: 1, name: 1, gender: 1, zodiac: 1, totalVisits: 1 }
+          ).lean();
+        }
+      }
+    }
+
+    res.status(200).json({ success: true, data: { ...customer, householdMembers } });
   } catch (error) {
     logger.error('查詢客戶詳情錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤' });
