@@ -66,8 +66,8 @@ Thumbs.db
 .dockerignore
 
 # 測試文件（開發用，排除 backend/tests/ 正式測試）
-!backend/tests/**
 *test*.js
+!backend/tests/**
 debug-*.js
 api-test*.js
 real-leap-test.js
