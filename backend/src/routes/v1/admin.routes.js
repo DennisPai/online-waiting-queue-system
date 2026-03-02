@@ -81,7 +81,14 @@ router.put('/settings/auto-open-enabled', [
   body('autoOpenEnabled').isBoolean()
 ], validateRequest, adminController.setAutoOpenEnabled);
 
-router.delete('/queue/clear-all', adminController.clearAllQueue);
+// 結束本期（歸檔 + 清空）
+router.post('/queue/end-session', adminController.endSession);
+
+// 清空全部（已棄用，緊急使用）
+router.delete('/queue/clear-all', (req, res, next) => {
+  res.setHeader('X-Deprecated', 'Use POST /admin/queue/end-session instead');
+  next();
+}, adminController.clearAllQueue);
 
 module.exports = router;
 
