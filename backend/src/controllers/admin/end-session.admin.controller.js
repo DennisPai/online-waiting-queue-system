@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
 const WaitingRecord = require('../../models/waiting-record.model');
 const SystemSetting = require('../../models/system-setting.model');
@@ -9,8 +8,9 @@ const Household = require('../../models/household.model');
 /**
  * 比對客戶：name + lunarBirthYear/Month/Day
  * 若 lunarBirthYear 為 null，只用 name 比對（家人無完整生日的情況）
+ * 注意：不使用 session（Zeabur 單節點不支援 transaction）
  */
-async function findOrCreateCustomer(session, data, sessionDate) {
+async function findOrCreateCustomer(data, sessionDate) {
   const {
     name, phone, zodiac, gender,
     lunarBirthYear, lunarBirthMonth, lunarBirthDay, lunarIsLeapMonth,
@@ -28,7 +28,7 @@ async function findOrCreateCustomer(session, data, sessionDate) {
     matchQuery.lunarBirthDay = lunarBirthDay || null;
   }
 
-  let existing = await Customer.findOne(matchQuery).session(session);
+  let existing = await Customer.findOne(matchQuery);
   let isNew = false;
 
   if (existing) {
@@ -38,11 +38,11 @@ async function findOrCreateCustomer(session, data, sessionDate) {
     if (phone) existing.phone = phone;
     if (zodiac) existing.zodiac = zodiac;
     if (addresses && addresses.length > 0) existing.addresses = addresses;
-    await existing.save({ session });
+    await existing.save();
   } else {
     // 新客：建立
     isNew = true;
-    existing = await Customer.create([{
+    existing = await Customer.create({
       name: trimmedName,
       phone: phone || '',
       gender: gender || '',
@@ -58,8 +58,7 @@ async function findOrCreateCustomer(session, data, sessionDate) {
       totalVisits: 1,
       firstVisitDate: sessionDate,
       lastVisitDate: sessionDate
-    }], { session });
-    existing = existing[0];
+    });
   }
 
   return { customer: existing, isNew };
@@ -68,28 +67,30 @@ async function findOrCreateCustomer(session, data, sessionDate) {
 /**
  * POST /api/v1/admin/queue/end-session
  * 結束本期：歸檔候位記錄 → 客戶永久資料庫，清空候位列表
+ *
+ * 安全順序（不使用 transaction，Zeabur 單節點不支援）：
+ * 1. 先查資料、先完成所有歸檔寫入
+ * 2. 歸檔全部成功後，才執行 deleteMany
+ * 確保「先寫後刪」，不會發生刪了資料但歸檔失敗的情況
  */
 exports.endSession = async (req, res) => {
-  // 前置檢查：在開 transaction 之前先確認有資料可歸檔
-  const recordCount = await WaitingRecord.countDocuments({ status: { $ne: 'cancelled' } });
-  const cancelledCount = await WaitingRecord.countDocuments({ status: 'cancelled' });
-
-  if (recordCount === 0) {
-    return res.status(409).json({
-      success: false,
-      code: 'CONFLICT',
-      message: '目前沒有需要歸檔的候位記錄'
-    });
-  }
-
-  const dbSession = await mongoose.startSession();
-  dbSession.startTransaction();
-
   try {
-    // 查詢所有非取消的候位記錄
-    const records = await WaitingRecord.find({ status: { $ne: 'cancelled' } }).session(dbSession);
+    // 前置檢查：確認有資料可歸檔
+    const recordCount = await WaitingRecord.countDocuments({ status: { $ne: 'cancelled' } });
+    const cancelledCount = await WaitingRecord.countDocuments({ status: 'cancelled' });
 
-    // 取得 sessionDate（用系統設定的 nextSessionDate，否則今天）
+    if (recordCount === 0) {
+      return res.status(409).json({
+        success: false,
+        code: 'CONFLICT',
+        message: '目前沒有需要歸檔的候位記錄'
+      });
+    }
+
+    // 取得所有需歸檔的候位記錄
+    const records = await WaitingRecord.find({ status: { $ne: 'cancelled' } });
+
+    // 取得 sessionDate
     const settings = await SystemSetting.getSettings();
     const sessionDate = settings.nextSessionDate ? new Date(settings.nextSessionDate) : new Date();
 
@@ -97,10 +98,11 @@ exports.endSession = async (req, res) => {
     let returningCustomers = 0;
     const processedCustomerIds = [];
 
-    // 遍歷每一筆候位記錄
+    // ── 步驟一：歸檔所有客戶（寫入永久資料庫）──
+    // 這個步驟全部完成後，才會執行刪除
     for (const record of records) {
       // 1. 主客戶歸檔
-      const { customer, isNew } = await findOrCreateCustomer(dbSession, {
+      const { customer, isNew } = await findOrCreateCustomer({
         name: record.name,
         phone: record.phone,
         zodiac: record.zodiac,
@@ -119,7 +121,7 @@ exports.endSession = async (req, res) => {
       processedCustomerIds.push(customer._id);
 
       // 2. 建立主客戶 VisitRecord
-      await VisitRecord.create([{
+      await VisitRecord.create({
         customerId: customer._id,
         sessionDate,
         consultationTopics: record.consultationTopics || [],
@@ -131,17 +133,17 @@ exports.endSession = async (req, res) => {
           zodiac: fm.zodiac || null
         })),
         sourceQueueId: record._id
-      }], { session: dbSession });
+      });
 
       // 3. 家人歸檔
       for (const fm of (record.familyMembers || [])) {
         const fmAddresses = fm.address
           ? [{ address: fm.address, addressType: fm.addressType || 'home' }]
-          : record.addresses; // 繼承主客戶地址
+          : record.addresses;
 
-        const { customer: fmCustomer, isNew: fmIsNew } = await findOrCreateCustomer(dbSession, {
+        const { customer: fmCustomer, isNew: fmIsNew } = await findOrCreateCustomer({
           name: fm.name,
-          phone: fm.phone || record.phone, // 繼承主客戶電話
+          phone: fm.phone || record.phone,
           zodiac: fm.zodiac,
           gender: fm.gender,
           lunarBirthYear: fm.lunarBirthYear,
@@ -157,34 +159,31 @@ exports.endSession = async (req, res) => {
         if (fmIsNew) newCustomers++; else returningCustomers++;
         processedCustomerIds.push(fmCustomer._id);
 
-        await VisitRecord.create([{
+        await VisitRecord.create({
           customerId: fmCustomer._id,
           sessionDate,
           consultationTopics: [],
           remarks: `與 ${record.name}（${record.queueNumber}號）同行`,
           queueNumber: record.queueNumber,
           sourceQueueId: record._id
-        }], { session: dbSession });
+        });
       }
     }
 
     // 4. 家庭自動分組
-    const newHouseholds = await autoGroupHouseholds(dbSession, processedCustomerIds);
+    const newHouseholds = await autoGroupHouseholds(processedCustomerIds);
 
-    // 5. 清空所有候位記錄（含已取消）
-    await WaitingRecord.deleteMany({}).session(dbSession);
+    // ── 步驟二：歸檔全部成功，才清空候位記錄 ──
+    await WaitingRecord.deleteMany({});
 
-    // 6. 重設系統設定
+    // ── 步驟三：重設系統設定 ──
     await SystemSetting.findOneAndUpdate({}, {
       $set: {
         currentQueueNumber: 0,
         totalCustomerCount: 0,
-        lastCompletedTime: null
+        lastCompletedTime: new Date()
       }
-    }).session(dbSession);
-
-    await dbSession.commitTransaction();
-    dbSession.endSession();
+    });
 
     logger.info(`結束本期：歸檔 ${records.length} 位（新客 ${newCustomers}，回頭客 ${returningCustomers}），新建家庭 ${newHouseholds} 組`);
 
@@ -203,13 +202,11 @@ exports.endSession = async (req, res) => {
     });
 
   } catch (error) {
-    await dbSession.abortTransaction();
-    dbSession.endSession();
     logger.error('結束本期錯誤:', error);
     return res.status(500).json({
       success: false,
       code: 'INTERNAL_ERROR',
-      message: '結束本期時發生錯誤，資料已回滾'
+      message: '結束本期時發生錯誤，請重試。候位資料未被清除。'
     });
   }
 };
@@ -218,12 +215,11 @@ exports.endSession = async (req, res) => {
  * 家庭自動分組：取得本次歸檔客戶的第一個地址，地址完全相同者歸為同一家庭
  * 回傳新建的 Household 數量
  */
-async function autoGroupHouseholds(session, customerIds) {
+async function autoGroupHouseholds(customerIds) {
   if (!customerIds || customerIds.length === 0) return 0;
 
   const customers = await Customer.find({ _id: { $in: customerIds } })
-    .select('_id addresses householdId')
-    .session(session);
+    .select('_id addresses householdId');
 
   // 按地址分組（取第一個 address 欄位）
   const addressGroups = {};
@@ -239,36 +235,31 @@ async function autoGroupHouseholds(session, customerIds) {
   let newHouseholdsCount = 0;
 
   for (const [address, members] of Object.entries(addressGroups)) {
-    if (members.length < 2) continue; // 單人不建家庭
+    if (members.length < 2) continue;
 
-    // 查詢是否已有此地址的 Household
-    let household = await Household.findOne({ address }).session(session);
+    let household = await Household.findOne({ address });
 
     if (household) {
-      // 加入新成員（避免重複）
       const existingIds = household.memberIds.map(id => id.toString());
       for (const member of members) {
         if (!existingIds.includes(member._id.toString())) {
           household.memberIds.push(member._id);
         }
       }
-      await household.save({ session });
+      await household.save();
     } else {
-      // 建立新 Household
-      const created = await Household.create([{
+      const created = await Household.create({
         address,
         memberIds: members.map(m => m._id)
-      }], { session });
-      household = created[0];
+      });
+      household = created;
       newHouseholdsCount++;
     }
 
-    // 更新每個 Customer 的 householdId
     const memberIdList = members.map(m => m._id);
     await Customer.updateMany(
       { _id: { $in: memberIdList } },
-      { $set: { householdId: household._id } },
-      { session }
+      { $set: { householdId: household._id } }
     );
   }
 

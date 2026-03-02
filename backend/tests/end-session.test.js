@@ -1,35 +1,8 @@
 /**
  * end-session.test.js
  * 測試「結束本期」API 的核心邏輯（mock models，不連真實 DB）
+ * 注意：新版不使用 transaction/session（Zeabur 單節點不支援）
  */
-
-// Mock mongoose session/transaction
-const mockSession = {
-  startTransaction: jest.fn(),
-  commitTransaction: jest.fn(),
-  abortTransaction: jest.fn(),
-  endSession: jest.fn()
-};
-jest.mock('mongoose', () => {
-  const actual = jest.requireActual('mongoose');
-  return {
-    ...actual,
-    startSession: jest.fn().mockResolvedValue(mockSession),
-    Schema: actual.Schema,
-    model: jest.fn(),
-    Types: actual.Types
-  };
-});
-
-// Helper: make a chainable mock (supports .session(), .select().session())
-const makeChainable = (val) => {
-  const obj = {
-    session: jest.fn().mockResolvedValue(val),
-    select: jest.fn()
-  };
-  obj.select.mockReturnValue(obj); // .select() returns same chainable
-  return obj;
-};
 
 // Mock WaitingRecord
 jest.mock('../src/models/waiting-record.model', () => ({
@@ -97,21 +70,20 @@ describe('結束本期 API', () => {
 
     // 預設：無記錄（各測試自己設定）
     WaitingRecord.countDocuments.mockResolvedValue(0);
+    WaitingRecord.find.mockResolvedValue([]);
+    WaitingRecord.deleteMany.mockResolvedValue({});
     SystemSetting.getSettings.mockResolvedValue({ nextSessionDate: '2026-03-01T00:00:00.000Z' });
-    SystemSetting.findOneAndUpdate.mockReturnValue(makeChainable({}));
-    WaitingRecord.deleteMany.mockReturnValue(makeChainable({}));
-    Customer.updateMany.mockReturnValue(makeChainable({}));
-    Household.findOne.mockReturnValue(makeChainable(null));
-    // Household.create is called as create([doc], { session }) - direct, not chained
-    Household.create.mockResolvedValue([{ _id: 'hh1', memberIds: [] }]);
-    // Customer.find().select().session() chain
-    Customer.find.mockReturnValue(makeChainable([]));
-    // VisitRecord.create is called as create([doc], { session }) - direct
-    VisitRecord.create.mockResolvedValue([{}]);
+    SystemSetting.findOneAndUpdate.mockResolvedValue({});
+    Customer.updateMany.mockResolvedValue({});
+    // Customer.find().select() chain → 預設回傳空陣列
+    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
+    Household.findOne.mockResolvedValue(null);
+    Household.create.mockResolvedValue({ _id: 'hh1', memberIds: [], save: jest.fn() });
+    VisitRecord.create.mockResolvedValue({});
   });
 
   test('4.5 - 空候位列表回傳 409', async () => {
-    // countDocuments 預設已是 0，不需另外設定
+    // countDocuments 預設已是 0
     await endSession(req, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
@@ -127,14 +99,14 @@ describe('結束本期 API', () => {
       { _id: 'r2', name: '李四', phone: '0913', status: 'waiting', queueNumber: 2, zodiac: '虎', gender: 'male', addresses: [{ address: '台北市大安區', addressType: 'home' }], familyMembers: [], consultationTopics: [], remarks: '' },
       { _id: 'r3', name: '王五', phone: '0914', status: 'completed', queueNumber: 3, zodiac: '鼠', gender: 'female', addresses: [{ address: '台北市中正區', addressType: 'home' }], familyMembers: [], consultationTopics: ['fate'], remarks: '備註' }
     ];
-    WaitingRecord.find.mockReturnValue(makeChainable(records));
-    WaitingRecord.countDocuments.mockResolvedValueOnce(3) // recordCount（非取消）
+    WaitingRecord.find.mockResolvedValue(records);
+    WaitingRecord.countDocuments
+      .mockResolvedValueOnce(3)  // recordCount（非取消）
       .mockResolvedValueOnce(1); // cancelledCount
-    Customer.findOne.mockReturnValue(makeChainable(null));
+    Customer.findOne.mockResolvedValue(null);
     let cnt = 0;
-    Customer.create.mockImplementation(() => Promise.resolve([makeCustDoc(`c${cnt++}`)]));
-    VisitRecord.create.mockResolvedValue([{}]);
-    Customer.find.mockReturnValue(makeChainable([]));
+    Customer.create.mockImplementation(() => Promise.resolve(makeCustDoc(`c${cnt++}`)));
+    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
 
     await endSession(req, res);
 
@@ -144,42 +116,45 @@ describe('結束本期 API', () => {
     expect(data.newCustomers).toBe(3);
     expect(data.returningCustomers).toBe(0);
     expect(data.skippedCancelled).toBe(1);
+    // 確認先歸檔後才刪除
+    const deleteOrder = WaitingRecord.deleteMany.mock.invocationCallOrder[0];
+    const createOrder = Customer.create.mock.invocationCallOrder[0];
+    expect(createOrder).toBeLessThan(deleteOrder);
   });
 
   test('4.1 - VisitRecord 正確建立（含 consultationTopics, queueNumber）', async () => {
-    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
-    WaitingRecord.find.mockReturnValue(makeChainable([
+    WaitingRecord.countDocuments
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(0);
+    WaitingRecord.find.mockResolvedValue([
       { _id: 'r1', name: '甲', phone: '0912', status: 'waiting', queueNumber: 7, zodiac: '馬', gender: 'male', addresses: [], familyMembers: [], consultationTopics: ['body', 'fate'], remarks: '測試備註' }
-    ]));
-    Customer.findOne.mockReturnValue(makeChainable(null));
-    Customer.create.mockResolvedValue([makeCustDoc('c1')]);
-    Customer.find.mockReturnValue(makeChainable([]));
+    ]);
+    Customer.findOne.mockResolvedValue(null);
+    Customer.create.mockResolvedValue(makeCustDoc('c1'));
 
     await endSession(req, res);
 
     expect(VisitRecord.create).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          queueNumber: 7,
-          consultationTopics: ['body', 'fate'],
-          remarks: '測試備註'
-        })
-      ]),
-      expect.anything()
+      expect.objectContaining({
+        queueNumber: 7,
+        consultationTopics: ['body', 'fate'],
+        remarks: '測試備註'
+      })
     );
   });
 
   test('4.2 - 舊客：同名同農曆生日 → totalVisits +1', async () => {
-    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    WaitingRecord.countDocuments
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(0);
     const existing = makeCustDoc('c_old', { totalVisits: 2, name: '張三', lunarBirthYear: 1990, lunarBirthMonth: 3, lunarBirthDay: 15 });
-    WaitingRecord.find.mockReturnValue(makeChainable([{
+    WaitingRecord.find.mockResolvedValue([{
       _id: 'r1', name: '張三', phone: '0912', status: 'waiting', queueNumber: 1,
       lunarBirthYear: 1990, lunarBirthMonth: 3, lunarBirthDay: 15,
       zodiac: '馬', gender: 'male', addresses: [], familyMembers: [], consultationTopics: [], remarks: ''
-    }]));
-    Customer.findOne.mockReturnValue(makeChainable(existing));
-    VisitRecord.create.mockReturnValue(makeChainable({}));
-    Customer.find.mockReturnValue(makeChainable([]));
+    }]);
+    Customer.findOne.mockResolvedValue(existing);
+    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
 
     await endSession(req, res);
 
@@ -190,15 +165,17 @@ describe('結束本期 API', () => {
   });
 
   test('4.2 - 新客：同名不同生日 → 建新客戶', async () => {
-    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
-    WaitingRecord.find.mockReturnValue(makeChainable([{
+    WaitingRecord.countDocuments
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(0);
+    WaitingRecord.find.mockResolvedValue([{
       _id: 'r1', name: '張三', phone: '0912', status: 'waiting', queueNumber: 1,
       lunarBirthYear: 1991, lunarBirthMonth: 5, lunarBirthDay: 10,
       zodiac: '羊', gender: 'male', addresses: [], familyMembers: [], consultationTopics: [], remarks: ''
-    }]));
-    Customer.findOne.mockReturnValue(makeChainable(null));
-    Customer.create.mockResolvedValue([makeCustDoc('c_new')]);
-    Customer.find.mockReturnValue(makeChainable([]));
+    }]);
+    Customer.findOne.mockResolvedValue(null);
+    Customer.create.mockResolvedValue(makeCustDoc('c_new'));
+    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
 
     await endSession(req, res);
 
@@ -207,8 +184,10 @@ describe('結束本期 API', () => {
   });
 
   test('4.3 - 主客戶帶 2 位家人 → 3 Customer + 3 VisitRecord', async () => {
-    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
-    WaitingRecord.find.mockReturnValue(makeChainable([{
+    WaitingRecord.countDocuments
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(0);
+    WaitingRecord.find.mockResolvedValue([{
       _id: 'r1', name: '主客', phone: '0912', status: 'waiting', queueNumber: 1,
       zodiac: '龍', gender: 'male', addresses: [{ address: '台北', addressType: 'home' }],
       familyMembers: [
@@ -216,11 +195,11 @@ describe('結束本期 API', () => {
         { name: '家人B', gender: 'male', zodiac: '馬', address: '', lunarBirthYear: 2000, lunarBirthMonth: 6, lunarBirthDay: 15 }
       ],
       consultationTopics: [], remarks: ''
-    }]));
-    Customer.findOne.mockReturnValue(makeChainable(null));
+    }]);
+    Customer.findOne.mockResolvedValue(null);
     let cnt = 0;
-    Customer.create.mockImplementation(() => Promise.resolve([makeCustDoc(`c${cnt++}`)]));
-    Customer.find.mockReturnValue(makeChainable([]));
+    Customer.create.mockImplementation(() => Promise.resolve(makeCustDoc(`c${cnt++}`)));
+    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
 
     await endSession(req, res);
 
@@ -230,21 +209,21 @@ describe('結束本期 API', () => {
   });
 
   test('4.4 - 2 人同地址 → 建立 1 Household', async () => {
-    WaitingRecord.countDocuments.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
+    WaitingRecord.countDocuments
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(0);
     const custA = makeCustDoc('custA', { addresses: [{ address: '台北市中正區1號', addressType: 'home' }] });
     const custB = makeCustDoc('custB', { addresses: [{ address: '台北市中正區1號', addressType: 'home' }] });
-    WaitingRecord.find.mockReturnValue(makeChainable([
+    WaitingRecord.find.mockResolvedValue([
       { _id: 'r1', name: '甲', phone: '0912', status: 'waiting', queueNumber: 1, addresses: [{ address: '台北市中正區1號', addressType: 'home' }], familyMembers: [], consultationTopics: [], remarks: '' },
       { _id: 'r2', name: '乙', phone: '0913', status: 'waiting', queueNumber: 2, addresses: [{ address: '台北市中正區1號', addressType: 'home' }], familyMembers: [], consultationTopics: [], remarks: '' }
-    ]));
-    Customer.findOne.mockReturnValue(makeChainable(null));
+    ]);
+    Customer.findOne.mockResolvedValue(null);
     let cnt = 0;
-    Customer.create.mockImplementation(() => Promise.resolve([[custA, custB][cnt++]]));
-    // Customer.find().select().session() → returns [custA, custB]
-    const findChain = makeChainable([custA, custB]);
-    Customer.find.mockReturnValue(findChain);
-    Household.findOne.mockReturnValue(makeChainable(null));
-    Household.create.mockResolvedValue([{ _id: 'hh1', memberIds: [] }]);
+    Customer.create.mockImplementation(() => Promise.resolve([custA, custB][cnt++]));
+    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([custA, custB]) });
+    Household.findOne.mockResolvedValue(null);
+    Household.create.mockResolvedValue({ _id: 'hh1', memberIds: [] });
 
     await endSession(req, res);
 
@@ -252,15 +231,17 @@ describe('結束本期 API', () => {
     expect(res.json.mock.calls[0][0].data.newHouseholds).toBe(1);
   });
 
-  test('4.4 - 地址不同 → 不同 Household，單人不建', async () => {
-    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+  test('4.4 - 單人地址 → 不建 Household', async () => {
+    WaitingRecord.countDocuments
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(0);
     const custA = makeCustDoc('custA', { addresses: [{ address: '地址A', addressType: 'home' }] });
-    WaitingRecord.find.mockReturnValue(makeChainable([
+    WaitingRecord.find.mockResolvedValue([
       { _id: 'r1', name: '甲', phone: '0912', status: 'waiting', queueNumber: 1, addresses: [{ address: '地址A', addressType: 'home' }], familyMembers: [], consultationTopics: [], remarks: '' }
-    ]));
-    Customer.findOne.mockReturnValue(makeChainable(null));
-    Customer.create.mockResolvedValue([custA]);
-    Customer.find.mockReturnValue(makeChainable([custA]));
+    ]);
+    Customer.findOne.mockResolvedValue(null);
+    Customer.create.mockResolvedValue(custA);
+    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([custA]) });
 
     await endSession(req, res);
 
@@ -278,5 +259,27 @@ describe('結束本期 API', () => {
   test('4.6 - clear-all 仍可使用（向下相容）', () => {
     const { clearAllQueue } = require('../src/controllers/admin/queue.admin.controller');
     expect(typeof clearAllQueue).toBe('function');
+  });
+
+  test('歸檔失敗時不刪除候位資料', async () => {
+    WaitingRecord.countDocuments
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(0);
+    WaitingRecord.find.mockResolvedValue([
+      { _id: 'r1', name: '甲', phone: '0912', status: 'waiting', queueNumber: 1, addresses: [], familyMembers: [], consultationTopics: [], remarks: '' }
+    ]);
+    Customer.findOne.mockResolvedValue(null);
+    // 模擬歸檔寫入失敗
+    Customer.create.mockRejectedValue(new Error('DB write error'));
+
+    await endSession(req, res);
+
+    // deleteMany 不應被呼叫
+    expect(WaitingRecord.deleteMany).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      success: false,
+      code: 'INTERNAL_ERROR'
+    }));
   });
 });
