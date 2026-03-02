@@ -7,11 +7,14 @@ const getApiBaseUrl = () => {
       console.log('使用環境變數API URL:', apiUrl);
       return apiUrl;
     }
-    // 在Zeabur部署時，如果沒有設定環境變數，嘗試使用當前域名
+    // 在Zeabur部署時，如果沒有設定環境變數，自動推斷後端 URL
     const currentHost = window.location.hostname;
     if (currentHost.includes('zeabur.app')) {
-      console.log('檢測到Zeabur環境，但未設定REACT_APP_API_URL');
-      console.warn('警告：請設定REACT_APP_API_URL環境變數指向後端服務');
+      // 前端: xxx.zeabur.app → 後端: xxx-backend.zeabur.app
+      const backendHost = currentHost.replace('.zeabur.app', '-backend.zeabur.app');
+      const backendUrl = `https://${backendHost}`;
+      console.log('自動推斷後端URL:', backendUrl);
+      return backendUrl;
     }
     console.log('未設定REACT_APP_API_URL環境變數，使用相對路徑');
     return '';
