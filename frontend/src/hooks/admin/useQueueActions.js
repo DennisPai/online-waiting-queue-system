@@ -182,6 +182,13 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
       const successCount = results.filter(r => r.status === 'fulfilled').length;
       const failCount = results.filter(r => r.status === 'rejected').length;
       
+      // 輸出詳細錯誤（debug 用）
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.error(`[拖動排序] 第 ${i+1} 筆更新失敗:`, r.reason);
+        }
+      });
+      
       if (failCount === 0) {
         // 全部成功
         dispatch(showAlert({
@@ -196,8 +203,10 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
         }));
       } else {
         // 全部失敗
+        const firstError = results.find(r => r.status === 'rejected');
+        const errMsg = firstError?.reason?.message || firstError?.reason || '未知錯誤';
         dispatch(showAlert({
-          message: '更新順序失敗，請重試',
+          message: `更新順序失敗：${errMsg}`,
           severity: 'error'
         }));
       }
