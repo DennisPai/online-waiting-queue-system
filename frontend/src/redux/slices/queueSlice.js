@@ -670,13 +670,15 @@ const queueSlice = createSlice({
       })
       .addCase(updateQueueOrder.fulfilled, (state, action) => {
         state.isLoading = false;
-        // 安全地訪問allRecords路徑，考慮不同的回應結構可能性
-        if (action.payload && action.payload.data && Array.isArray(action.payload.data.allRecords)) {
-          state.queueList = action.payload.data.allRecords;
-        } else if (action.payload && Array.isArray(action.payload.allRecords)) {
-          state.queueList = action.payload.allRecords;
+        // 後端現在只回傳 waiting/processing 記錄，直接更新 queueList
+        const allRecords = (action.payload && action.payload.allRecords)
+          ? action.payload.allRecords
+          : null;
+        if (Array.isArray(allRecords)) {
+          // 只保留 waiting/processing，確保不混入 completed
+          state.queueList = allRecords.filter(r => ['waiting', 'processing'].includes(r.status));
         }
-        // 如果沒有allRecords，保持現有狀態不變
+        // 如果沒有allRecords，保持現有狀態不變（等 loadQueueList 重新拉）
       })
       .addCase(updateQueueOrder.rejected, (state, action) => {
         state.isLoading = false;

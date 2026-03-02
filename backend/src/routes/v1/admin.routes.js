@@ -84,40 +84,6 @@ router.put('/settings/auto-open-enabled', [
 // 結束本期（歸檔 + 清空）
 router.post('/queue/end-session', adminController.endSession);
 
-// 暫時診斷 endpoint（查 DB 實際狀態 + 列出所有 DB）
-router.get('/diag/db-stats', async (req, res) => {
-  const mongoose = require('mongoose');
-  const WaitingRecord = require('../../models/waiting-record.model');
-  try {
-    const db = mongoose.connection.db;
-    const dbName = db.databaseName;
-    const collections = await db.listCollections().toArray();
-    const collNames = collections.map(c => c.name);
-    const totalAll = await WaitingRecord.countDocuments({});
-    const byStatus = {};
-    for (const s of ['waiting','processing','completed','cancelled']) {
-      byStatus[s] = await WaitingRecord.countDocuments({ status: s });
-    }
-    const sample = await WaitingRecord.find({}).limit(3).lean();
-    // 列出所有 DB 名稱（查 test DB 的 waitingrecords）
-    const adminDb = db.admin();
-    const dbList = await adminDb.listDatabases();
-    const allDbs = dbList.databases.map(d => ({ name: d.name, sizeOnDisk: d.sizeOnDisk }));
-    // 查 test DB 的所有 collection 和各自筆數
-    const testDb = mongoose.connection.client.db('test');
-    const testCollections = await testDb.listCollections().toArray();
-    const testStats = {};
-    for (const col of testCollections) {
-      testStats[col.name] = await testDb.collection(col.name).countDocuments({});
-    }
-    // 查 waitingrecords 的前3筆樣本
-    const testWaitingSample = await testDb.collection('waitingrecords').find({}).limit(3).toArray();
-    res.json({ success: true, data: { dbName, collections: collNames, waitingRecordTotal: totalAll, byStatus, sample, allDbs, testDb: { collections: testStats, waitingSample: testWaitingSample } } });
-  } catch(e) {
-    res.json({ success: false, error: e.message, stack: e.stack });
-  }
-});
-
 // 清空全部（已棄用，緊急使用）
 router.delete('/queue/clear-all', (req, res, next) => {
   res.setHeader('X-Deprecated', 'Use POST /admin/queue/end-session instead');

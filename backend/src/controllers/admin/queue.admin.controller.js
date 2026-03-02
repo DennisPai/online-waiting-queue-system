@@ -186,19 +186,22 @@ exports.updateQueueOrder = async (req, res) => {
       return res.status(200).json({ success: true, message: '順序未變更', data: { record: recordToUpdate } });
     }
 
-    const totalRecords = await WaitingRecord.countDocuments();
+    // 只計算 waiting/processing 的記錄總數（排除 completed/cancelled）
+    const activeStatuses = ['waiting', 'processing'];
+    const totalRecords = await WaitingRecord.countDocuments({ status: { $in: activeStatuses } });
     if (newOrder > totalRecords) {
-      return res.status(400).json({ success: false, message: `新順序 ${newOrder} 超出了總記錄數 ${totalRecords}` });
+      return res.status(400).json({ success: false, message: `新順序 ${newOrder} 超出了候位總數 ${totalRecords}` });
     }
     
+    // updateMany 也只影響 waiting/processing 的記錄（不動 completed/cancelled）
     if (currentOrder < newOrder) {
       await WaitingRecord.updateMany(
-        { orderIndex: { $gt: currentOrder, $lte: newOrder }, _id: { $ne: queueId } },
+        { status: { $in: activeStatuses }, orderIndex: { $gt: currentOrder, $lte: newOrder }, _id: { $ne: queueId } },
         { $inc: { orderIndex: -1 } }
       );
     } else {
       await WaitingRecord.updateMany(
-        { orderIndex: { $gte: newOrder, $lt: currentOrder }, _id: { $ne: queueId } },
+        { status: { $in: activeStatuses }, orderIndex: { $gte: newOrder, $lt: currentOrder }, _id: { $ne: queueId } },
         { $inc: { orderIndex: 1 } }
       );
     }
@@ -206,7 +209,8 @@ exports.updateQueueOrder = async (req, res) => {
     recordToUpdate.orderIndex = newOrder;
     await recordToUpdate.save();
     
-    const updatedRecords = await WaitingRecord.find({ status: { $ne: 'cancelled' } }).sort({ orderIndex: 1 });
+    // 只回傳 waiting/processing 的記錄（不包含 completed/cancelled）
+    const updatedRecords = await WaitingRecord.find({ status: { $in: activeStatuses } }).sort({ orderIndex: 1 });
     
     res.status(200).json({
       success: true,
