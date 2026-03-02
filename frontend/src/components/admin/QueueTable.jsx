@@ -11,7 +11,8 @@ import {
   IconButton,
   Tooltip,
   Typography,
-  Alert
+  Alert,
+  Box
 } from '@mui/material';
 import {
   DragIndicator as DragIndicatorIcon,
@@ -167,7 +168,14 @@ const QueueTable = ({
       case 'status':
         return getStatusChip(row.status, row.orderIndex);
       case 'name':
-        return row.name || '';
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+            <span>{row.name || ''}</span>
+            {row.isNewCustomer === true && (
+              <Chip label="新客" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.8 } }} />
+            )}
+          </Box>
+        );
       case 'phone':
         return row.phone || '';
       case 'email':

@@ -1,6 +1,7 @@
 const logger = require('../../utils/logger');
 const WaitingRecord = require('../../models/waiting-record.model');
 const SystemSetting = require('../../models/system-setting.model');
+const Customer = require('../../models/customer.model');
 const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = require('../../utils/calendarConverter');
 const { ensureOrderIndexConsistency } = require('../../utils/orderIndex');
 
@@ -35,11 +36,26 @@ exports.getQueueList = async (req, res) => {
     
     const records = await WaitingRecord.aggregate(pipeline);
     const total = await WaitingRecord.countDocuments(query);
-    
+
+    // 標記新客戶：用 name + lunarBirthYear/Month/Day 查 customer_profiles
+    // 只對有生日資料的主客戶做查詢，批次查詢減少 DB 往返
+    const recordsWithNewFlag = await Promise.all(records.map(async (record) => {
+      // 沒有農曆生日資料就無法匹配，標為未知（isNewCustomer: null）
+      if (!record.lunarBirthYear && !record.lunarBirthMonth && !record.lunarBirthDay) {
+        return { ...record, isNewCustomer: null };
+      }
+      const query = { name: record.name };
+      if (record.lunarBirthYear) query.lunarBirthYear = record.lunarBirthYear;
+      if (record.lunarBirthMonth) query.lunarBirthMonth = record.lunarBirthMonth;
+      if (record.lunarBirthDay) query.lunarBirthDay = record.lunarBirthDay;
+      const existing = await Customer.findOne(query).select('_id').lean();
+      return { ...record, isNewCustomer: !existing };
+    }));
+
     res.status(200).json({
       success: true,
       data: {
-        records,
+        records: recordsWithNewFlag,
         pagination: {
           total,
           page: page ? parseInt(page) : 1,
