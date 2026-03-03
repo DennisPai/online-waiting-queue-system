@@ -1,5 +1,46 @@
 import jsPDF from 'jspdf';
 
+// 中文字體名稱常數
+const CJK_FONT = 'NotoSansTC';
+const FONT_URL = `${process.env.PUBLIC_URL || ''}/fonts/NotoSansTC-Regular.ttf`;
+
+// 快取：避免重複 fetch
+let _fontBase64Cache = null;
+
+/**
+ * 動態載入中文字體並轉成 Base64（有快取，只 fetch 一次）
+ */
+async function loadChineseFont() {
+  if (_fontBase64Cache) return _fontBase64Cache;
+  try {
+    const resp = await fetch(FONT_URL);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const buffer = await resp.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    // 轉 Base64
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    _fontBase64Cache = btoa(binary);
+    return _fontBase64Cache;
+  } catch (e) {
+    console.warn('[pdfGenerator] 中文字體載入失敗，將使用預設字體:', e.message);
+    return null;
+  }
+}
+
+/**
+ * 在 jsPDF instance 上註冊中文字體
+ */
+function registerChineseFont(pdf, fontBase64) {
+  if (!fontBase64) return;
+  try {
+    pdf.addFileToVFS('NotoSansTC-Regular.ttf', fontBase64);
+    pdf.addFont('NotoSansTC-Regular.ttf', CJK_FONT, 'normal');
+  } catch (e) {
+    console.warn('[pdfGenerator] 中文字體注冊失敗:', e.message);
+  }
+}
+
 /**
  * 生成修玄宮問事單 PDF
  * @param {Array} customers - 客戶資料陣列
@@ -18,6 +59,10 @@ export const generateFormsPDF = async (customers, filename = '修玄宮問事單
 
     // 創建 PDF，A4 橫式 (297mm x 210mm)
     const pdf = new jsPDF('landscape', 'mm', 'a4');
+
+    // 動態載入並注冊中文字體
+    const fontBase64 = await loadChineseFont();
+    registerChineseFont(pdf, fontBase64);
     
     // 計算需要的頁數，每頁兩張問事單
     const formsPerPage = 2;
@@ -80,8 +125,12 @@ const generatePageForms = async (pdf, customers, pageIndex) => {
  * 生成單張問事單
  */
 const generateSingleForm = async (pdf, customer, x, y, width, height) => {
-  // 設定字體 (使用 PDF 內建字體)
-  pdf.setFont('helvetica', 'normal');
+  // 設定字體（中文字體，若字體未載入則 fallback 到 helvetica）
+  try {
+    pdf.setFont(CJK_FONT, 'normal');
+  } catch (e) {
+    pdf.setFont('helvetica', 'normal');
+  }
   pdf.setDrawColor(0, 0, 0); // 黑色邊框
   pdf.setTextColor(0, 0, 0); // 黑色文字
   
