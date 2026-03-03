@@ -5,6 +5,7 @@ const scheduleAdmin = require('./schedule.admin.controller');
 const eventAdmin = require('./event.admin.controller');
 const endSessionAdmin = require('./end-session.admin.controller');
 const householdAdmin = require('./household.admin.controller');
+const logAdmin = require('./log.admin.controller');
 
 module.exports = {
   ...queueAdmin,
@@ -12,5 +13,6 @@ module.exports = {
   ...scheduleAdmin,
   ...eventAdmin,
   ...endSessionAdmin,
-  ...householdAdmin
+  ...householdAdmin,
+  ...logAdmin
 };

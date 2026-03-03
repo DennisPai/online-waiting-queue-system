@@ -90,6 +90,44 @@ exports.updateCustomer = async (req, res) => {
   }
 };
 
+// 刪除單筆來訪記錄，並更新 totalVisits/firstVisitDate/lastVisitDate
+exports.deleteVisitRecord = async (req, res) => {
+  try {
+    const { id, visitId } = req.params;
+
+    const customer = await Customer.findById(id);
+    if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
+
+    const visit = await VisitRecord.findOne({ _id: visitId, customerId: id });
+    if (!visit) return res.status(404).json({ success: false, message: '查無此來訪記錄' });
+
+    // 先記錄 backup（簡單版：console.log，完整 backup 在 Phase 2-3）
+    console.log('[backup] deleteVisitRecord before:', JSON.stringify(visit.toObject()));
+
+    // 刪除
+    await VisitRecord.findByIdAndDelete(visitId);
+
+    // 重新計算 totalVisits / firstVisitDate / lastVisitDate
+    const remaining = await VisitRecord.find({ customerId: id }).sort({ sessionDate: 1 }).lean();
+    const updates = {
+      totalVisits: remaining.length,
+      firstVisitDate: remaining.length > 0 ? remaining[0].sessionDate : null,
+      lastVisitDate: remaining.length > 0 ? remaining[remaining.length - 1].sessionDate : null
+    };
+    await Customer.findByIdAndUpdate(id, updates);
+
+    return res.status(200).json({
+      success: true,
+      code: 'OK',
+      message: '來訪記錄已刪除',
+      data: { deletedVisitId: visitId, ...updates }
+    });
+  } catch (error) {
+    logger.error('刪除來訪記錄錯誤:', error);
+    return res.status(500).json({ success: false, message: '伺服器內部錯誤' });
+  }
+};
+
 // 建立來訪記錄（歷史資料匯入 / 手動補登）
 exports.createVisitRecord = async (req, res) => {
   try {

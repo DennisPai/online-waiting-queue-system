@@ -17,6 +17,9 @@ const mongoSanitize = require('express-mongo-sanitize');
 // 導入錯誤處理中間件
 const { globalErrorHandler, notFoundHandler } = require('./utils/errorHandler');
 
+// 導入 Log middleware
+const logMiddleware = require('./utils/logMiddleware');
+
 // 導入初始化數據功能
 const initializeData = require('./utils/init-data');
 
@@ -80,6 +83,9 @@ app.get('/', (req, res) => {
     environment: process.env.NODE_ENV || 'development'
   });
 });
+
+// Log middleware（掛在路由之前，記錄所有 API 請求）
+app.use(logMiddleware);
 
 // v1 API 路由（重構完成後的統一路由）
 app.use('/api/v1', require('./routes/v1'));

@@ -345,6 +345,22 @@ const StatusPage = () => {
                             : '開科辦事日'}{' '}
                           時公布。
                         </Typography>
+                        {showQueueNumber && record.queueNumber && (
+                          <Grid container spacing={3} sx={{ mt: 1, mb: 1 }}>
+                            <Grid item xs={12} sm={6}>
+                              <Typography variant="body2" color="text.secondary">目前叫號</Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
+                                {record.currentQueueNumber || 0}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <Typography variant="body2" color="text.secondary">前面還有</Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
+                                {record.peopleAhead || 0} 組
+                              </Typography>
+                            </Grid>
+                          </Grid>
+                        )}
                         <Box sx={{ mt: 2 }}>
                           <Button
                             variant="outlined"
@@ -436,6 +452,22 @@ const StatusPage = () => {
                         : '開科辦事日'}{' '}
                       時公布。
                     </Typography>
+                    {showQueueNumber && currentQueueStatus.queueNumber && (
+                      <Grid container spacing={3} sx={{ mt: 1, mb: 1 }}>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">目前叫號</Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
+                            {currentQueueStatus.currentQueueNumber || 0}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">前面還有</Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '1.375rem', md: '1.5rem' } }}>
+                            {currentQueueStatus.peopleAhead || 0} 組
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    )}
                     <Box sx={{ mt: 2 }}>
                       <Button
                         variant="outlined"
