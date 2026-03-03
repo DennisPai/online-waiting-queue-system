@@ -1,0 +1,153 @@
+/**
+ * backup.admin.controller.js
+ * GET  /api/v1/admin/backups                - 列出 snapshot
+ * POST /api/v1/admin/backups/:id/restore    - 從 snapshot 恢復資料
+ * POST /api/v1/admin/backup/gdrive          - 手動觸發 Google Drive 備份
+ */
+const logger = require('../../utils/logger');
+const BackupSnapshot = require('../../models/backup-snapshot.model');
+const mongoose = require('mongoose');
+const { runFullBackup, getRecentBackupLogs } = require('../../services/gdrive-backup.service');
+
+// 列出 snapshot（分頁 + 篩選）
+exports.listBackups = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, operation, collection } = req.query;
+    const query = {};
+    if (operation) query.operation = operation;
+    if (collection) query.collection = collection;
+
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    const lim = parseInt(limit, 10);
+
+    const [snapshots, total] = await Promise.all([
+      BackupSnapshot.find(query).sort({ timestamp: -1 }).skip(skip).limit(lim).lean(),
+      BackupSnapshot.countDocuments(query)
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      code: 'OK',
+      data: {
+        snapshots,
+        pagination: { total, page: parseInt(page, 10), limit: lim, pages: Math.ceil(total / lim) }
+      }
+    });
+  } catch (error) {
+    logger.error('列出 backup 錯誤:', error);
+    return res.status(500).json({ success: false, code: 'INTERNAL_ERROR', message: '伺服器內部錯誤' });
+  }
+};
+
+// 從 snapshot 恢復資料
+exports.restoreBackup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { confirmToken } = req.body;
+
+    // 二次確認 token
+    if (confirmToken !== 'CONFIRM_RESTORE') {
+      return res.status(400).json({
+        success: false,
+        code: 'CONFIRM_REQUIRED',
+        message: '需要在 body 傳入 confirmToken: "CONFIRM_RESTORE" 以確認恢復操作'
+      });
+    }
+
+    const snapshot = await BackupSnapshot.findById(id).lean();
+    if (!snapshot) {
+      return res.status(404).json({ success: false, code: 'NOT_FOUND', message: '查無此備份記錄' });
+    }
+
+    // end-session 是陣列備份，不支援自動 restore
+    if (snapshot.operation === 'end-session' || Array.isArray(snapshot.beforeData)) {
+      return res.status(400).json({
+        success: false,
+        code: 'NOT_SUPPORTED',
+        message: 'end-session 的批次備份不支援自動恢復，請聯繫系統管理員手動處理'
+      });
+    }
+
+    if (!snapshot.documentId || !snapshot.beforeData) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_SNAPSHOT',
+        message: '此備份資料不完整，無法恢復'
+      });
+    }
+
+    // 根據 collection 找對應的 model
+    const collectionModelMap = {
+      'waitingrecords': require('../../models/waiting-record.model'),
+      'customer_profiles': require('../../models/customer.model'),
+      'customer_visits': require('../../models/visit-record.model'),
+      'customer_households': require('../../models/household.model')
+    };
+
+    const Model = collectionModelMap[snapshot.collection];
+    if (!Model) {
+      return res.status(400).json({
+        success: false,
+        code: 'UNKNOWN_COLLECTION',
+        message: `不支援恢復 collection: ${snapshot.collection}`
+      });
+    }
+
+    // 移除 mongoose 內部欄位後 restore
+    const restoreData = { ...snapshot.beforeData };
+    delete restoreData.__v;
+
+    const objectId = mongoose.Types.ObjectId.isValid(snapshot.documentId)
+      ? new mongoose.Types.ObjectId(snapshot.documentId)
+      : snapshot.documentId;
+
+    await Model.findByIdAndUpdate(
+      objectId,
+      restoreData,
+      { upsert: true, new: true, overwrite: true }
+    );
+
+    logger.info(`[backup restore] ${snapshot.collection}/${snapshot.documentId} 已恢復 by ${req.user?.id}`);
+
+    return res.status(200).json({
+      success: true,
+      code: 'OK',
+      message: `已恢復 ${snapshot.collection} 的資料（操作：${snapshot.operation}）`,
+      data: { snapshotId: id, collection: snapshot.collection, documentId: snapshot.documentId }
+    });
+  } catch (error) {
+    logger.error('恢復 backup 錯誤:', error);
+    return res.status(500).json({ success: false, code: 'INTERNAL_ERROR', message: '伺服器內部錯誤' });
+  }
+};
+
+// 手動觸發 Google Drive 備份
+exports.triggerGDriveBackup = async (req, res) => {
+  try {
+    const result = await runFullBackup();
+    if (result.success) {
+      return res.status(200).json({
+        success: true,
+        code: 'OK',
+        message: result.dryRun ? 'dry-run 模式（GDRIVE_BACKUP_ENABLED=false），備份未實際上傳' : '備份完成',
+        data: result
+      });
+    } else {
+      return res.status(500).json({ success: false, code: 'BACKUP_FAILED', message: result.error });
+    }
+  } catch (error) {
+    logger.error('觸發 gdrive 備份錯誤:', error);
+    return res.status(500).json({ success: false, code: 'INTERNAL_ERROR', message: '伺服器內部錯誤' });
+  }
+};
+
+// 取得最近 backup logs
+exports.getBackupLogs = async (req, res) => {
+  try {
+    const logs = await getRecentBackupLogs(20);
+    return res.status(200).json({ success: true, code: 'OK', data: { logs } });
+  } catch (error) {
+    logger.error('取得 backup logs 錯誤:', error);
+    return res.status(500).json({ success: false, code: 'INTERNAL_ERROR', message: '伺服器內部錯誤' });
+  }
+};

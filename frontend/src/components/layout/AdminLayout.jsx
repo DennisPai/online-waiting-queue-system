@@ -24,7 +24,8 @@ import {
   Dashboard as DashboardIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
-  People as PeopleIcon
+  People as PeopleIcon,
+  AdminPanelSettings as SystemIcon
 } from '@mui/icons-material';
 import { hideAlert } from '../../redux/slices/uiSlice';
 import { logout } from '../../redux/slices/authSlice';
@@ -95,6 +96,14 @@ const AdminLayout = () => {
               <PeopleIcon />
             </ListItemIcon>
             <ListItemText primary="客戶資料庫" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton onClick={() => navigateTo('/admin/system')}>
+            <ListItemIcon>
+              <SystemIcon />
+            </ListItemIcon>
+            <ListItemText primary="系統管理" />
           </ListItemButton>
         </ListItem>
       </List>

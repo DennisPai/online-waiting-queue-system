@@ -4,6 +4,7 @@ const SystemSetting = require('../../models/system-setting.model');
 const Customer = require('../../models/customer.model');
 const VisitRecord = require('../../models/visit-record.model');
 const Household = require('../../models/household.model');
+const { saveSnapshot } = require('../../utils/snapshot');
 
 /**
  * 比對客戶：name + lunarBirthYear/Month/Day
@@ -89,6 +90,18 @@ exports.endSession = async (req, res) => {
 
     // 取得所有需歸檔的候位記錄
     const records = await WaitingRecord.find({ status: { $ne: 'cancelled' } });
+
+    // 操作前快照（end-session 是高風險操作，先備份所有候位記錄）
+    // 使用 records（已查出的非取消記錄），不另外再查，避免 mock 相容問題
+    const allRecordsForBackup = Array.isArray(records) ? records.map(r => r.toObject ? r.toObject() : r) : records;
+    saveSnapshot({  // 非阻塞 fire-and-forget，不讓備份失敗阻斷主流程
+      operation: 'end-session',
+      collection: 'waitingrecords',
+      documentId: null,
+      beforeData: allRecordsForBackup,
+      operatorId: req.user?.id,
+      metadata: { totalRecords: allRecordsForBackup.length, nonCancelledCount: records.length }
+    }).catch(e => console.error('[end-session snapshot] 失敗:', e.message));
 
     // 取得 sessionDate
     const settings = await SystemSetting.getSettings();

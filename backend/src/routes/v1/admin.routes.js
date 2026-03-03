@@ -90,6 +90,14 @@ router.post('/customers/rebuild-households', adminController.rebuildHouseholds);
 // API Log 查詢
 router.get('/logs', adminController.getLogs);
 
+// 操作快照備份
+router.get('/backups', adminController.listBackups);
+router.post('/backups/:id/restore', adminController.restoreBackup);
+
+// Google Drive 備份
+router.post('/backup/gdrive', adminController.triggerGDriveBackup);
+router.get('/backup/logs', adminController.getBackupLogs);
+
 // 清空全部（已棄用，緊急使用）
 router.delete('/queue/clear-all', (req, res, next) => {
   res.setHeader('X-Deprecated', 'Use POST /admin/queue/end-session instead');

@@ -58,13 +58,47 @@ const registerLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use('/api/auth', authLimiter);
 app.use('/api/queue/register', registerLimiter);
 
-// 添加健康檢查端點
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    service: 'queue-system-backend'
-  });
+// 記錄服務啟動時間
+const APP_START_TIME = new Date();
+
+// 健康檢查端點（模組 H 強化版）
+app.get('/health', async (req, res) => {
+  try {
+    const { getQueueConn, getCustomerConn, QUEUE_DB_NAME, CUSTOMER_DB_NAME } = require('./config/db');
+    const getDbStatus = (conn) => {
+      try { return conn && conn.readyState === 1 ? 'connected' : 'disconnected'; }
+      catch { return 'unknown'; }
+    };
+
+    let lastBackup = null;
+    try {
+      const { getLastBackupLog } = require('./services/gdrive-backup.service');
+      lastBackup = await getLastBackupLog();
+    } catch { /* gdrive service 可能未初始化 */ }
+
+    return res.status(200).json({
+      status: 'ok',
+      uptime: Math.floor(process.uptime()),
+      startTime: APP_START_TIME.toISOString(),
+      timestamp: new Date().toISOString(),
+      service: 'queue-system-backend',
+      db: {
+        queue: { name: QUEUE_DB_NAME, status: getDbStatus(getQueueConn()) },
+        customer: { name: CUSTOMER_DB_NAME, status: getDbStatus(getCustomerConn()) }
+      },
+      lastBackup: lastBackup
+        ? { timestamp: lastBackup.timestamp, status: lastBackup.status, dryRun: lastBackup.dryRun }
+        : null
+    });
+  } catch (err) {
+    return res.status(200).json({
+      status: 'ok',
+      uptime: Math.floor(process.uptime()),
+      startTime: APP_START_TIME.toISOString(),
+      timestamp: new Date().toISOString(),
+      service: 'queue-system-backend'
+    });
+  }
 });
 
 // 就緒檢查端點（簡化版，可擴充檢查 DB 連線狀態）
@@ -118,6 +152,32 @@ const mongoDbName = process.env.MONGO_DB_NAME || QUEUE_DB;
 logger.info('嘗試連接到MongoDB:', mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'));
 logger.info('目標 DB 名稱:', mongoDbName);
 
+// MongoDB 斷線/重連 log（模組 H）
+mongoose.connection.on('disconnected', () => { logger.error('MongoDB 斷線'); });
+mongoose.connection.on('reconnected', () => { logger.info('MongoDB 重連成功'); });
+
+// 未捕獲的錯誤寫入 log_entries（模組 H）
+process.on('unhandledRejection', (reason) => {
+  logger.error('unhandledRejection:', reason);
+  try {
+    const LogEntry = require('./models/log-entry.model');
+    LogEntry.create({
+      method: 'SYSTEM', path: 'unhandledRejection',
+      tags: ['error', 'system'], error: String(reason)
+    }).catch(() => {});
+  } catch (e) { /* ignore */ }
+});
+process.on('uncaughtException', (err) => {
+  logger.error('uncaughtException:', err);
+  try {
+    const LogEntry = require('./models/log-entry.model');
+    LogEntry.create({
+      method: 'SYSTEM', path: 'uncaughtException',
+      tags: ['error', 'system', 'danger'], error: err.message
+    }).catch(() => {});
+  } catch (e) { /* ignore */ }
+});
+
 mongoose.connect(mongoUri, { dbName: mongoDbName })
   .then(async () => {
     logger.info('成功連接到MongoDB');
@@ -145,6 +205,10 @@ mongoose.connect(mongoUri, { dbName: mongoDbName })
     // 啟動排程系統（在資料庫連接成功後）
     logger.info('啟動排程系統...');
     await schedulePublicRegistrationOpening();
+
+    // 啟動 Google Drive 備份排程（模組 C-2）
+    const { startGDriveBackupScheduler } = require('./services/gdrive-backup.service');
+    startGDriveBackupScheduler();
     
     // 啟動伺服器
     const PORT = process.env.PORT || 8080;

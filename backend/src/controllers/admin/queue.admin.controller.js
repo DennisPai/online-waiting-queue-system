@@ -4,6 +4,7 @@ const SystemSetting = require('../../models/system-setting.model');
 const Customer = require('../../models/customer.model');
 const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = require('../../utils/calendarConverter');
 const { ensureOrderIndexConsistency } = require('../../utils/orderIndex');
+const { saveSnapshot } = require('../../utils/snapshot');
 
 // 獲取候位列表
 exports.getQueueList = async (req, res) => {
@@ -171,6 +172,16 @@ exports.updateQueueStatus = async (req, res) => {
     if (!record) {
       return res.status(404).json({ success: false, message: '查無此候位記錄' });
     }
+
+    // 操作前快照
+    await saveSnapshot({
+      operation: 'update-queue-status',
+      collection: 'waitingrecords',
+      documentId: String(record._id),
+      beforeData: record.toObject ? record.toObject() : record,
+      operatorId: req.user?.id,
+      metadata: { newStatus: status }
+    });
     
     const originalStatus = record.status;
     record.status = status;
@@ -362,6 +373,15 @@ exports.deleteCustomer = async (req, res) => {
     };
     
     logger.info(`管理員刪除客戶記錄: ${customerInfo.name} (${customerInfo.queueNumber}號)`);
+
+    // 操作前快照
+    await saveSnapshot({
+      operation: 'delete-queue-record',
+      collection: 'waitingrecords',
+      documentId: String(record._id),
+      beforeData: record.toObject ? record.toObject() : record,
+      operatorId: req.user?.id
+    });
     
     const deletedOrderIndex = record.orderIndex;
     await WaitingRecord.findByIdAndDelete(queueId);

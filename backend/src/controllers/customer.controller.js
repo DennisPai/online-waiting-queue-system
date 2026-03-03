@@ -2,6 +2,7 @@ const logger = require('../utils/logger');
 const Customer = require('../models/customer.model');
 const VisitRecord = require('../models/visit-record.model');
 const Household = require('../models/household.model');
+const { saveSnapshot } = require('../utils/snapshot');
 
 // 客戶列表（分頁 + 搜尋）
 exports.listCustomers = async (req, res) => {
@@ -81,8 +82,18 @@ exports.createCustomer = async (req, res) => {
 // 編輯客戶
 exports.updateCustomer = async (req, res) => {
   try {
+    const before = await Customer.findById(req.params.id).lean();
+    if (!before) return res.status(404).json({ success: false, message: '查無此客戶' });
+
+    await saveSnapshot({
+      operation: 'update-customer',
+      collection: 'customer_profiles',
+      documentId: String(before._id),
+      beforeData: before,
+      operatorId: req.user?.id
+    });
+
     const customer = await Customer.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
     res.status(200).json({ success: true, message: '客戶資料已更新', data: customer });
   } catch (error) {
     logger.error('編輯客戶錯誤:', error);
@@ -101,8 +112,15 @@ exports.deleteVisitRecord = async (req, res) => {
     const visit = await VisitRecord.findOne({ _id: visitId, customerId: id });
     if (!visit) return res.status(404).json({ success: false, message: '查無此來訪記錄' });
 
-    // 先記錄 backup（簡單版：console.log，完整 backup 在 Phase 2-3）
-    console.log('[backup] deleteVisitRecord before:', JSON.stringify(visit.toObject()));
+    // 操作前快照
+    await saveSnapshot({
+      operation: 'delete-visit-record',
+      collection: 'customer_visits',
+      documentId: String(visit._id),
+      beforeData: visit.toObject ? visit.toObject() : visit,
+      operatorId: req.user?.id,
+      metadata: { customerId: id }
+    });
 
     // 刪除
     await VisitRecord.findByIdAndDelete(visitId);
@@ -176,6 +194,15 @@ exports.deleteCustomer = async (req, res) => {
     const { id } = req.params;
     const customer = await Customer.findById(id);
     if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
+
+    // 操作前快照（先備份客戶資料）
+    await saveSnapshot({
+      operation: 'delete-customer',
+      collection: 'customer_profiles',
+      documentId: String(customer._id),
+      beforeData: customer.toObject ? customer.toObject() : customer,
+      operatorId: req.user?.id
+    });
 
     // 先刪 visits，再刪 customer
     const { deletedCount } = await VisitRecord.deleteMany({ customerId: id });
