@@ -20,6 +20,9 @@ const { globalErrorHandler, notFoundHandler } = require('./utils/errorHandler');
 // 導入 Log middleware
 const logMiddleware = require('./utils/logMiddleware');
 
+// 導入雙 DB 管理
+const { initDbConnections } = require('./config/db');
+
 // 導入初始化數據功能
 const initializeData = require('./utils/init-data');
 
@@ -105,10 +108,12 @@ const mongoUri = process.env.MONGODB_URI ||
                  process.env.MONGO_CONNECTION_STRING ||
                  'mongodb://localhost:27017/queue_system';
 
-// 指定 DB 名稱：優先用環境變數 MONGO_DB_NAME
-// Zeabur 注入的 URI 沒有指定 DB 名稱，預設會連到 'test'
-// 懷特的資料在 'test' DB（歷史原因），所以這裡 fallback 也用 'test'
-const mongoDbName = process.env.MONGO_DB_NAME || 'test';
+// 指定主連線的 DB 名稱
+// 雙 DB 模式：主連線用 QUEUE_DB_NAME（預設 'queue'）
+// 單一 DB 模式（向下相容）：MONGO_DB_NAME 或 'test'
+// 若同時設定 QUEUE_DB_NAME 和 MONGO_DB_NAME，優先用 QUEUE_DB_NAME
+const { QUEUE_DB_NAME: QUEUE_DB } = require('./config/db');
+const mongoDbName = process.env.MONGO_DB_NAME || QUEUE_DB;
 
 logger.info('嘗試連接到MongoDB:', mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'));
 logger.info('目標 DB 名稱:', mongoDbName);
@@ -116,6 +121,10 @@ logger.info('目標 DB 名稱:', mongoDbName);
 mongoose.connect(mongoUri, { dbName: mongoDbName })
   .then(async () => {
     logger.info('成功連接到MongoDB');
+
+    // 初始化雙 DB 連線（候位 DB + 客戶 DB）
+    // 必須在 mongoose.connect() 成功後、initializeData() 之前呼叫
+    initDbConnections();
     
     // 移除舊的唯一索引（如果存在）
     logger.info('檢查並移除queueNumber唯一索引...');

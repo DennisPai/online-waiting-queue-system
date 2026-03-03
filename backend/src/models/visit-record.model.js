@@ -37,3 +37,4 @@ const visitRecordSchema = new mongoose.Schema({
 visitRecordSchema.index({ customerId: 1, sessionDate: -1 });
 
 module.exports = mongoose.model('VisitRecord', visitRecordSchema);
+module.exports._schema = visitRecordSchema;

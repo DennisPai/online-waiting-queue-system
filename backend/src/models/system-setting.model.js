@@ -232,4 +232,5 @@ systemSettingSchema.statics.getSettings = async function() {
 
 const SystemSetting = mongoose.model('SystemSetting', systemSettingSchema);
 
-module.exports = SystemSetting; 
+module.exports = SystemSetting;
+module.exports._schema = systemSettingSchema; 

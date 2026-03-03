@@ -252,4 +252,5 @@ waitingRecordSchema.statics.getNextQueueNumber = async function() {
 
 const WaitingRecord = mongoose.model('WaitingRecord', waitingRecordSchema);
 
-module.exports = WaitingRecord; 
+module.exports = WaitingRecord;
+module.exports._schema = waitingRecordSchema; 

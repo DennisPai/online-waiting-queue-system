@@ -29,4 +29,6 @@ logEntrySchema.index(
 logEntrySchema.index({ method: 1, path: 1 });
 logEntrySchema.index({ tags: 1 });
 
-module.exports = mongoose.model('LogEntry', logEntrySchema);
+const LogEntry = mongoose.model('LogEntry', logEntrySchema);
+module.exports = LogEntry;
+module.exports._schema = logEntrySchema;

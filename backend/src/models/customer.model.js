@@ -73,3 +73,4 @@ customerSchema.index({ name: 1, lunarBirthYear: 1, lunarBirthMonth: 1, lunarBirt
 customerSchema.index({ householdId: 1 });
 
 module.exports = mongoose.model('Customer', customerSchema);
+module.exports._schema = customerSchema;

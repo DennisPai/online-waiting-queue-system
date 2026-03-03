@@ -22,3 +22,4 @@ const householdSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Household', householdSchema);
+module.exports._schema = householdSchema;
