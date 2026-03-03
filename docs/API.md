@@ -134,6 +134,13 @@ Base URL: `/api/v1`
 - **回傳:** `{ totalProcessed, newCustomers, returningCustomers, newHouseholds, skippedCancelled, sessionDate }`
 - **409:** 無需歸檔的記錄（候位已清空）
 
+#### GET `/admin/logs`
+查詢 API Log。
+- **Query:** `page`、`limit`（預設 50）、`method`、`path`（模糊）、`tag`、`from`/`to`（ISO 8601）、`statusCode`
+- **回傳:** `{ logs: [...], pagination: { total, page, limit, pages } }`
+- 每筆 log 含：`timestamp`, `method`, `path`, `statusCode`, `responseTimeMs`, `ip`, `userId`, `requestBody`（敏感欄位已遮蔽）, `tags`, `error`
+- Tags 說明：`admin`（管理端）、`write`（POST/PUT/DELETE）、`danger`（DELETE/end-session）、`error`（statusCode ≥ 400）
+
 #### POST `/admin/customers/rebuild-households`
 重建 Household 歸組（修正臨時地址污染後使用）。
 - **Body:** 無
@@ -254,6 +261,11 @@ Base URL: `/api/v1`
 - **Body:** `{ sessionDate (必填, ISO 8601), consultationTopics?, remarks?, queueNumber?, otherDetails? }`
 - **動作:** 建立 VisitRecord + 自動更新 totalVisits+1、firstVisitDate、lastVisitDate
 - **回傳:** 建立的 VisitRecord 物件
+
+### DELETE `/customers/:id/visits/:visitId`
+刪除單筆來訪記錄。
+- **動作:** 刪除 VisitRecord + 重新計算 totalVisits、firstVisitDate、lastVisitDate
+- **回傳:** `{ deletedVisitId, totalVisits, firstVisitDate, lastVisitDate }`
 
 ---
 
