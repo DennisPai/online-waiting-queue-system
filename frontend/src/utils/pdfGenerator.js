@@ -1,302 +1,210 @@
 import jsPDF from 'jspdf';
-
-// 中文字體名稱常數
-const CJK_FONT = 'NotoSansTC';
-const FONT_URL = `${process.env.PUBLIC_URL || ''}/fonts/NotoSansTC-Regular.ttf`;
-
-// 快取：避免重複 fetch
-let _fontBase64Cache = null;
+import html2canvas from 'html2canvas';
 
 /**
- * 動態載入中文字體並轉成 Base64（有快取，只 fetch 一次）
+ * 從已 render 的 DOM 元素截圖並輸出 PDF
+ * 使用 html2canvas，完全依賴瀏覽器字體渲染，100% 支援中文
+ *
+ * @param {Array} pageElements - 每頁的 DOM element（297mm×210mm 的 Box）
+ * @param {string} filename - 輸出檔名（不含副檔名）
  */
-async function loadChineseFont() {
-  if (_fontBase64Cache) return _fontBase64Cache;
-  try {
-    const resp = await fetch(FONT_URL);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const buffer = await resp.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    // 轉 Base64
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-    _fontBase64Cache = btoa(binary);
-    return _fontBase64Cache;
-  } catch (e) {
-    console.warn('[pdfGenerator] 中文字體載入失敗，將使用預設字體:', e.message);
-    return null;
+export const generatePDFFromDOMPages = async (pageElements, filename = '修玄宮問事單') => {
+  if (!pageElements || pageElements.length === 0) {
+    throw new Error('沒有可截圖的頁面元素');
   }
-}
+
+  const pdf = new jsPDF('landscape', 'mm', 'a4');
+  const A4_W = 297;
+  const A4_H = 210;
+
+  for (let i = 0; i < pageElements.length; i++) {
+    const el = pageElements[i];
+    if (!el) continue;
+
+    // html2canvas 截圖（scale=2 = 2x 解析度，更清晰）
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      // 確保截到完整元素
+      width: el.offsetWidth,
+      height: el.offsetHeight
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+    if (i > 0) pdf.addPage('a4', 'landscape');
+
+    // 把截圖貼滿 A4 橫式
+    pdf.addImage(imgData, 'JPEG', 0, 0, A4_W, A4_H);
+  }
+
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+  pdf.save(`${filename}_${timestamp}.pdf`);
+  return true;
+};
 
 /**
- * 在 jsPDF instance 上註冊中文字體
- */
-function registerChineseFont(pdf, fontBase64) {
-  if (!fontBase64) return;
-  try {
-    pdf.addFileToVFS('NotoSansTC-Regular.ttf', fontBase64);
-    pdf.addFont('NotoSansTC-Regular.ttf', CJK_FONT, 'normal');
-  } catch (e) {
-    console.warn('[pdfGenerator] 中文字體注冊失敗:', e.message);
-  }
-}
-
-/**
- * 生成修玄宮問事單 PDF
- * @param {Array} customers - 客戶資料陣列
- * @param {string} filename - 檔案名稱
+ * 舊版相容：從客戶資料直接生成 PDF（無 DOM 時使用）
+ * 此版本在瀏覽器支援中文字體的情況下才能正確顯示中文
+ * 推薦使用 generatePDFFromDOMPages 搭配預覽頁面的 DOM
  */
 export const generateFormsPDF = async (customers, filename = '修玄宮問事單') => {
-  try {
-    // 篩選等待中和處理中的客戶
-    const activeCustomers = customers.filter(customer => 
-      customer.status === 'waiting' || customer.status === 'processing'
-    );
+  // 若在 PDFPreviewPage 呼叫，優先用 DOM 截圖方式
+  // 這個 fallback 函式保留給不在預覽頁的呼叫場景
+  const activeCustomers = customers.filter(c =>
+    c.status === 'waiting' || c.status === 'processing'
+  );
+  if (activeCustomers.length === 0) throw new Error('沒有符合條件的客戶資料');
 
-    if (activeCustomers.length === 0) {
-      throw new Error('沒有符合條件的客戶資料');
-    }
+  // 嘗試找到預覽頁面已 render 的 DOM
+  const pageBoxes = document.querySelectorAll('[data-pdf-page]');
+  if (pageBoxes.length > 0) {
+    return generatePDFFromDOMPages(Array.from(pageBoxes), filename);
+  }
 
-    // 創建 PDF，A4 橫式 (297mm x 210mm)
-    const pdf = new jsPDF('landscape', 'mm', 'a4');
+  // 完全 fallback：動態建立 DOM 元素截圖
+  return _generatePDFByDynamicDOM(activeCustomers, filename);
+};
 
-    // 動態載入並注冊中文字體
-    const fontBase64 = await loadChineseFont();
-    registerChineseFont(pdf, fontBase64);
-    
-    // 計算需要的頁數，每頁兩張問事單
-    const formsPerPage = 2;
-    const totalPages = Math.ceil(activeCustomers.length / formsPerPage);
-    
-    for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
-      if (pageIndex > 0) {
-        pdf.addPage('a4', 'landscape');
+/**
+ * 動態建立不可見 DOM，render 後截圖
+ * 保證中文顯示正確（使用瀏覽器字體）
+ */
+async function _generatePDFByDynamicDOM(customers, filename) {
+  const pdf = new jsPDF('landscape', 'mm', 'a4');
+  const A4_W = 297;
+  const A4_H = 210;
+
+  // 每頁兩位客戶
+  const formsPerPage = 2;
+  const totalPages = Math.ceil(customers.length / formsPerPage);
+
+  for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+    const pageCustomers = customers.slice(pageIdx * formsPerPage, (pageIdx + 1) * formsPerPage);
+
+    // 建立暫時 container（螢幕外）
+    const container = document.createElement('div');
+    container.style.cssText = `
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 1122px;
+      height: 794px;
+      background: white;
+      display: flex;
+      align-items: stretch;
+    `;
+
+    pageCustomers.forEach((customer, i) => {
+      const formEl = document.createElement('div');
+      formEl.style.cssText = `
+        width: 560px;
+        height: 794px;
+        border: 2px solid black;
+        box-sizing: border-box;
+        padding: 8px;
+        font-family: 'Noto Sans TC', '微軟正黑體', 'Microsoft JhengHei', Arial, sans-serif;
+        font-size: 12px;
+        background: white;
+        overflow: hidden;
+      `;
+      formEl.innerHTML = buildFormHTML(customer);
+      container.appendChild(formEl);
+
+      // 裁切線
+      if (i < pageCustomers.length - 1) {
+        const line = document.createElement('div');
+        line.style.cssText = 'width: 2px; background: repeating-linear-gradient(to bottom, #999 0, #999 4px, transparent 4px, transparent 8px); flex-shrink: 0;';
+        container.appendChild(line);
       }
-      
-      // 獲取當前頁要處理的客戶
-      const startIndex = pageIndex * formsPerPage;
-      const pageCustomers = activeCustomers.slice(startIndex, startIndex + formsPerPage);
-      
-      // 生成當前頁的問事單
-      await generatePageForms(pdf, pageCustomers, pageIndex);
+    });
+
+    document.body.appendChild(container);
+
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: true
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if (pageIdx > 0) pdf.addPage('a4', 'landscape');
+      pdf.addImage(imgData, 'JPEG', 0, 0, A4_W, A4_H);
+    } finally {
+      document.body.removeChild(container);
     }
-    
-    // 下載 PDF
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
-    pdf.save(`${filename}_${timestamp}.pdf`);
-    
-    return true;
-  } catch (error) {
-    console.error('生成PDF時發生錯誤:', error);
-    throw new Error(`生成PDF檔案失敗: ${error.message}`);
   }
-};
+
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+  pdf.save(`${filename}_${timestamp}.pdf`);
+  return true;
+}
 
 /**
- * 生成單頁的問事單內容
+ * 為動態 DOM fallback 模式建立 HTML 字串
  */
-const generatePageForms = async (pdf, customers, pageIndex) => {
-  const pageWidth = 297; // A4 橫式寬度
-  const pageHeight = 210; // A4 橫式高度
-  const formWidth = 148; // A5 直式寬度
-  const formHeight = 200; // 問事單高度（留邊距）
-  const margin = 5;
-  
-  for (let i = 0; i < customers.length && i < 2; i++) {
-    const customer = customers[i];
-    const xOffset = margin + (i * (formWidth + 1)); // 左邊問事單或右邊問事單
-    const yOffset = margin;
-    
-    // 生成單張問事單
-    await generateSingleForm(pdf, customer, xOffset, yOffset, formWidth, formHeight);
-  }
-  
-  // 添加中間裁切線
-  if (customers.length === 2) {
-    const cutLineX = margin + formWidth + 0.5;
-    pdf.setLineDash([2, 2]); // 虛線
-    pdf.setDrawColor(128, 128, 128); // 灰色
-    pdf.line(cutLineX, margin, cutLineX, pageHeight - margin);
-    pdf.setLineDash([]); // 重置線條樣式
-  }
-};
-
-/**
- * 生成單張問事單
- */
-const generateSingleForm = async (pdf, customer, x, y, width, height) => {
-  // 設定字體（中文字體，若字體未載入則 fallback 到 helvetica）
-  try {
-    pdf.setFont(CJK_FONT, 'normal');
-  } catch (e) {
-    pdf.setFont('helvetica', 'normal');
-  }
-  pdf.setDrawColor(0, 0, 0); // 黑色邊框
-  pdf.setTextColor(0, 0, 0); // 黑色文字
-  
-  // 外框
-  pdf.rect(x, y, width, height);
-  
-  // 標題區域
-  const titleHeight = 15;
-  pdf.rect(x, y, width, titleHeight);
-  pdf.setFontSize(16);
-  pdf.text('修玄宮玄請示單', x + width/2, y + titleHeight/2 + 3, { align: 'center' });
-  
-  // 主要內容區域分割
-  const contentY = y + titleHeight;
-  const contentHeight = height - titleHeight;
-  
-  // 左側請示內容區域
-  const leftWidth = width * 0.4;
-  const middleWidth = width * 0.25;  
-  const rightWidth = width * 0.35;
-  
-  // 左側區域
-  pdf.rect(x, contentY, leftWidth, contentHeight);
-  pdf.setFontSize(12);
-  pdf.text('請示內容', x + leftWidth/2, contentY + 15, { align: 'center' });
-  
-  // 填入諮詢主題
-  const consultationText = formatConsultationTopics(customer.consultationTopics, customer.otherDetails);
-  pdf.setFontSize(10);
-  const lines = pdf.splitTextToSize(consultationText, leftWidth - 10);
-  pdf.text(lines, x + 5, contentY + 25);
-  
-  // 中間區域 (地址和時間)
-  pdf.rect(x + leftWidth, contentY, middleWidth, contentHeight);
-  
-  // 地址區域
-  const addressHeight = contentHeight * 0.3;
-  pdf.rect(x + leftWidth, contentY, middleWidth, addressHeight);
-  pdf.setFontSize(10);
-  pdf.text('地址：', x + leftWidth + 2, contentY + 10);
-  
+function buildFormHTML(customer) {
+  const consultationTopics = formatConsultationTopics(
+    customer.consultationTopics,
+    customer.otherDetails
+  );
   const address = getCustomerAddress(customer);
-  const addressLines = pdf.splitTextToSize(address, middleWidth - 4);
-  pdf.text(addressLines, x + leftWidth + 2, contentY + 18);
-  
-  // 時間區域
-  const timeY = contentY + addressHeight;
-  const timeHeight = contentHeight - addressHeight;
-  pdf.rect(x + leftWidth, timeY, middleWidth, timeHeight);
-  
-  // 年月日時的格子
-  const cellHeight = timeHeight / 4;
-  const cellWidth = middleWidth / 2;
-  
-  ['年', '月', '日', '時'].forEach((label, index) => {
-    const cellY = timeY + (index * cellHeight);
-    pdf.rect(x + leftWidth, cellY, cellWidth, cellHeight);
-    pdf.rect(x + leftWidth + cellWidth, cellY, cellWidth, cellHeight);
-    pdf.setFontSize(10);
-    pdf.text(label, x + leftWidth + cellWidth + cellWidth/2, cellY + cellHeight/2 + 2, { align: 'center' });
-  });
-  
-  // 右側區域 (個人資料)
-  pdf.rect(x + leftWidth + middleWidth, contentY, rightWidth, contentHeight);
-  
-  // 姓名
-  const nameHeight = contentHeight * 0.25;
-  pdf.rect(x + leftWidth + middleWidth, contentY, rightWidth, nameHeight);
-  pdf.setFontSize(12);
-  pdf.text('姓名', x + leftWidth + middleWidth + rightWidth/2, contentY + 8, { align: 'center' });
-  pdf.setFontSize(14);
-  pdf.text(customer.name, x + leftWidth + middleWidth + rightWidth/2, contentY + nameHeight - 5, { align: 'center' });
-  
-  // 性別
-  const genderY = contentY + nameHeight;
-  const genderHeight = contentHeight * 0.15;
-  pdf.rect(x + leftWidth + middleWidth, genderY, rightWidth, genderHeight);
-  pdf.setFontSize(10);
-  pdf.text('性別', x + leftWidth + middleWidth + 5, genderY + 8);
-  pdf.text(customer.gender === 'male' ? '男' : '女', x + leftWidth + middleWidth + rightWidth - 15, genderY + 8);
-  
-  // 年齡
-  const ageY = genderY + genderHeight;
-  const ageHeight = contentHeight * 0.15;
-  pdf.rect(x + leftWidth + middleWidth, ageY, rightWidth, ageHeight);
-  pdf.text('年齡', x + leftWidth + middleWidth + 5, ageY + 8);
-  pdf.text(customer.virtualAge ? `${customer.virtualAge}歲` : '', x + leftWidth + middleWidth + rightWidth - 25, ageY + 8);
-  
-  // 農曆出生
-  const birthY = ageY + ageHeight;
-  const birthHeight = contentHeight * 0.25;
-  pdf.rect(x + leftWidth + middleWidth, birthY, rightWidth, birthHeight);
-  pdf.text('農曆出生', x + leftWidth + middleWidth + rightWidth/2, birthY + 8, { align: 'center' });
-  pdf.text('年 月 日 時', x + leftWidth + middleWidth + rightWidth/2, birthY + 16, { align: 'center' });
-  
   const lunarDate = formatLunarDate(customer);
-  pdf.setFontSize(9);
-  pdf.text(lunarDate, x + leftWidth + middleWidth + rightWidth/2, birthY + birthHeight - 8, { align: 'center' });
-  
-  // 底部電話和編號區域
-  const bottomY = contentY + contentHeight * 0.8;
-  const bottomHeight = contentHeight * 0.2;
-  
-  // 電話區域
-  pdf.rect(x, bottomY, leftWidth, bottomHeight);
-  pdf.setFontSize(10);
-  pdf.text('電話：', x + 5, bottomY + 8);
-  pdf.text(customer.phone || '', x + 20, bottomY + 8);
-  
-  // 年月日區域
-  pdf.rect(x, bottomY + bottomHeight/2, leftWidth, bottomHeight/2);
-  pdf.text('年    月    日', x + leftWidth/2, bottomY + bottomHeight/2 + 8, { align: 'center' });
-  
-  // 編號區域  
-  pdf.rect(x, bottomY + bottomHeight, leftWidth, bottomHeight);
-  pdf.text('編號：', x + 5, bottomY + bottomHeight + 8);
-  pdf.text(customer.queueNumber.toString(), x + 25, bottomY + bottomHeight + 8);
-};
+  const genderText = customer.gender === 'male' ? '男' : '女';
 
-/**
- * 格式化諮詢主題
- */
+  return `
+    <div style="height:100%; display:flex; flex-direction:column; border:2px solid black;">
+      <div style="text-align:center; font-size:16px; font-weight:bold; padding:8px; border-bottom:2px solid black;">
+        修玄宮玄請示單
+      </div>
+      <div style="flex:1; display:flex; overflow:hidden;">
+        <div style="width:40%; border-right:1px solid black; padding:6px;">
+          <div style="font-weight:bold; margin-bottom:6px;">請示內容</div>
+          <div style="font-size:11px; line-height:1.6;">${consultationTopics}</div>
+        </div>
+        <div style="width:25%; border-right:1px solid black; padding:6px;">
+          <div style="font-size:11px; margin-bottom:6px;">地址：</div>
+          <div style="font-size:10px;">${address}</div>
+        </div>
+        <div style="width:35%; padding:6px;">
+          <div style="text-align:center; font-weight:bold; font-size:12px; margin-bottom:4px;">姓名</div>
+          <div style="text-align:center; font-size:16px; font-weight:bold; margin-bottom:8px;">${customer.name || ''}</div>
+          <div style="font-size:11px;">性別：${genderText}</div>
+          <div style="font-size:11px;">年齡：${customer.virtualAge || ''}歲</div>
+          <div style="font-size:11px; margin-top:4px;">農曆出生：</div>
+          <div style="font-size:11px;">${lunarDate}</div>
+          <div style="font-size:11px; margin-top:4px;">電話：${customer.phone || ''}</div>
+          <div style="font-size:11px;">編號：${customer.queueNumber || ''}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 const formatConsultationTopics = (topics, otherDetails) => {
   if (!topics || topics.length === 0) return '';
-  
   const topicMap = {
-    'body': '身體',
-    'fate': '運途', 
-    'karma': '因果',
-    'family': '家運/祖先',
-    'career': '事業',
-    'relationship': '婚姻感情',
-    'study': '學業',
-    'blessing': '收驚/加持',
-    'other': '其他'
+    body: '身體', fate: '運途', karma: '因果', family: '家運/祖先',
+    career: '事業', relationship: '婚姻感情', study: '學業',
+    blessing: '收驚/加持', other: '其他'
   };
-  
-  const translatedTopics = topics.map(topic => {
-    if (topic === 'other' && otherDetails) {
-      return `其他(${otherDetails})`;
-    }
-    return topicMap[topic] || topic;
-  });
-  
-  return translatedTopics.join('、');
+  return topics.map(t => t === 'other' && otherDetails ? `其他(${otherDetails})` : (topicMap[t] || t)).join('、');
 };
 
-/**
- * 格式化農曆日期
- */
 const formatLunarDate = (customer) => {
-  if (!customer.lunarBirthYear || !customer.lunarBirthMonth || !customer.lunarBirthDay) {
-    return '';
-  }
-  
+  if (!customer.lunarBirthYear) return '';
   const minguo = customer.lunarBirthYear - 1911;
-  return `民國${minguo}年${customer.lunarBirthMonth}月${customer.lunarBirthDay}日`;
+  return `民國${minguo}年${customer.lunarBirthMonth || ''}月${customer.lunarBirthDay || ''}日`;
 };
 
-/**
- * 獲取客戶地址
- */
 const getCustomerAddress = (customer) => {
   if (customer.addresses && customer.addresses.length > 0) {
-    return customer.addresses[0].address;
+    const addr = customer.addresses.find(a => a.address && a.address !== '臨時地址');
+    return addr ? addr.address : (customer.addresses[0].address || '');
   }
-  return '臨時地址';
+  return '';
 };
-

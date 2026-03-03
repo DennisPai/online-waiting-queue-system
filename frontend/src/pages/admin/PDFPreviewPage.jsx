@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -15,7 +15,7 @@ import {
   Print as PrintIcon
 } from '@mui/icons-material';
 import FormTemplate from '../../components/admin/FormTemplate';
-import { generateFormsPDF } from '../../utils/pdfGenerator';
+import { generatePDFFromDOMPages } from '../../utils/pdfGenerator';
 
 const PDFPreviewPage = () => {
   const location = useLocation();
@@ -24,6 +24,7 @@ const PDFPreviewPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
+  const pageRefs = useRef([]);
 
   useEffect(() => {
     try {
@@ -56,7 +57,10 @@ const PDFPreviewPage = () => {
   const handleDownload = async () => {
     setGenerating(true);
     try {
-      await generateFormsPDF(customers, '修玄宮問事單');
+      // 使用已 render 的 DOM 截圖（100% 支援中文）
+      const validRefs = pageRefs.current.filter(Boolean);
+      if (validRefs.length === 0) throw new Error('找不到可截圖的頁面元素');
+      await generatePDFFromDOMPages(validRefs, '修玄宮問事單');
     } catch (error) {
       alert(`下載失敗: ${error.message}`);
     } finally {
@@ -159,7 +163,8 @@ const PDFPreviewPage = () => {
                 第 {pageIndex + 1} 頁
               </Typography>
               
-              <Box 
+              <Box
+                ref={el => { pageRefs.current[pageIndex] = el; }}
                 sx={{ 
                   width: '297mm',
                   height: '210mm',

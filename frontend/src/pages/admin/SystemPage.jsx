@@ -13,8 +13,10 @@ import {
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
+import { API_ENDPOINTS } from '../../config/api';
 
-const API_BASE = process.env.REACT_APP_API_URL || '/api/v1';
+// 使用 config/api.js 的 ADMIN endpoint（含正確的 backend URL）
+const ADMIN_API = API_ENDPOINTS.ADMIN;
 
 function useAdminApi() {
   const token = useSelector((state) => state.auth?.token);
@@ -39,7 +41,7 @@ function SnapshotSection() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/admin/backups?limit=10`, { headers });
+      const res = await axios.get(`${ADMIN_API}/backups?limit=10`, { headers });
       setSnapshots(res.data.data?.snapshots || []);
     } catch {
       setSnapshots([]);
@@ -53,7 +55,7 @@ function SnapshotSection() {
   const handleRestore = async () => {
     try {
       const res = await axios.post(
-        `${API_BASE}/admin/backups/${restoreDialog.snapshot._id}/restore`,
+        `${ADMIN_API}/backups/${restoreDialog.snapshot._id}/restore`,
         { confirmToken },
         { headers }
       );
@@ -160,7 +162,7 @@ function GDriveSection() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/admin/backup/logs`, { headers });
+      const res = await axios.get(`${ADMIN_API}/backup/logs`, { headers });
       setLogs(res.data.data?.logs || []);
     } catch {
       setLogs([]);
@@ -175,7 +177,7 @@ function GDriveSection() {
     setBackingUp(true);
     setMsg(null);
     try {
-      const res = await axios.post(`${API_BASE}/admin/backup/gdrive`, {}, { headers });
+      const res = await axios.post(`${ADMIN_API}/backup/gdrive`, {}, { headers });
       const d = res.data;
       setMsg({ type: 'success', text: d.data?.dryRun ? 'dry-run 完成（未實際上傳）' : `備份完成：${d.data?.fileName}` });
       load();
@@ -245,7 +247,7 @@ function ApiLogSection() {
     try {
       const params = new URLSearchParams({ limit: 50 });
       if (dangerOnly) params.set('tag', 'danger');
-      const res = await axios.get(`${API_BASE}/admin/logs?${params}`, { headers });
+      const res = await axios.get(`${ADMIN_API}/logs?${params}`, { headers });
       setLogs(res.data.data?.logs || []);
     } catch {
       setLogs([]);
