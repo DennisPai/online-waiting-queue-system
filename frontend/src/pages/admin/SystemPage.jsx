@@ -11,17 +11,17 @@ import {
   RestoreFromTrash as RestoreIcon,
   FilterAlt as FilterIcon
 } from '@mui/icons-material';
-import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../../config/api';
+import { store } from '../../redux/store';
 
 // 使用 config/api.js 的 ADMIN endpoint（含正確的 backend URL）
 const ADMIN_API = API_ENDPOINTS.ADMIN;
 
-function useAdminApi() {
-  const token = useSelector((state) => state.auth?.token);
-  const headers = { Authorization: `Bearer ${token}` };
-  return { headers };
+// 每次呼叫都從 Redux store 取最新 token，避免 closure 陷阱
+function getAuthHeaders() {
+  const token = store.getState().auth?.token || localStorage.getItem('token');
+  return { Authorization: `Bearer ${token}` };
 }
 
 function formatDate(ts) {
@@ -31,7 +31,6 @@ function formatDate(ts) {
 
 // ── 最近 10 筆操作快照 ──
 function SnapshotSection() {
-  const { headers } = useAdminApi();
   const [snapshots, setSnapshots] = useState([]);
   const [loading, setLoading] = useState(false);
   const [restoreDialog, setRestoreDialog] = useState({ open: false, snapshot: null });
@@ -41,7 +40,7 @@ function SnapshotSection() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${ADMIN_API}/backups?limit=10`, { headers });
+      const res = await axios.get(`${ADMIN_API}/backups?limit=10`, { headers: getAuthHeaders() });
       setSnapshots(res.data.data?.snapshots || []);
     } catch {
       setSnapshots([]);
@@ -57,7 +56,7 @@ function SnapshotSection() {
       const res = await axios.post(
         `${ADMIN_API}/backups/${restoreDialog.snapshot._id}/restore`,
         { confirmToken },
-        { headers }
+        { headers: getAuthHeaders() }
       );
       setRestoreMsg({ type: 'success', text: res.data.message || '恢復成功' });
     } catch (err) {
@@ -153,7 +152,6 @@ function SnapshotSection() {
 
 // ── Google Drive 備份紀錄 ──
 function GDriveSection() {
-  const { headers } = useAdminApi();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
@@ -162,7 +160,7 @@ function GDriveSection() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${ADMIN_API}/backup/logs`, { headers });
+      const res = await axios.get(`${ADMIN_API}/backup/logs`, { headers: getAuthHeaders() });
       setLogs(res.data.data?.logs || []);
     } catch {
       setLogs([]);
@@ -177,7 +175,7 @@ function GDriveSection() {
     setBackingUp(true);
     setMsg(null);
     try {
-      const res = await axios.post(`${ADMIN_API}/backup/gdrive`, {}, { headers });
+      const res = await axios.post(`${ADMIN_API}/backup/gdrive`, {}, { headers: getAuthHeaders() });
       const d = res.data;
       setMsg({ type: 'success', text: d.data?.dryRun ? 'dry-run 完成（未實際上傳）' : `備份完成：${d.data?.fileName}` });
       load();
@@ -237,7 +235,6 @@ function GDriveSection() {
 
 // ── API Log ──
 function ApiLogSection() {
-  const { headers } = useAdminApi();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dangerOnly, setDangerOnly] = useState(false);
@@ -247,7 +244,7 @@ function ApiLogSection() {
     try {
       const params = new URLSearchParams({ limit: 50 });
       if (dangerOnly) params.set('tag', 'danger');
-      const res = await axios.get(`${ADMIN_API}/logs?${params}`, { headers });
+      const res = await axios.get(`${ADMIN_API}/logs?${params}`, { headers: getAuthHeaders() });
       setLogs(res.data.data?.logs || []);
     } catch {
       setLogs([]);
