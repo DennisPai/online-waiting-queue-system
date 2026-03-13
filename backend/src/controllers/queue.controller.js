@@ -168,11 +168,15 @@ const getQueueStatus = catchAsync(async (req, res) => {
     
     // 若辦事服務已停止，返回相關資訊但仍包含publicRegistrationEnabled狀態
     if (!settings.isQueueOpen) {
-      // 即使系統關閉，也計算目前最大的 orderIndex
+      // 即使系統關閉，也計算目前最大的 orderIndex 和非取消人數
       const maxOrderIndexRecord = await WaitingRecord.findOne({
         status: { $in: ['waiting', 'processing'] }
       }).sort({ orderIndex: -1 });
       const currentMaxOrderIndex = maxOrderIndexRecord ? maxOrderIndexRecord.orderIndex : 0;
+      // 計算非取消人數（結束本期確認對話框需要）
+      const nonCancelledCount = await WaitingRecord.countDocuments({
+        status: { $in: ['waiting', 'processing'] }
+      });
       
       return res.status(200).json({
         success: true,
@@ -185,7 +189,7 @@ const getQueueStatus = catchAsync(async (req, res) => {
           showQueueNumberInQuery: settings.showQueueNumberInQuery !== false,
           nextSessionDate: settings.nextSessionDate,
           currentQueueNumber: 0,
-          waitingCount: 0,
+          waitingCount: nonCancelledCount,
           totalCustomerCount: settings.totalCustomerCount || 0,
           lastCompletedTime: settings.lastCompletedTime,
           currentMaxOrderIndex,
