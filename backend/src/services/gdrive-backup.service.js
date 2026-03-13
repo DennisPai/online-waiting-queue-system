@@ -1,13 +1,17 @@
 /**
  * gdrive-backup.service.js
- * Google Drive 每日備份服務
+ * Google Drive 每日備份服務（OAuth2 Refresh Token 方式）
  *
  * 環境變數：
  *   GDRIVE_BACKUP_ENABLED   - 'true' 啟用（預設 false）
+ *   GDRIVE_CLIENT_ID        - OAuth2 Client ID
+ *   GDRIVE_CLIENT_SECRET    - OAuth2 Client Secret
+ *   GDRIVE_REFRESH_TOKEN    - OAuth2 Refresh Token（一次性授權後取得）
  *   GDRIVE_FOLDER_ID        - Google Drive 目標資料夾 ID
- *   GDRIVE_SERVICE_ACCOUNT_KEY - Service Account JSON（Base64 encode）
  *   GDRIVE_BACKUP_CRON      - cron 表達式（預設 '0 18 * * *' = 台北 02:00）
  *   LOG_BACKUP_TTL_DAYS     - backup_logs 保留天數（預設 90）
+ *
+ * ⚠️ 舊的 GDRIVE_SERVICE_ACCOUNT_KEY 已移除，改用 OAuth2
  */
 const { google } = require('googleapis');
 const mongoose = require('mongoose');
@@ -56,6 +60,26 @@ async function dumpDb(dbConn, dbName) {
   return { dbName, collections: Object.keys(dump), data: dump };
 }
 
+// ── 建立 OAuth2 Drive client ──
+function _createOAuth2Drive() {
+  const clientId = process.env.GDRIVE_CLIENT_ID;
+  const clientSecret = process.env.GDRIVE_CLIENT_SECRET;
+  const refreshToken = process.env.GDRIVE_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    const missing = [
+      !clientId && 'GDRIVE_CLIENT_ID',
+      !clientSecret && 'GDRIVE_CLIENT_SECRET',
+      !refreshToken && 'GDRIVE_REFRESH_TOKEN'
+    ].filter(Boolean).join(', ');
+    throw new Error(`缺少 GDrive OAuth2 環境變數：${missing}`);
+  }
+
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, 'http://localhost');
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  return google.drive({ version: 'v3', auth: oauth2Client });
+}
+
 // ── Google Drive 上傳 ──
 async function uploadToGDrive(fileName, content) {
   const enabled = process.env.GDRIVE_BACKUP_ENABLED === 'true';
@@ -64,62 +88,28 @@ async function uploadToGDrive(fileName, content) {
     return { dryRun: true, fileName };
   }
 
-  const keyBase64 = process.env.GDRIVE_SERVICE_ACCOUNT_KEY;
-  if (!keyBase64) throw new Error('缺少 GDRIVE_SERVICE_ACCOUNT_KEY 環境變數');
-
-  const credentials = JSON.parse(Buffer.from(keyBase64, 'base64').toString('utf-8'));
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/drive']
-  });
-
-  const drive = google.drive({ version: 'v3', auth });
+  const drive = _createOAuth2Drive();
   const folderId = process.env.GDRIVE_FOLDER_ID;
 
   const { Readable } = require('stream');
   const contentStr = JSON.stringify(content, null, 2);
   const stream = Readable.from([contentStr]);
 
-  // 步驟 1：先不指定 parents，上傳到 Service Account 根目錄
-  const fileMetadata = { name: fileName };
+  const fileMetadata = {
+    name: fileName,
+    parents: folderId ? [folderId] : undefined
+  };
   const media = { mimeType: 'application/json', body: stream };
 
   const response = await drive.files.create({
     requestBody: fileMetadata,
     media,
-    fields: 'id, name, size',
-    supportsAllDrives: true
+    fields: 'id, name, size'
   });
-
-  const fileId = response.data.id;
-
-  // 步驟 2：若設定了 GDRIVE_FOLDER_ID，把檔案移到目標資料夾
-  if (folderId && fileId) {
-    try {
-      // 先取得目前的 parents
-      const fileMeta = await drive.files.get({
-        fileId,
-        fields: 'parents',
-        supportsAllDrives: true
-      });
-      const prevParents = (fileMeta.data.parents || []).join(',');
-
-      await drive.files.update({
-        fileId,
-        addParents: folderId,
-        removeParents: prevParents,
-        fields: 'id, parents',
-        supportsAllDrives: true
-      });
-      logger.info(`[gdrive-backup] 檔案已移到資料夾 ${folderId}`);
-    } catch (moveErr) {
-      logger.warn(`[gdrive-backup] 移動檔案失敗（檔案已上傳但在 SA 根目錄）: ${moveErr.message}`);
-    }
-  }
 
   return {
     dryRun: false,
-    fileId,
+    fileId: response.data.id,
     fileName: response.data.name,
     fileSizeBytes: parseInt(response.data.size || '0', 10)
   };
@@ -133,21 +123,15 @@ async function cleanOldBackups(daysToKeep = 30) {
     return;
   }
 
-  const keyBase64 = process.env.GDRIVE_SERVICE_ACCOUNT_KEY;
-  if (!keyBase64) return;
-
-  const credentials = JSON.parse(Buffer.from(keyBase64, 'base64').toString('utf-8'));
-  const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/drive'] });
-  const drive = google.drive({ version: 'v3', auth });
-
+  const drive = _createOAuth2Drive();
   const cutoff = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000).toISOString();
   const folderId = process.env.GDRIVE_FOLDER_ID;
   const q = `name contains 'backup-' and createdTime < '${cutoff}'${folderId ? ` and '${folderId}' in parents` : ''}`;
 
-  const list = await drive.files.list({ q, fields: 'files(id, name)', supportsAllDrives: true, includeItemsFromAllDrives: true });
+  const list = await drive.files.list({ q, fields: 'files(id, name)' });
   const files = list.data.files || [];
   for (const f of files) {
-    await drive.files.delete({ fileId: f.id, supportsAllDrives: true });
+    await drive.files.delete({ fileId: f.id });
     logger.info(`[gdrive-backup] 已刪除舊備份: ${f.name}`);
   }
 }
@@ -239,13 +223,24 @@ function startGDriveBackupScheduler() {
     return;
   }
 
+  // 啟動時檢查必要環境變數，缺少時 log 明確錯誤
+  const required = ['GDRIVE_CLIENT_ID', 'GDRIVE_CLIENT_SECRET', 'GDRIVE_REFRESH_TOKEN'];
+  const missing = required.filter(k => !process.env[k]);
+  if (missing.length > 0) {
+    logger.error(`[gdrive-backup] ❌ 排程啟動失敗：缺少環境變數 ${missing.join(', ')}`);
+    return;
+  }
+
   const cron = require('node-cron');
   const schedule = process.env.GDRIVE_BACKUP_CRON || '0 18 * * *';
   cron.schedule(schedule, () => {
     logger.info(`[gdrive-backup] cron 觸發 (${schedule})`);
     runFullBackup().catch(err => logger.error('[gdrive-backup] cron 執行失敗:', err.message));
   });
-  logger.info(`[gdrive-backup] 排程已啟動：${schedule}`);
+  logger.info(`[gdrive-backup] 排程已啟動（OAuth2）：${schedule}`);
+  if (process.env.GDRIVE_FOLDER_ID) {
+    logger.info(`[gdrive-backup] 目標資料夾 ID: ${process.env.GDRIVE_FOLDER_ID}`);
+  }
 }
 
 module.exports = { runFullBackup, getLastBackupLog, getRecentBackupLogs, startGDriveBackupScheduler };

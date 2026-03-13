@@ -61,6 +61,18 @@
    JWT_SECRET=your_strong_jwt_secret_key_32_chars_minimum
    JWT_EXPIRES_IN=1d
    MONGO_CONNECTION_STRING=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}
+
+   # 雙 DB（Phase 2-2 以後）
+   QUEUE_DB_NAME=queue
+   CUSTOMER_DB_NAME=customer
+
+   # Google Drive 備份（Phase 2-3 以後，OAuth2 Refresh Token 方式）
+   GDRIVE_BACKUP_ENABLED=false          # 改為 true 啟用
+   GDRIVE_CLIENT_ID=                    # Google OAuth2 Client ID
+   GDRIVE_CLIENT_SECRET=                # Google OAuth2 Client Secret
+   GDRIVE_REFRESH_TOKEN=                # OAuth2 Refresh Token（一次性授權後取得）
+   GDRIVE_FOLDER_ID=                    # 目標 Google Drive 資料夾 ID
+   GDRIVE_BACKUP_CRON=0 18 * * *        # 每日台北 02:00 備份（UTC 18:00）
    ```
    
    ⚠️ **JWT_SECRET 安全建議**：
