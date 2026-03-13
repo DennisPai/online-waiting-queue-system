@@ -80,10 +80,8 @@ async function uploadToGDrive(fileName, content) {
   const contentStr = JSON.stringify(content, null, 2);
   const stream = Readable.from([contentStr]);
 
-  const fileMetadata = {
-    name: fileName,
-    parents: folderId ? [folderId] : undefined
-  };
+  // 步驟 1：先不指定 parents，上傳到 Service Account 根目錄
+  const fileMetadata = { name: fileName };
   const media = { mimeType: 'application/json', body: stream };
 
   const response = await drive.files.create({
@@ -93,9 +91,35 @@ async function uploadToGDrive(fileName, content) {
     supportsAllDrives: true
   });
 
+  const fileId = response.data.id;
+
+  // 步驟 2：若設定了 GDRIVE_FOLDER_ID，把檔案移到目標資料夾
+  if (folderId && fileId) {
+    try {
+      // 先取得目前的 parents
+      const fileMeta = await drive.files.get({
+        fileId,
+        fields: 'parents',
+        supportsAllDrives: true
+      });
+      const prevParents = (fileMeta.data.parents || []).join(',');
+
+      await drive.files.update({
+        fileId,
+        addParents: folderId,
+        removeParents: prevParents,
+        fields: 'id, parents',
+        supportsAllDrives: true
+      });
+      logger.info(`[gdrive-backup] 檔案已移到資料夾 ${folderId}`);
+    } catch (moveErr) {
+      logger.warn(`[gdrive-backup] 移動檔案失敗（檔案已上傳但在 SA 根目錄）: ${moveErr.message}`);
+    }
+  }
+
   return {
     dryRun: false,
-    fileId: response.data.id,
+    fileId,
     fileName: response.data.name,
     fileSizeBytes: parseInt(response.data.size || '0', 10)
   };
