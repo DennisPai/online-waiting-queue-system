@@ -173,14 +173,24 @@ exports.updateQueueStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: '查無此候位記錄' });
     }
 
-    // 操作前快照
+    // 操作前快照（加入具體描述）
+    const statusLabelMap = {
+      waiting: '恢復候位',
+      processing: '開始處理',
+      completed: '完成問事',
+      cancelled: '取消候位'
+    };
     await saveSnapshot({
       operation: 'update-queue-status',
       collection: 'waitingrecords',
       documentId: String(record._id),
       beforeData: record.toObject ? record.toObject() : record,
       operatorId: req.user?.id,
-      metadata: { newStatus: status }
+      metadata: {
+        newStatus: status,
+        previousStatus: record.status,
+        description: `${statusLabelMap[status] || status}（${record.name || ''}，${record.status} → ${status}）`
+      }
     });
     
     const originalStatus = record.status;
@@ -374,13 +384,16 @@ exports.deleteCustomer = async (req, res) => {
     
     logger.info(`管理員刪除客戶記錄: ${customerInfo.name} (${customerInfo.queueNumber}號)`);
 
-    // 操作前快照
+    // 操作前快照（加入具體描述）
     await saveSnapshot({
       operation: 'delete-queue-record',
       collection: 'waitingrecords',
       documentId: String(record._id),
       beforeData: record.toObject ? record.toObject() : record,
-      operatorId: req.user?.id
+      operatorId: req.user?.id,
+      metadata: {
+        description: `刪除候位（${record.name || ''}，第 ${record.queueNumber} 號）`
+      }
     });
     
     const deletedOrderIndex = record.orderIndex;

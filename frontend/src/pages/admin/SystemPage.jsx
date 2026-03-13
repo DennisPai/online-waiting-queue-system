@@ -98,7 +98,14 @@ function SnapshotSection() {
               ) : snapshots.map((s) => (
                 <TableRow key={s._id} hover>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(s.timestamp)}</TableCell>
-                  <TableCell><Chip label={s.operation} size="small" color={opColor(s.operation)} /></TableCell>
+                  <TableCell>
+                    <Chip label={s.operation} size="small" color={opColor(s.operation)} />
+                    {s.metadata?.description && (
+                      <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.3 }}>
+                        {s.metadata.description}
+                      </Typography>
+                    )}
+                  </TableCell>
                   <TableCell>{s.collection}</TableCell>
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{s.documentId || '（批次）'}</TableCell>
                   <TableCell align="center">

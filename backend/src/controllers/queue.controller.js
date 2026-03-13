@@ -211,9 +211,9 @@ const getQueueStatus = catchAsync(async (req, res) => {
       await settings.save();
     }
     
-    // 計算等待中的候位數量（後台管理中狀態為"等待中"的總數）
+    // 計算本期非取消人數（waiting + processing，供「結束本期」確認對話框使用）
     const waitingCount = await WaitingRecord.countDocuments({ 
-      status: 'waiting'
+      status: { $in: ['waiting', 'processing'] }
     });
     
     // 計算目前最大的 orderIndex（用於額滿檢查）
