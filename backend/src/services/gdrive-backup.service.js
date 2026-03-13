@@ -89,7 +89,8 @@ async function uploadToGDrive(fileName, content) {
   const response = await drive.files.create({
     requestBody: fileMetadata,
     media,
-    fields: 'id, name, size'
+    fields: 'id, name, size',
+    supportsAllDrives: true
   });
 
   return {
@@ -119,10 +120,10 @@ async function cleanOldBackups(daysToKeep = 30) {
   const folderId = process.env.GDRIVE_FOLDER_ID;
   const q = `name contains 'backup-' and createdTime < '${cutoff}'${folderId ? ` and '${folderId}' in parents` : ''}`;
 
-  const list = await drive.files.list({ q, fields: 'files(id, name)' });
+  const list = await drive.files.list({ q, fields: 'files(id, name)', supportsAllDrives: true, includeItemsFromAllDrives: true });
   const files = list.data.files || [];
   for (const f of files) {
-    await drive.files.delete({ fileId: f.id });
+    await drive.files.delete({ fileId: f.id, supportsAllDrives: true });
     logger.info(`[gdrive-backup] 已刪除舊備份: ${f.name}`);
   }
 }
