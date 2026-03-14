@@ -39,6 +39,14 @@ async function findOrCreateCustomer(data, sessionDate) {
     if (phone) existing.phone = phone;
     if (zodiac) existing.zodiac = zodiac;
     if (addresses && addresses.length > 0) existing.addresses = addresses;
+    if (gender) existing.gender = gender;
+    if (gregorianBirthYear) existing.gregorianBirthYear = gregorianBirthYear;
+    if (gregorianBirthMonth) existing.gregorianBirthMonth = gregorianBirthMonth;
+    if (gregorianBirthDay) existing.gregorianBirthDay = gregorianBirthDay;
+    if (lunarBirthYear) existing.lunarBirthYear = lunarBirthYear;
+    if (lunarBirthMonth) existing.lunarBirthMonth = lunarBirthMonth;
+    if (lunarBirthDay) existing.lunarBirthDay = lunarBirthDay;
+    if (lunarIsLeapMonth !== undefined) existing.lunarIsLeapMonth = lunarIsLeapMonth;
     await existing.save();
   } else {
     // 新客：建立

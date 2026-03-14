@@ -167,10 +167,10 @@ function calculateZodiac(lunarBirthYear) {
     // 創建農曆日期對象（使用年份的第一天即可獲取生肖）
     const lunar = Lunar.fromYmd(lunarBirthYear, 1, 1);
     
-    // 取得生肖
-    const zodiac = lunar.getYearShengXiao();
-    
-    return zodiac;
+    // 取得生肖（lunar-javascript 回傳簡體，轉繁體）
+    const simplifiedToTraditional = { '龙': '龍', '马': '馬', '鸡': '雞', '猪': '豬' };
+    const raw = lunar.getYearShengXiao();
+    return simplifiedToTraditional[raw] || raw;
   } catch (error) {
     logger.error('生肖計算錯誤:', error);
     return null;
