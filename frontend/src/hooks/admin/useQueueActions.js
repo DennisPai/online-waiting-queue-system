@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   callNextQueue,
   updateQueueStatus,
@@ -17,6 +17,7 @@ import { showAlert } from '../../redux/slices/uiSlice';
  */
 export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueList, setConfirmDialog, handleCloseConfirmDialog }) => {
   const dispatch = useDispatch();
+  const isQueueOpen = useSelector(state => state.queue.isQueueOpen);
 
   // 重新排序
   const handleReorderQueue = useCallback(async () => {
@@ -153,10 +154,11 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
 
-    // 更新本地順序
+    // 更新本地順序（isOpen=false 時同步 queueNumber = orderIndex）
     const updatedItems = items.map((item, index) => ({
       ...item,
-      orderIndex: index + 1
+      orderIndex: index + 1,
+      ...(isQueueOpen ? {} : { queueNumber: index + 1 })
     }));
 
     setLocalQueueList(updatedItems);

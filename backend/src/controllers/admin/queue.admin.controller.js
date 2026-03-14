@@ -212,7 +212,13 @@ exports.updateQueueStatus = async (req, res) => {
       const maxOrderRecord = await WaitingRecord.findOne({
         status: { $in: ['waiting', 'processing'] }
       }).sort({ orderIndex: -1 });
-      record.orderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
+      const newOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
+      record.orderIndex = newOrderIndex;
+      // isOpen=false 時同步 queueNumber = 新 orderIndex
+      const statusSettings = await SystemSetting.getSettings();
+      if (!statusSettings.isQueueOpen) {
+        record.queueNumber = newOrderIndex;
+      }
     }
     
     await record.save();
@@ -253,20 +259,40 @@ exports.updateQueueOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: `新順序 ${newOrder} 超出了候位總數 ${totalRecords}` });
     }
     
+    // 取得目前 isOpen 狀態（決定是否同步 queueNumber）
+    const settings = await SystemSetting.getSettings();
+    const isOpen = settings.isQueueOpen;
+
     // updateMany 也只影響 waiting/processing 的記錄（不動 completed/cancelled）
     if (currentOrder < newOrder) {
-      await WaitingRecord.updateMany(
-        { status: { $in: activeStatuses }, orderIndex: { $gt: currentOrder, $lte: newOrder }, _id: { $ne: queueId } },
-        { $inc: { orderIndex: -1 } }
-      );
+      // 往後移：中間的記錄 orderIndex -1
+      const middleRecords = await WaitingRecord.find({
+        status: { $in: activeStatuses },
+        orderIndex: { $gt: currentOrder, $lte: newOrder },
+        _id: { $ne: queueId }
+      });
+      for (const r of middleRecords) {
+        r.orderIndex -= 1;
+        if (!isOpen) r.queueNumber = r.orderIndex;
+        await r.save();
+      }
     } else {
-      await WaitingRecord.updateMany(
-        { status: { $in: activeStatuses }, orderIndex: { $gte: newOrder, $lt: currentOrder }, _id: { $ne: queueId } },
-        { $inc: { orderIndex: 1 } }
-      );
+      // 往前移：中間的記錄 orderIndex +1
+      const middleRecords = await WaitingRecord.find({
+        status: { $in: activeStatuses },
+        orderIndex: { $gte: newOrder, $lt: currentOrder },
+        _id: { $ne: queueId }
+      });
+      for (const r of middleRecords) {
+        r.orderIndex += 1;
+        if (!isOpen) r.queueNumber = r.orderIndex;
+        await r.save();
+      }
     }
     
     recordToUpdate.orderIndex = newOrder;
+    // isOpen=false 時同步 queueNumber = 新 orderIndex
+    if (!isOpen) recordToUpdate.queueNumber = newOrder;
     await recordToUpdate.save();
     
     // 只回傳 waiting/processing 的記錄（不包含 completed/cancelled）
