@@ -45,6 +45,10 @@ const customerSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  virtualAge: {
+    type: Number,
+    default: null
+  },
   firstVisitDate: {
     type: Date,
     default: null

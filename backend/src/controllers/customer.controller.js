@@ -134,7 +134,7 @@ exports.updateCustomer = async (req, res) => {
     }
 
     const customer = await Customer.findByIdAndUpdate(req.params.id, updateBody, { new: true, runValidators: true });
-    res.status(200).json({ success: true, message: '客戶資料已更新', data: customer });
+    res.status(200).json({ success: true, message: '客戶資料已更新', data: customer.toJSON() });
   } catch (error) {
     logger.error('編輯客戶錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤' });
@@ -187,7 +187,7 @@ exports.updateVisitRecord = async (req, res) => {
       success: true,
       code: 'OK',
       message: '來訪記錄已更新',
-      data: updated
+      data: updated.toJSON()
     });
   } catch (error) {
     logger.error('修改來訪記錄錯誤:', error);
@@ -274,7 +274,7 @@ exports.createVisitRecord = async (req, res) => {
       success: true,
       code: 'OK',
       message: '來訪記錄已建立',
-      data: visit
+      data: visit.toJSON()
     });
   } catch (error) {
     logger.error('建立來訪記錄錯誤:', error);
