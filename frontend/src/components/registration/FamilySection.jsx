@@ -128,11 +128,13 @@ const FamilySection = ({
                     day={member.birthDay || ''}
                     isLeapMonth={member.lunarIsLeapMonth || false}
                     onChange={({ year, month, day, isLeapMonth, calendarType }) => {
-                      onFamilyMemberChange(index, 'calendarType', calendarType);
-                      onFamilyMemberChange(index, 'birthYear', year);
-                      onFamilyMemberChange(index, 'birthMonth', month);
-                      onFamilyMemberChange(index, 'birthDay', day);
-                      onFamilyMemberChange(index, 'lunarIsLeapMonth', isLeapMonth);
+                      onFamilyMemberChange(index, {
+                        calendarType,
+                        birthYear: year,
+                        birthMonth: month,
+                        birthDay: day,
+                        lunarIsLeapMonth: isLeapMonth
+                      });
                     }}
                     errors={{
                       year: formErrors[`familyMembers.${index}.birthYear`],

@@ -60,6 +60,7 @@ const CustomerDetailDialog = ({
   onEnterEditMode,
   onSaveData,
   onInputChange,
+  onBatchInputChange,
   onAddressChange,
   onAddAddress,
   onRemoveAddress,
@@ -475,15 +476,34 @@ const CustomerDetailDialog = ({
                 isLeapMonth={editedData.lunarIsLeapMonth || false}
                 onChange={({ year, month, day, isLeapMonth, calendarType }) => {
                   setBirthCalendarType(calendarType);
-                  if (calendarType === 'gregorian') {
-                    onInputChange({ target: { name: 'gregorianBirthYear', value: year } });
-                    onInputChange({ target: { name: 'gregorianBirthMonth', value: month } });
-                    onInputChange({ target: { name: 'gregorianBirthDay', value: day } });
+                  // 用 onBatchInputChange 一次更新所有欄位（避免多次 setState 互相覆蓋）
+                  if (onBatchInputChange) {
+                    if (calendarType === 'gregorian') {
+                      onBatchInputChange({
+                        gregorianBirthYear: year,
+                        gregorianBirthMonth: month,
+                        gregorianBirthDay: day
+                      });
+                    } else {
+                      onBatchInputChange({
+                        lunarBirthYear: year,
+                        lunarBirthMonth: month,
+                        lunarBirthDay: day,
+                        lunarIsLeapMonth: isLeapMonth
+                      });
+                    }
                   } else {
-                    onInputChange({ target: { name: 'lunarBirthYear', value: year } });
-                    onInputChange({ target: { name: 'lunarBirthMonth', value: month } });
-                    onInputChange({ target: { name: 'lunarBirthDay', value: day } });
-                    onInputChange({ target: { name: 'lunarIsLeapMonth', value: isLeapMonth } });
+                    // fallback：逐一更新（理論上不應走到這裡）
+                    if (calendarType === 'gregorian') {
+                      onInputChange({ target: { name: 'gregorianBirthYear', value: year } });
+                      onInputChange({ target: { name: 'gregorianBirthMonth', value: month } });
+                      onInputChange({ target: { name: 'gregorianBirthDay', value: day } });
+                    } else {
+                      onInputChange({ target: { name: 'lunarBirthYear', value: year } });
+                      onInputChange({ target: { name: 'lunarBirthMonth', value: month } });
+                      onInputChange({ target: { name: 'lunarBirthDay', value: day } });
+                      onInputChange({ target: { name: 'lunarIsLeapMonth', value: isLeapMonth } });
+                    }
                   }
                 }}
                 size="small"
@@ -623,15 +643,20 @@ const CustomerDetailDialog = ({
                           isLeapMonth={member.lunarIsLeapMonth || false}
                           onChange={({ year, month, day, isLeapMonth, calendarType }) => {
                             setFamilyBirthCalendarTypes(prev => ({ ...prev, [index]: calendarType }));
+                            // 用批次 patch 避免多次 setState 互相覆蓋
                             if (calendarType === 'gregorian') {
-                              onFamilyMemberChange(index, 'gregorianBirthYear', year);
-                              onFamilyMemberChange(index, 'gregorianBirthMonth', month);
-                              onFamilyMemberChange(index, 'gregorianBirthDay', day);
+                              onFamilyMemberChange(index, {
+                                gregorianBirthYear: year,
+                                gregorianBirthMonth: month,
+                                gregorianBirthDay: day
+                              });
                             } else {
-                              onFamilyMemberChange(index, 'lunarBirthYear', year);
-                              onFamilyMemberChange(index, 'lunarBirthMonth', month);
-                              onFamilyMemberChange(index, 'lunarBirthDay', day);
-                              onFamilyMemberChange(index, 'lunarIsLeapMonth', isLeapMonth);
+                              onFamilyMemberChange(index, {
+                                lunarBirthYear: year,
+                                lunarBirthMonth: month,
+                                lunarBirthDay: day,
+                                lunarIsLeapMonth: isLeapMonth
+                              });
                             }
                           }}
                           size="small"

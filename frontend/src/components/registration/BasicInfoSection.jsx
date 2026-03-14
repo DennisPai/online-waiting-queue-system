@@ -23,13 +23,15 @@ const BasicInfoSection = ({
     onChange(name, value);
   };
 
-  // BirthdayPicker onChange
+  // BirthdayPicker onChange — 一次傳 patch object，避免多次 setState 的 stale closure
   const handleBirthdayChange = ({ year, month, day, isLeapMonth, calendarType }) => {
-    onChange('calendarType', calendarType);
-    onChange('birthYear', year);
-    onChange('birthMonth', month);
-    onChange('birthDay', day);
-    onChange('lunarIsLeapMonth', isLeapMonth);
+    onChange({
+      calendarType,
+      birthYear: year,
+      birthMonth: month,
+      birthDay: day,
+      lunarIsLeapMonth: isLeapMonth
+    });
   };
 
   return (

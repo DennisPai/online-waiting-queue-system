@@ -87,6 +87,7 @@ const AdminDashboardPage = () => {
     handleCloseDialog,
     handleEnterEditMode,
     handleInputChange,
+    handleBatchInputChange,
     handleAddressChange,
     addAddress,
     removeAddress,
@@ -341,6 +342,7 @@ const AdminDashboardPage = () => {
         onEnterEditMode={handleEnterEditMode}
         onSaveData={handleSaveData}
         onInputChange={handleInputChange}
+        onBatchInputChange={handleBatchInputChange}
         onAddressChange={handleAddressChange}
         onAddAddress={addAddress}
         onRemoveAddress={removeAddress}

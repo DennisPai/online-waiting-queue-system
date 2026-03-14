@@ -154,7 +154,21 @@ export const useRegistrationForm = (embedded = false) => {
   }, []);
 
   // 處理表單變更
-  const handleChange = useCallback((name, value) => {
+  // 支援兩種簽名：
+  //   handleChange(name, value)           — 單一欄位
+  //   handleChange({ field1, field2... }) — 批次更新（BirthdayPicker 用）
+  const handleChange = useCallback((nameOrPatch, value) => {
+    // 批次更新模式
+    if (typeof nameOrPatch === 'object' && nameOrPatch !== null) {
+      setFormData(prev => {
+        const newFormData = { ...prev, ...nameOrPatch };
+        autoConvertDate(newFormData);
+        return newFormData;
+      });
+      return;
+    }
+
+    const name = nameOrPatch;
     const newFormData = { ...formData, [name]: value };
     
     // 如果是曆法類型改變，清除轉換結果
@@ -230,7 +244,22 @@ export const useRegistrationForm = (embedded = false) => {
   }, [formData.addresses]);
 
   // 處理家人資料變更
-  const handleFamilyMemberChange = useCallback((index, field, value) => {
+  // 支援兩種簽名：
+  //   handleFamilyMemberChange(index, field, value)   — 單一欄位
+  //   handleFamilyMemberChange(index, patch)          — 批次更新（BirthdayPicker 用）
+  const handleFamilyMemberChange = useCallback((index, fieldOrPatch, value) => {
+    // 批次更新模式
+    if (typeof fieldOrPatch === 'object' && fieldOrPatch !== null) {
+      setFormData(prev => {
+        const newFamilyMembers = [...prev.familyMembers];
+        newFamilyMembers[index] = { ...newFamilyMembers[index], ...fieldOrPatch };
+        autoConvertFamilyMemberDate(newFamilyMembers[index]);
+        return { ...prev, familyMembers: newFamilyMembers };
+      });
+      return;
+    }
+
+    const field = fieldOrPatch;
     const newFamilyMembers = [...formData.familyMembers];
     newFamilyMembers[index] = {
       ...newFamilyMembers[index],

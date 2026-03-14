@@ -66,6 +66,11 @@ export const useQueueUI = () => {
     }));
   }, []);
 
+  // 批次更新多個欄位（BirthdayPicker 用，避免多次 setState stale closure）
+  const handleBatchInputChange = useCallback((patch) => {
+    setEditedData(prev => ({ ...prev, ...patch }));
+  }, []);
+
   // 處理地址變更
   const handleAddressChange = useCallback((index, field, value) => {
     setEditedData(prev => {
@@ -110,17 +115,16 @@ export const useQueueUI = () => {
   }, []);
 
   // 處理家人資料變更
-  const handleFamilyMemberChange = useCallback((index, field, value) => {
+  const handleFamilyMemberChange = useCallback((index, fieldOrPatch, value) => {
     setEditedData(prev => {
       const newFamilyMembers = [...(prev.familyMembers || [])];
-      newFamilyMembers[index] = {
-        ...newFamilyMembers[index],
-        [field]: value
-      };
-      return {
-        ...prev,
-        familyMembers: newFamilyMembers
-      };
+      if (typeof fieldOrPatch === 'object' && fieldOrPatch !== null) {
+        // 批次更新模式（BirthdayPicker 用）
+        newFamilyMembers[index] = { ...newFamilyMembers[index], ...fieldOrPatch };
+      } else {
+        newFamilyMembers[index] = { ...newFamilyMembers[index], [fieldOrPatch]: value };
+      }
+      return { ...prev, familyMembers: newFamilyMembers };
     });
   }, []);
 
@@ -309,6 +313,7 @@ export const useQueueUI = () => {
 
     // 表單處理函數
     handleInputChange,
+    handleBatchInputChange,
     handleAddressChange,
     addAddress,
     removeAddress,
