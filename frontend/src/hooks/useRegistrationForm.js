@@ -320,29 +320,15 @@ export const useRegistrationForm = (embedded = false) => {
       errors.phone = '請輸入有效的聯絡手機';
     }
 
-    // 出生日期驗證
+    // 出生日期驗證（BirthdayPicker 改為下拉，值為 number 或 ''）
     if (!formData.birthYear) {
-      errors.birthYear = '請輸入出生年';
-    } else if (isNaN(formData.birthYear)) {
-      errors.birthYear = '請輸入有效的出生年';
-    } else {
-      const year = parseInt(formData.birthYear);
-      const currentYear = new Date().getFullYear();
-      if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
-        errors.birthYear = '請輸入有效的出生年（民國1-150年或西元1900年後）';
-      }
+      errors.birthYear = '請選擇出生年';
     }
-    
     if (!formData.birthMonth) {
-      errors.birthMonth = '請輸入出生月';
-    } else if (isNaN(formData.birthMonth) || formData.birthMonth < 1 || formData.birthMonth > 12) {
-      errors.birthMonth = '請輸入1-12之間的數字';
+      errors.birthMonth = '請選擇出生月';
     }
-    
     if (!formData.birthDay) {
-      errors.birthDay = '請輸入出生日';
-    } else if (isNaN(formData.birthDay) || formData.birthDay < 1 || formData.birthDay > 31) {
-      errors.birthDay = '請輸入1-31之間的數字';
+      errors.birthDay = '請選擇出生日';
     }
 
     // 地址驗證
@@ -361,21 +347,13 @@ export const useRegistrationForm = (embedded = false) => {
         errors[`familyMembers.${index}.gender`] = '請選擇性別';
       }
       if (!member.birthYear) {
-        errors[`familyMembers.${index}.birthYear`] = '請輸入出生年';
-      } else if (isNaN(member.birthYear)) {
-        errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年';
-      } else {
-        const year = parseInt(member.birthYear);
-        const currentYear = new Date().getFullYear();
-        if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
-          errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年（民國1-150年或西元1900年後）';
-        }
+        errors[`familyMembers.${index}.birthYear`] = '請選擇出生年';
       }
       if (!member.birthMonth) {
-        errors[`familyMembers.${index}.birthMonth`] = '請輸入出生月';
+        errors[`familyMembers.${index}.birthMonth`] = '請選擇出生月';
       }
       if (!member.birthDay) {
-        errors[`familyMembers.${index}.birthDay`] = '請輸入出生日';
+        errors[`familyMembers.${index}.birthDay`] = '請選擇出生日';
       }
       if (!member.address) {
         errors[`familyMembers.${index}.address`] = '請輸入地址';
@@ -420,67 +398,31 @@ export const useRegistrationForm = (embedded = false) => {
         remarks: formData.remarks || ''
       };
 
-      // 處理出生日期 - 根據選擇的曆法類型設定相應欄位
+      // 處理出生日期 - BirthdayPicker 直接回傳西元年，不需要民國/西元轉換
       if (formData.calendarType === 'gregorian') {
-        const { minguoYear } = autoConvertToMinguo(parseInt(formData.birthYear));
-        submissionData.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+        submissionData.gregorianBirthYear = parseInt(formData.birthYear);
         submissionData.gregorianBirthMonth = parseInt(formData.birthMonth);
         submissionData.gregorianBirthDay = parseInt(formData.birthDay);
-        
-        // 如果有轉換的農曆日期，也一併加入
-        if (formData.convertedLunarYear) {
-          const { minguoYear: lunarMinguoYear } = autoConvertToMinguo(formData.convertedLunarYear);
-          submissionData.lunarBirthYear = convertMinguoForStorage(lunarMinguoYear);
-          submissionData.lunarBirthMonth = formData.convertedLunarMonth;
-          submissionData.lunarBirthDay = formData.convertedLunarDay;
-          submissionData.lunarIsLeapMonth = formData.convertedLunarIsLeapMonth;
-        }
       } else {
-        const { minguoYear } = autoConvertToMinguo(parseInt(formData.birthYear));
-        submissionData.lunarBirthYear = convertMinguoForStorage(minguoYear);
+        submissionData.lunarBirthYear = parseInt(formData.birthYear);
         submissionData.lunarBirthMonth = parseInt(formData.birthMonth);
         submissionData.lunarBirthDay = parseInt(formData.birthDay);
-        submissionData.lunarIsLeapMonth = formData.lunarIsLeapMonth;
-        
-        // 如果有轉換的國曆日期，也一併加入
-        if (formData.convertedGregorianYear) {
-          const { minguoYear: gregorianMinguoYear } = autoConvertToMinguo(formData.convertedGregorianYear);
-          submissionData.gregorianBirthYear = convertMinguoForStorage(gregorianMinguoYear);
-          submissionData.gregorianBirthMonth = formData.convertedGregorianMonth;
-          submissionData.gregorianBirthDay = formData.convertedGregorianDay;
-        }
+        submissionData.lunarIsLeapMonth = formData.lunarIsLeapMonth || false;
       }
 
-      // 處理家人的出生日期
+      // 處理家人的出生日期（BirthdayPicker 直接回傳西元年）
       submissionData.familyMembers = submissionData.familyMembers.map(member => {
         const processedMember = { ...member };
-        
+
         if (member.calendarType === 'gregorian') {
-          const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear));
-          processedMember.gregorianBirthYear = convertMinguoForStorage(minguoYear);
+          processedMember.gregorianBirthYear = parseInt(member.birthYear);
           processedMember.gregorianBirthMonth = parseInt(member.birthMonth);
           processedMember.gregorianBirthDay = parseInt(member.birthDay);
-          
-          if (member.convertedLunarYear) {
-            const { minguoYear: lunarMinguoYear } = autoConvertToMinguo(member.convertedLunarYear);
-            processedMember.lunarBirthYear = convertMinguoForStorage(lunarMinguoYear);
-            processedMember.lunarBirthMonth = member.convertedLunarMonth;
-            processedMember.lunarBirthDay = member.convertedLunarDay;
-            processedMember.lunarIsLeapMonth = member.convertedLunarIsLeapMonth;
-          }
         } else {
-          const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear));
-          processedMember.lunarBirthYear = convertMinguoForStorage(minguoYear);
+          processedMember.lunarBirthYear = parseInt(member.birthYear);
           processedMember.lunarBirthMonth = parseInt(member.birthMonth);
           processedMember.lunarBirthDay = parseInt(member.birthDay);
-          processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth;
-          
-          if (member.convertedGregorianYear) {
-            const { minguoYear: gregorianMinguoYear } = autoConvertToMinguo(member.convertedGregorianYear);
-            processedMember.gregorianBirthYear = convertMinguoForStorage(gregorianMinguoYear);
-            processedMember.gregorianBirthMonth = member.convertedGregorianMonth;
-            processedMember.gregorianBirthDay = member.convertedGregorianDay;
-          }
+          processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
         }
 
         // 移除臨時欄位
@@ -488,6 +430,7 @@ export const useRegistrationForm = (embedded = false) => {
         delete processedMember.birthMonth;
         delete processedMember.birthDay;
         delete processedMember.calendarType;
+        delete processedMember.usePrimaryAddress;
 
         return processedMember;
       });

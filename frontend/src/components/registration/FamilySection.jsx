@@ -5,9 +5,13 @@ import {
   TextField,
   Button,
   FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+  FormControlLabel,
   FormLabel,
   RadioGroup,
-  FormControlLabel,
   Radio,
   Checkbox,
   IconButton,
@@ -19,7 +23,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { formatMinguoYear } from '../../utils/calendarConverter';
+import BirthdayPicker from '../shared/BirthdayPicker';
 
 // 地址類型選項
 const addressTypeOptions = [
@@ -54,9 +58,9 @@ const FamilySection = ({
       {formData.familyMembers?.map((member, index) => (
         <Grid item xs={12} key={index}>
           <Accordion sx={{ mb: 1 }}>
-            <AccordionSummary 
+            <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
-              sx={{ 
+              sx={{
                 backgroundColor: 'background.default',
                 '&:hover': { backgroundColor: 'action.hover' }
               }}
@@ -93,122 +97,51 @@ const FamilySection = ({
                   />
                 </Grid>
 
-                {/* 性別 */}
+                {/* 性別（下拉） */}
                 <Grid item xs={12} sm={6}>
-                  <FormControl component="fieldset">
-                    <FormLabel component="legend">性別</FormLabel>
-                    <RadioGroup
-                      row
+                  <FormControl fullWidth error={Boolean(formErrors[`familyMembers.${index}.gender`])}>
+                    <InputLabel>性別</InputLabel>
+                    <Select
                       value={member.gender || ''}
                       onChange={(e) => onFamilyMemberChange(index, 'gender', e.target.value)}
+                      label="性別"
                     >
-                      <FormControlLabel value="male" control={<Radio />} label="男" />
-                      <FormControlLabel value="female" control={<Radio />} label="女" />
-                    </RadioGroup>
+                      <MenuItem value="male">男</MenuItem>
+                      <MenuItem value="female">女</MenuItem>
+                      <MenuItem value="other">其他</MenuItem>
+                    </Select>
+                    {formErrors[`familyMembers.${index}.gender`] && (
+                      <FormHelperText>{formErrors[`familyMembers.${index}.gender`]}</FormHelperText>
+                    )}
                   </FormControl>
                 </Grid>
 
-                {/* 曆法選擇 */}
+                {/* 出生日期（BirthdayPicker） */}
                 <Grid item xs={12}>
-                  <FormControl component="fieldset">
-                    <FormLabel component="legend">曆法選擇</FormLabel>
-                    <RadioGroup
-                      row
-                      value={member.calendarType || 'gregorian'}
-                      onChange={(e) => onFamilyMemberChange(index, 'calendarType', e.target.value)}
-                    >
-                      <FormControlLabel value="gregorian" control={<Radio />} label="國曆" />
-                      <FormControlLabel value="lunar" control={<Radio />} label="農曆" />
-                    </RadioGroup>
-                  </FormControl>
-                </Grid>
-
-                {/* 出生年月日 */}
-                <Grid item xs={4}>
-                  <TextField
-                    required={!simplified}
-                    fullWidth
-                    label={`出生年 (${(member.calendarType || 'gregorian') === 'gregorian' ? '西元' : '民國'})`}
-                    type="number"
-                    value={member.birthYear || ''}
-                    onChange={(e) => onFamilyMemberChange(index, 'birthYear', e.target.value)}
-                    error={Boolean(formErrors[`familyMembers.${index}.birthYear`])}
-                    helperText={formErrors[`familyMembers.${index}.birthYear`]}
-                  />
-                </Grid>
-                <Grid item xs={4}>
-                  <TextField
-                    required={!simplified}
-                    fullWidth
-                    label="出生月"
-                    type="number"
-                    value={member.birthMonth || ''}
-                    onChange={(e) => onFamilyMemberChange(index, 'birthMonth', e.target.value)}
-                    error={Boolean(formErrors[`familyMembers.${index}.birthMonth`])}
-                    helperText={formErrors[`familyMembers.${index}.birthMonth`]}
-                    inputProps={{ min: 1, max: 12 }}
-                  />
-                </Grid>
-                <Grid item xs={4}>
-                  <TextField
-                    required={!simplified}
-                    fullWidth
-                    label="出生日"
-                    type="number"
-                    value={member.birthDay || ''}
-                    onChange={(e) => onFamilyMemberChange(index, 'birthDay', e.target.value)}
-                    error={Boolean(formErrors[`familyMembers.${index}.birthDay`])}
-                    helperText={formErrors[`familyMembers.${index}.birthDay`]}
-                    inputProps={{ min: 1, max: 31 }}
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    出生日期
+                  </Typography>
+                  <BirthdayPicker
+                    calendarType={member.calendarType || 'gregorian'}
+                    year={member.birthYear || ''}
+                    month={member.birthMonth || ''}
+                    day={member.birthDay || ''}
+                    isLeapMonth={member.lunarIsLeapMonth || false}
+                    onChange={({ year, month, day, isLeapMonth, calendarType }) => {
+                      onFamilyMemberChange(index, 'calendarType', calendarType);
+                      onFamilyMemberChange(index, 'birthYear', year);
+                      onFamilyMemberChange(index, 'birthMonth', month);
+                      onFamilyMemberChange(index, 'birthDay', day);
+                      onFamilyMemberChange(index, 'lunarIsLeapMonth', isLeapMonth);
+                    }}
+                    errors={{
+                      year: formErrors[`familyMembers.${index}.birthYear`],
+                      month: formErrors[`familyMembers.${index}.birthMonth`],
+                      day: formErrors[`familyMembers.${index}.birthDay`]
+                    }}
                   />
                 </Grid>
 
-                {/* 農曆閏月選項 */}
-                {(member.calendarType || 'gregorian') === 'lunar' && (
-                  <Grid item xs={12}>
-                    <FormControl component="fieldset">
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={member.lunarIsLeapMonth || false}
-                            onChange={(e) => onFamilyMemberChange(index, 'lunarIsLeapMonth', e.target.checked)}
-                            name="lunarIsLeapMonth"
-                          />
-                        }
-                        label="是閏月"
-                      />
-                    </FormControl>
-                  </Grid>
-                )}
-
-                {/* 顯示轉換後的日期 */}
-                {(member.convertedLunarYear || member.convertedGregorianYear) && (
-                  <Grid item xs={12}>
-                    <Box sx={{ 
-                      p: 2, 
-                      bgcolor: 'background.paper', 
-                      borderRadius: 1, 
-                      border: '1px solid', 
-                      borderColor: 'divider' 
-                    }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        自動轉換結果：
-                      </Typography>
-                      {member.convertedLunarYear && (
-                        <Typography variant="body2">
-                          農曆：{formatMinguoYear(member.convertedLunarYear)}{member.convertedLunarMonth}月{member.convertedLunarDay}日
-                          {member.convertedLunarIsLeapMonth && ' (閏月)'}
-                        </Typography>
-                      )}
-                      {member.convertedGregorianYear && (
-                        <Typography variant="body2">
-                          國曆：{member.convertedGregorianYear}年{member.convertedGregorianMonth}月{member.convertedGregorianDay}日
-                        </Typography>
-                      )}
-                    </Box>
-                  </Grid>
-                )}
-                
                 {/* 地址同上核取方框 */}
                 <Grid item xs={12}>
                   <FormControlLabel

@@ -26,8 +26,11 @@ import {
   Radio,
   IconButton,
   Tooltip,
-  Box
+  Box,
+  FormHelperText
 } from '@mui/material';
+import BirthdayPicker from '../shared/BirthdayPicker';
+import { gregorianToMinguo, minguoToGregorian } from '../../utils/lunarDays';
 import {
   Edit as EditIcon,
   Save as SaveIcon,
@@ -67,6 +70,10 @@ const CustomerDetailDialog = ({
   onCompleteFromDialog,
   onDeleteCustomer
 }) => {
+  // 出生日期曆法切換（本地 state，預設國曆）
+  const [birthCalendarType, setBirthCalendarType] = useState('gregorian');
+  // 家人出生日期曆法切換
+  const [familyBirthCalendarTypes, setFamilyBirthCalendarTypes] = useState({});
   const formatConsultationTopics = (topics, otherDetails = '') => {
     if (!topics || topics.length === 0) return '無';
     
@@ -428,6 +435,7 @@ const CustomerDetailDialog = ({
                     >
                       <MenuItem value="male">男</MenuItem>
                       <MenuItem value="female">女</MenuItem>
+                      <MenuItem value="other">其他</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -453,110 +461,33 @@ const CustomerDetailDialog = ({
               <Typography variant="h6" gutterBottom color="primary">
                 出生日期
               </Typography>
-              
-              {/* 國曆出生日期 */}
-              <Typography variant="subtitle2" gutterBottom>
-                國曆出生日期
-              </Typography>
-              <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={4}>
-                  <TextField
-                    fullWidth
-                    label="年 (民國)"
-                    name="gregorianBirthYear"
-                    type="number"
-                    value={editedData.gregorianBirthYear || ''}
-                    onChange={onInputChange}
-                    variant="outlined"
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={4}>
-                  <TextField
-                    fullWidth
-                    label="月"
-                    name="gregorianBirthMonth"
-                    type="number"
-                    value={editedData.gregorianBirthMonth || ''}
-                    onChange={onInputChange}
-                    variant="outlined"
-                    size="small"
-                    inputProps={{ min: 1, max: 12 }}
-                  />
-                </Grid>
-                <Grid item xs={4}>
-                  <TextField
-                    fullWidth
-                    label="日"
-                    name="gregorianBirthDay"
-                    type="number"
-                    value={editedData.gregorianBirthDay || ''}
-                    onChange={onInputChange}
-                    variant="outlined"
-                    size="small"
-                    inputProps={{ min: 1, max: 31 }}
-                  />
-                </Grid>
-              </Grid>
-
-              {/* 農曆出生日期 */}
-              <Typography variant="subtitle2" gutterBottom>
-                農曆出生日期
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={3}>
-                  <TextField
-                    fullWidth
-                    label="年 (民國)"
-                    name="lunarBirthYear"
-                    type="number"
-                    value={editedData.lunarBirthYear || ''}
-                    onChange={onInputChange}
-                    variant="outlined"
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={3}>
-                  <TextField
-                    fullWidth
-                    label="月"
-                    name="lunarBirthMonth"
-                    type="number"
-                    value={editedData.lunarBirthMonth || ''}
-                    onChange={onInputChange}
-                    variant="outlined"
-                    size="small"
-                    inputProps={{ min: 1, max: 12 }}
-                  />
-                </Grid>
-                <Grid item xs={3}>
-                  <TextField
-                    fullWidth
-                    label="日"
-                    name="lunarBirthDay"
-                    type="number"
-                    value={editedData.lunarBirthDay || ''}
-                    onChange={onInputChange}
-                    variant="outlined"
-                    size="small"
-                    inputProps={{ min: 1, max: 30 }}
-                  />
-                </Grid>
-                <Grid item xs={3}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        name="lunarIsLeapMonth"
-                        checked={editedData.lunarIsLeapMonth || false}
-                        onChange={(e) => onInputChange({
-                          target: { name: 'lunarIsLeapMonth', value: e.target.checked }
-                        })}
-                      />
-                    }
-                    label="閏月"
-                  />
-                </Grid>
-              </Grid>
+              <BirthdayPicker
+                calendarType={birthCalendarType}
+                year={birthCalendarType === 'gregorian'
+                  ? (editedData.gregorianBirthYear || '')
+                  : (editedData.lunarBirthYear || '')}
+                month={birthCalendarType === 'gregorian'
+                  ? (editedData.gregorianBirthMonth || '')
+                  : (editedData.lunarBirthMonth || '')}
+                day={birthCalendarType === 'gregorian'
+                  ? (editedData.gregorianBirthDay || '')
+                  : (editedData.lunarBirthDay || '')}
+                isLeapMonth={editedData.lunarIsLeapMonth || false}
+                onChange={({ year, month, day, isLeapMonth, calendarType }) => {
+                  setBirthCalendarType(calendarType);
+                  if (calendarType === 'gregorian') {
+                    onInputChange({ target: { name: 'gregorianBirthYear', value: year } });
+                    onInputChange({ target: { name: 'gregorianBirthMonth', value: month } });
+                    onInputChange({ target: { name: 'gregorianBirthDay', value: day } });
+                  } else {
+                    onInputChange({ target: { name: 'lunarBirthYear', value: year } });
+                    onInputChange({ target: { name: 'lunarBirthMonth', value: month } });
+                    onInputChange({ target: { name: 'lunarBirthDay', value: day } });
+                    onInputChange({ target: { name: 'lunarIsLeapMonth', value: isLeapMonth } });
+                  }
+                }}
+                size="small"
+              />
             </Grid>
 
             {/* 地址編輯 */}
@@ -668,107 +599,43 @@ const CustomerDetailDialog = ({
                           >
                             <MenuItem value="male">男</MenuItem>
                             <MenuItem value="female">女</MenuItem>
+                            <MenuItem value="other">其他</MenuItem>
                           </Select>
                         </FormControl>
                       </Grid>
-                      
-                      {/* 家人國曆出生日期 */}
-                      <Grid item xs={12}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          國曆出生日期
-                        </Typography>
-                        <Grid container spacing={1}>
-                          <Grid item xs={4}>
-                            <TextField
-                              fullWidth
-                              label="年 (民國)"
-                              type="number"
-                              value={member.gregorianBirthYear || ''}
-                              onChange={(e) => onFamilyMemberChange(index, 'gregorianBirthYear', e.target.value)}
-                              variant="outlined"
-                              size="small"
-                            />
-                          </Grid>
-                          <Grid item xs={4}>
-                            <TextField
-                              fullWidth
-                              label="月"
-                              type="number"
-                              value={member.gregorianBirthMonth || ''}
-                              onChange={(e) => onFamilyMemberChange(index, 'gregorianBirthMonth', e.target.value)}
-                              variant="outlined"
-                              size="small"
-                              inputProps={{ min: 1, max: 12 }}
-                            />
-                          </Grid>
-                          <Grid item xs={4}>
-                            <TextField
-                              fullWidth
-                              label="日"
-                              type="number"
-                              value={member.gregorianBirthDay || ''}
-                              onChange={(e) => onFamilyMemberChange(index, 'gregorianBirthDay', e.target.value)}
-                              variant="outlined"
-                              size="small"
-                              inputProps={{ min: 1, max: 31 }}
-                            />
-                          </Grid>
-                        </Grid>
-                      </Grid>
 
-                      {/* 家人農曆出生日期 */}
+                      {/* 家人出生日期（BirthdayPicker） */}
                       <Grid item xs={12}>
                         <Typography variant="subtitle2" gutterBottom>
-                          農曆出生日期
+                          出生日期
                         </Typography>
-                        <Grid container spacing={1}>
-                          <Grid item xs={3}>
-                            <TextField
-                              fullWidth
-                              label="年 (民國)"
-                              type="number"
-                              value={member.lunarBirthYear || ''}
-                              onChange={(e) => onFamilyMemberChange(index, 'lunarBirthYear', e.target.value)}
-                              variant="outlined"
-                              size="small"
-                            />
-                          </Grid>
-                          <Grid item xs={3}>
-                            <TextField
-                              fullWidth
-                              label="月"
-                              type="number"
-                              value={member.lunarBirthMonth || ''}
-                              onChange={(e) => onFamilyMemberChange(index, 'lunarBirthMonth', e.target.value)}
-                              variant="outlined"
-                              size="small"
-                              inputProps={{ min: 1, max: 12 }}
-                            />
-                          </Grid>
-                          <Grid item xs={3}>
-                            <TextField
-                              fullWidth
-                              label="日"
-                              type="number"
-                              value={member.lunarBirthDay || ''}
-                              onChange={(e) => onFamilyMemberChange(index, 'lunarBirthDay', e.target.value)}
-                              variant="outlined"
-                              size="small"
-                              inputProps={{ min: 1, max: 30 }}
-                            />
-                          </Grid>
-                          <Grid item xs={3}>
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={member.lunarIsLeapMonth || false}
-                                  onChange={(e) => onFamilyMemberChange(index, 'lunarIsLeapMonth', e.target.checked)}
-                                />
-                              }
-                              label="閏月"
-                            />
-                          </Grid>
-                        </Grid>
+                        <BirthdayPicker
+                          calendarType={familyBirthCalendarTypes[index] || 'gregorian'}
+                          year={(familyBirthCalendarTypes[index] || 'gregorian') === 'gregorian'
+                            ? (member.gregorianBirthYear || '')
+                            : (member.lunarBirthYear || '')}
+                          month={(familyBirthCalendarTypes[index] || 'gregorian') === 'gregorian'
+                            ? (member.gregorianBirthMonth || '')
+                            : (member.lunarBirthMonth || '')}
+                          day={(familyBirthCalendarTypes[index] || 'gregorian') === 'gregorian'
+                            ? (member.gregorianBirthDay || '')
+                            : (member.lunarBirthDay || '')}
+                          isLeapMonth={member.lunarIsLeapMonth || false}
+                          onChange={({ year, month, day, isLeapMonth, calendarType }) => {
+                            setFamilyBirthCalendarTypes(prev => ({ ...prev, [index]: calendarType }));
+                            if (calendarType === 'gregorian') {
+                              onFamilyMemberChange(index, 'gregorianBirthYear', year);
+                              onFamilyMemberChange(index, 'gregorianBirthMonth', month);
+                              onFamilyMemberChange(index, 'gregorianBirthDay', day);
+                            } else {
+                              onFamilyMemberChange(index, 'lunarBirthYear', year);
+                              onFamilyMemberChange(index, 'lunarBirthMonth', month);
+                              onFamilyMemberChange(index, 'lunarBirthDay', day);
+                              onFamilyMemberChange(index, 'lunarIsLeapMonth', isLeapMonth);
+                            }
+                          }}
+                          size="small"
+                        />
                       </Grid>
 
                       {/* 家人住址資訊 */}
