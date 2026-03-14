@@ -22,7 +22,7 @@ const familyMemberSchema = new mongoose.Schema({
   },
   gender: {
     type: String,
-    enum: ['male', 'female'],
+    enum: ['male', 'female', 'other'],
     required: true
   },
   // 國曆出生日期
@@ -118,7 +118,7 @@ const waitingRecordSchema = new mongoose.Schema({
   },
   gender: {
     type: String,
-    enum: ['male', 'female'],
+    enum: ['male', 'female', 'other'],
     required: true
   },
   // 國曆出生日期
