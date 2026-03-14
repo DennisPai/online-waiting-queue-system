@@ -5,6 +5,78 @@ const Household = require('../models/household.model');
 const { saveSnapshot } = require('../utils/snapshot');
 const { autoFillDates, addZodiac, addVirtualAge } = require('../utils/calendarConverter');
 
+/**
+ * 共用：處理生日欄位（支援 birthDate+calendarType 舊格式 + gregorian/lunar 新格式）
+ * 傳入 data 物件，回傳補齊 gregorian/lunar/zodiac/virtualAge 的新物件
+ * 同時從 data 中刪除 birthDate / calendarType（不存入 DB）
+ */
+function normalizeBirthData(data, existingData = {}) {
+  const result = { ...existingData, ...data };
+
+  // 移除不屬於 schema 的欄位
+  delete result.birthDate;
+  delete result.calendarType;
+  // zodiac/virtualAge 不接受外部傳入
+  delete result.zodiac;
+  delete result.virtualAge;
+
+  // 如果傳入的是 birthDate + calendarType 格式，先轉換
+  if (data.birthDate) {
+    const d = new Date(data.birthDate);
+    if (!isNaN(d)) {
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+      if (data.calendarType === 'lunar') {
+        result.lunarBirthYear = year;
+        result.lunarBirthMonth = month;
+        result.lunarBirthDay = day;
+        // 清掉 gregorian，讓 autoFillDates 重算
+        delete result.gregorianBirthYear;
+        delete result.gregorianBirthMonth;
+        delete result.gregorianBirthDay;
+      } else {
+        // 預設視為 gregorian
+        result.gregorianBirthYear = year;
+        result.gregorianBirthMonth = month;
+        result.gregorianBirthDay = day;
+        // 清掉 lunar，讓 autoFillDates 重算
+        delete result.lunarBirthYear;
+        delete result.lunarBirthMonth;
+        delete result.lunarBirthDay;
+        delete result.lunarIsLeapMonth;
+      }
+    }
+  } else {
+    // 標準格式：如果有指定某曆法，清空另一曆法讓 autoFillDates 重算
+    const hasGregorian = ['gregorianBirthYear','gregorianBirthMonth','gregorianBirthDay'].some(f => f in data);
+    const hasLunar = ['lunarBirthYear','lunarBirthMonth','lunarBirthDay'].some(f => f in data);
+    if (hasGregorian && !hasLunar) {
+      delete result.lunarBirthYear;
+      delete result.lunarBirthMonth;
+      delete result.lunarBirthDay;
+      delete result.lunarIsLeapMonth;
+    } else if (hasLunar && !hasGregorian) {
+      delete result.gregorianBirthYear;
+      delete result.gregorianBirthMonth;
+      delete result.gregorianBirthDay;
+    }
+  }
+
+  // 有完整生日才做互轉 + 計算
+  const hasBirth = (result.gregorianBirthYear && result.gregorianBirthMonth && result.gregorianBirthDay)
+    || (result.lunarBirthYear && result.lunarBirthMonth && result.lunarBirthDay);
+
+  if (hasBirth) {
+    const filled = autoFillDates(result);
+    const withZodiac = addZodiac(filled);
+    const withAge = addVirtualAge(withZodiac);
+    return withAge;
+  }
+
+  return result;
+}
+
 // 客戶列表（分頁 + 搜尋）
 exports.listCustomers = async (req, res) => {
   try {
@@ -71,7 +143,8 @@ exports.getCustomer = async (req, res) => {
 // 新增客戶
 exports.createCustomer = async (req, res) => {
   try {
-    const customer = await Customer.create(req.body);
+    const data = normalizeBirthData(req.body, {});
+    const customer = await Customer.create(data);
     res.status(201).json({ success: true, message: '客戶新增成功', data: customer.toJSON() });
   } catch (error) {
     logger.error('新增客戶錯誤:', error);
@@ -94,44 +167,9 @@ exports.updateCustomer = async (req, res) => {
       operatorId: req.user?.id
     });
 
-    // 建立白名單更新物件（zodiac/virtualAge 由系統計算，不接受前端傳入）
-    const updateBody = { ...req.body };
-    delete updateBody.zodiac;
-    delete updateBody.virtualAge;
-
-    // 如果有生日欄位變更，重新計算國農曆互轉 + zodiac + virtualAge
-    const BIRTH_FIELDS = ['gregorianBirthYear','gregorianBirthMonth','gregorianBirthDay',
-      'lunarBirthYear','lunarBirthMonth','lunarBirthDay','lunarIsLeapMonth'];
-    const hasBirthChange = BIRTH_FIELDS.some(f => f in updateBody);
-
-    if (hasBirthChange) {
-      // 合併現有資料 + 新資料，讓 autoFillDates 能做互轉
-      const merged = { ...before, ...updateBody };
-      // 清空另一曆法的舊值，讓 autoFillDates 重新計算
-      if ('gregorianBirthYear' in updateBody || 'gregorianBirthMonth' in updateBody || 'gregorianBirthDay' in updateBody) {
-        delete merged.lunarBirthYear;
-        delete merged.lunarBirthMonth;
-        delete merged.lunarBirthDay;
-        delete merged.lunarIsLeapMonth;
-      } else if ('lunarBirthYear' in updateBody || 'lunarBirthMonth' in updateBody || 'lunarBirthDay' in updateBody) {
-        delete merged.gregorianBirthYear;
-        delete merged.gregorianBirthMonth;
-        delete merged.gregorianBirthDay;
-      }
-      const filled = autoFillDates(merged);
-      const withZodiac = addZodiac(filled);
-      const withAge = addVirtualAge(withZodiac);
-
-      updateBody.gregorianBirthYear = withAge.gregorianBirthYear ?? null;
-      updateBody.gregorianBirthMonth = withAge.gregorianBirthMonth ?? null;
-      updateBody.gregorianBirthDay = withAge.gregorianBirthDay ?? null;
-      updateBody.lunarBirthYear = withAge.lunarBirthYear ?? null;
-      updateBody.lunarBirthMonth = withAge.lunarBirthMonth ?? null;
-      updateBody.lunarBirthDay = withAge.lunarBirthDay ?? null;
-      updateBody.lunarIsLeapMonth = withAge.lunarIsLeapMonth ?? false;
-      updateBody.zodiac = withAge.zodiac ?? null;
-      updateBody.virtualAge = withAge.virtualAge ?? null;
-    }
+    // normalizeBirthData 處理 birthDate/calendarType 格式轉換 + zodiac/virtualAge 重算
+    // existingData = before，讓國農曆互轉有完整的舊值可以參考
+    const updateBody = normalizeBirthData(req.body, before);
 
     const customer = await Customer.findByIdAndUpdate(req.params.id, updateBody, { new: true, runValidators: true });
     res.status(200).json({ success: true, message: '客戶資料已更新', data: customer.toJSON() });
