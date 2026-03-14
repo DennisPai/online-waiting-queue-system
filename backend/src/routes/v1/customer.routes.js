@@ -18,6 +18,7 @@ router.get('/:id/visits', customerController.getVisitHistory);
 router.post('/:id/visits', [
   body('sessionDate').notEmpty().withMessage('sessionDate 為必填')
 ], validateRequest, customerController.createVisitRecord);
+router.put('/:id/visits/:visitId', customerController.updateVisitRecord);
 router.delete('/:id/visits/:visitId', customerController.deleteVisitRecord);
 
 module.exports = router;

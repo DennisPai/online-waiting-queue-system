@@ -32,3 +32,23 @@ export const getVisitHistory = async (token, id, { page = 1, limit = 20 } = {}) 
   const response = await axios.get(`${API_ENDPOINTS.CUSTOMERS}/${id}/visits?${params}`, getAuthConfig(token));
   return response.data.data || response.data;
 };
+
+export const createVisit = async (token, customerId, data) => {
+  const response = await axios.post(`${API_ENDPOINTS.CUSTOMERS}/${customerId}/visits`, data, getAuthConfig(token));
+  return response.data.data || response.data;
+};
+
+export const updateVisit = async (token, customerId, visitId, data) => {
+  const response = await axios.put(`${API_ENDPOINTS.CUSTOMERS}/${customerId}/visits/${visitId}`, data, getAuthConfig(token));
+  return response.data.data || response.data;
+};
+
+export const deleteVisit = async (token, customerId, visitId) => {
+  const response = await axios.delete(`${API_ENDPOINTS.CUSTOMERS}/${customerId}/visits/${visitId}`, getAuthConfig(token));
+  return response.data;
+};
+
+export const deleteCustomer = async (token, id) => {
+  const response = await axios.delete(`${API_ENDPOINTS.CUSTOMERS}/${id}`, getAuthConfig(token));
+  return response.data;
+};

@@ -3,6 +3,7 @@ const Customer = require('../models/customer.model');
 const VisitRecord = require('../models/visit-record.model');
 const Household = require('../models/household.model');
 const { saveSnapshot } = require('../utils/snapshot');
+const { autoFillDates, addZodiac, addVirtualAge } = require('../utils/calendarConverter');
 
 // 客戶列表（分頁 + 搜尋）
 exports.listCustomers = async (req, res) => {
@@ -93,11 +94,104 @@ exports.updateCustomer = async (req, res) => {
       operatorId: req.user?.id
     });
 
-    const customer = await Customer.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    // 建立白名單更新物件（zodiac/virtualAge 由系統計算，不接受前端傳入）
+    const updateBody = { ...req.body };
+    delete updateBody.zodiac;
+    delete updateBody.virtualAge;
+
+    // 如果有生日欄位變更，重新計算國農曆互轉 + zodiac + virtualAge
+    const BIRTH_FIELDS = ['gregorianBirthYear','gregorianBirthMonth','gregorianBirthDay',
+      'lunarBirthYear','lunarBirthMonth','lunarBirthDay','lunarIsLeapMonth'];
+    const hasBirthChange = BIRTH_FIELDS.some(f => f in updateBody);
+
+    if (hasBirthChange) {
+      // 合併現有資料 + 新資料，讓 autoFillDates 能做互轉
+      const merged = { ...before, ...updateBody };
+      // 清空另一曆法的舊值，讓 autoFillDates 重新計算
+      if ('gregorianBirthYear' in updateBody || 'gregorianBirthMonth' in updateBody || 'gregorianBirthDay' in updateBody) {
+        delete merged.lunarBirthYear;
+        delete merged.lunarBirthMonth;
+        delete merged.lunarBirthDay;
+        delete merged.lunarIsLeapMonth;
+      } else if ('lunarBirthYear' in updateBody || 'lunarBirthMonth' in updateBody || 'lunarBirthDay' in updateBody) {
+        delete merged.gregorianBirthYear;
+        delete merged.gregorianBirthMonth;
+        delete merged.gregorianBirthDay;
+      }
+      const filled = autoFillDates(merged);
+      const withZodiac = addZodiac(filled);
+      const withAge = addVirtualAge(withZodiac);
+
+      updateBody.gregorianBirthYear = withAge.gregorianBirthYear ?? null;
+      updateBody.gregorianBirthMonth = withAge.gregorianBirthMonth ?? null;
+      updateBody.gregorianBirthDay = withAge.gregorianBirthDay ?? null;
+      updateBody.lunarBirthYear = withAge.lunarBirthYear ?? null;
+      updateBody.lunarBirthMonth = withAge.lunarBirthMonth ?? null;
+      updateBody.lunarBirthDay = withAge.lunarBirthDay ?? null;
+      updateBody.lunarIsLeapMonth = withAge.lunarIsLeapMonth ?? false;
+      updateBody.zodiac = withAge.zodiac ?? null;
+      updateBody.virtualAge = withAge.virtualAge ?? null;
+    }
+
+    const customer = await Customer.findByIdAndUpdate(req.params.id, updateBody, { new: true, runValidators: true });
     res.status(200).json({ success: true, message: '客戶資料已更新', data: customer });
   } catch (error) {
     logger.error('編輯客戶錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤' });
+  }
+};
+
+// 修改單筆來訪記錄
+exports.updateVisitRecord = async (req, res) => {
+  try {
+    const { id, visitId } = req.params;
+
+    const customer = await Customer.findById(id);
+    if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
+
+    const visit = await VisitRecord.findOne({ _id: visitId, customerId: id });
+    if (!visit) return res.status(404).json({ success: false, message: '查無此來訪記錄' });
+
+    // 操作前快照
+    await saveSnapshot({
+      operation: 'update-visit-record',
+      collection: 'customer_visits',
+      documentId: String(visit._id),
+      beforeData: visit.toObject ? visit.toObject() : visit,
+      operatorId: req.user?.id,
+      metadata: { customerId: id }
+    });
+
+    const { sessionDate, consultationTopics, remarks, queueNumber, otherDetails, familyMembers } = req.body;
+    const updateFields = {};
+    if (sessionDate !== undefined) updateFields.sessionDate = new Date(sessionDate);
+    if (consultationTopics !== undefined) updateFields.consultationTopics = consultationTopics;
+    if (remarks !== undefined) updateFields.remarks = remarks;
+    if (queueNumber !== undefined) updateFields.queueNumber = queueNumber;
+    if (otherDetails !== undefined) updateFields.otherDetails = otherDetails;
+    if (familyMembers !== undefined) updateFields.familyMembers = familyMembers;
+
+    const updated = await VisitRecord.findByIdAndUpdate(visitId, updateFields, { new: true, runValidators: true });
+
+    // 如果 sessionDate 有改，重算 customer firstVisitDate / lastVisitDate
+    if (sessionDate !== undefined) {
+      const allVisits = await VisitRecord.find({ customerId: id }).sort({ sessionDate: 1 }).lean();
+      const customerUpdates = {
+        firstVisitDate: allVisits.length > 0 ? allVisits[0].sessionDate : null,
+        lastVisitDate: allVisits.length > 0 ? allVisits[allVisits.length - 1].sessionDate : null
+      };
+      await Customer.findByIdAndUpdate(id, customerUpdates);
+    }
+
+    return res.status(200).json({
+      success: true,
+      code: 'OK',
+      message: '來訪記錄已更新',
+      data: updated
+    });
+  } catch (error) {
+    logger.error('修改來訪記錄錯誤:', error);
+    return res.status(500).json({ success: false, message: '伺服器內部錯誤' });
   }
 };
 

@@ -262,6 +262,13 @@ Base URL: `/api/v1`
 - **動作:** 建立 VisitRecord + 自動更新 totalVisits+1、firstVisitDate、lastVisitDate
 - **回傳:** 建立的 VisitRecord 物件
 
+### PUT `/customers/:id/visits/:visitId`
+修改單筆來訪記錄。
+- **Auth:** 需要 JWT
+- **Body:** `{ sessionDate?, consultationTopics?, remarks?, queueNumber?, otherDetails?, familyMembers? }`
+- **動作:** 更新 VisitRecord（saveSnapshot before data）；如果 sessionDate 有改，重算 customer 的 firstVisitDate/lastVisitDate
+- **回傳:** 更新後的 VisitRecord 物件
+
 ### DELETE `/customers/:id/visits/:visitId`
 刪除單筆來訪記錄。
 - **動作:** 刪除 VisitRecord + 重新計算 totalVisits、firstVisitDate、lastVisitDate
