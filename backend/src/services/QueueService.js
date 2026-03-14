@@ -28,14 +28,20 @@ class QueueService {
     // 檢查候位是否已額滿（使用與getQueueStatus一致的邏輯）
     await this.checkQueueAvailability(settings);
 
-    // 生成候位號碼（如果未提供）
-    if (!processedData.queueNumber) {
-      processedData.queueNumber = await WaitingRecord.getNextQueueNumber();
-    }
-
-    // 計算 orderIndex
+    // 計算 orderIndex（新報名排到隊尾）
     const activeCustomerCount = await queueRepository.countActiveCustomers();
     processedData.orderIndex = activeCustomerCount + 1;
+
+    // 生成候位號碼
+    // isOpen=false：queueNumber = orderIndex（拖曳前兩者同步）
+    // isOpen=true：queueNumber 用全局遞增（凍結後不再依 orderIndex）
+    if (!processedData.queueNumber) {
+      if (!settings.isQueueOpen) {
+        processedData.queueNumber = processedData.orderIndex;
+      } else {
+        processedData.queueNumber = await WaitingRecord.getNextQueueNumber();
+      }
+    }
 
     // 創建記錄
     const newRecord = await queueRepository.create(processedData);
