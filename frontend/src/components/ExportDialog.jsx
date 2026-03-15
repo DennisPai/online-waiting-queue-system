@@ -193,7 +193,7 @@ const ExportDialog = ({ open, onClose, customers = [], loading = false }) => {
                       修玄宮問事單 (PDF)
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      生成修玄宮問事單 PDF，A4頁面包含兩張A5問事單，只包含等待中和處理中的客戶
+                      橫式 A4 表格，以家庭為單位分組，同住家人共用序號/地址/諮詢主題，只包含等待中和處理中的客戶
                     </Typography>
                   </Box>
                 </Box>
@@ -256,9 +256,10 @@ const ExportDialog = ({ open, onClose, customers = [], loading = false }) => {
                 <strong>修玄宮問事單說明：</strong>
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.6 }}>
-                • 生成修玄宮問事單 PDF，A4頁面包含兩張A5問事單<br/>
-                • 只包含等待中和處理中的客戶<br/>
-                • 支援預覽功能，確認格式後再下載
+                • 橫式 A4 表格，同地址客戶自動歸組<br/>
+                • 合併欄位：序號、地址、類型、諮詢主題、備註（空白手寫區）<br/>
+                • 每人獨立顯示：姓名、性別、農曆生日、虛歲<br/>
+                • 只包含等待中和處理中的客戶，支援預覽後下載
               </Typography>
             </>
           )}
