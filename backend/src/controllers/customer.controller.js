@@ -164,7 +164,8 @@ exports.updateCustomer = async (req, res) => {
       collection: 'customer_profiles',
       documentId: String(before._id),
       beforeData: before,
-      operatorId: req.user?.id
+      operatorId: req.user?.id,
+      metadata: { description: `編輯客戶資料（${before.name}）` }
     });
 
     // normalizeBirthData 處理 birthDate/calendarType 格式轉換 + zodiac/virtualAge 重算
@@ -191,13 +192,14 @@ exports.updateVisitRecord = async (req, res) => {
     if (!visit) return res.status(404).json({ success: false, message: '查無此來訪記錄' });
 
     // 操作前快照
+    const visitDateStr = visit.sessionDate ? new Date(visit.sessionDate).toLocaleDateString('zh-TW') : '未知日期';
     await saveSnapshot({
       operation: 'update-visit-record',
       collection: 'customer_visits',
       documentId: String(visit._id),
       beforeData: visit.toObject ? visit.toObject() : visit,
       operatorId: req.user?.id,
-      metadata: { customerId: id }
+      metadata: { customerId: id, description: `編輯來訪記錄（${customer.name}，${visitDateStr}）` }
     });
 
     const { sessionDate, consultationTopics, remarks, queueNumber, otherDetails, familyMembers } = req.body;
@@ -245,13 +247,14 @@ exports.deleteVisitRecord = async (req, res) => {
     if (!visit) return res.status(404).json({ success: false, message: '查無此來訪記錄' });
 
     // 操作前快照
+    const delVisitDateStr = visit.sessionDate ? new Date(visit.sessionDate).toLocaleDateString('zh-TW') : '未知日期';
     await saveSnapshot({
       operation: 'delete-visit-record',
       collection: 'customer_visits',
       documentId: String(visit._id),
       beforeData: visit.toObject ? visit.toObject() : visit,
       operatorId: req.user?.id,
-      metadata: { customerId: id }
+      metadata: { customerId: id, description: `刪除來訪記錄（${customer.name}，${delVisitDateStr}）` }
     });
 
     // 刪除
@@ -300,6 +303,17 @@ exports.createVisitRecord = async (req, res) => {
       otherDetails: otherDetails || ''
     });
 
+    // 操作快照（建立後記錄）
+    const createVisitDateStr = new Date(sessionDate).toLocaleDateString('zh-TW');
+    await saveSnapshot({
+      operation: 'create-visit-record',
+      collection: 'customer_visits',
+      documentId: String(visit._id),
+      beforeData: null,
+      operatorId: req.user?.id,
+      metadata: { customerId: id, description: `新增來訪記錄（${customer.name}，${createVisitDateStr}）` }
+    });
+
     // 更新 totalVisits、firstVisitDate、lastVisitDate
     const visitDate = new Date(sessionDate);
     const updates = { $inc: { totalVisits: 1 }, lastVisitDate: visitDate };
@@ -328,12 +342,16 @@ exports.deleteCustomer = async (req, res) => {
     if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
 
     // 操作前快照（先備份客戶資料）
+    // 先查 visits 數量以便 description 使用
+    const visitsToDelete = await VisitRecord.countDocuments({ customerId: id });
+
     await saveSnapshot({
       operation: 'delete-customer',
       collection: 'customer_profiles',
       documentId: String(customer._id),
       beforeData: customer.toObject ? customer.toObject() : customer,
-      operatorId: req.user?.id
+      operatorId: req.user?.id,
+      metadata: { description: `刪除客戶（${customer.name}，含 ${visitsToDelete} 筆來訪記錄）` }
     });
 
     // 先刪 visits，再刪 customer
