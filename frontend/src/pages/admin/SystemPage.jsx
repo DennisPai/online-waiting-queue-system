@@ -36,12 +36,19 @@ function SnapshotSection() {
   const [restoreDialog, setRestoreDialog] = useState({ open: false, snapshot: null });
   const [confirmToken, setConfirmToken] = useState('');
   const [restoreMsg, setRestoreMsg] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const PAGE_SIZE = 20;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (p = 1) => {
     setLoading(true);
     try {
-      const res = await axios.get(`${ADMIN_API}/backups?limit=10`, { headers: getAuthHeaders() });
+      const res = await axios.get(`${ADMIN_API}/backups?page=${p}&limit=${PAGE_SIZE}`, { headers: getAuthHeaders() });
       setSnapshots(res.data.data?.snapshots || []);
+      const pagination = res.data.data?.pagination;
+      if (pagination) {
+        setTotalPages(pagination.pages || 1);
+      }
     } catch {
       setSnapshots([]);
     } finally {
@@ -49,7 +56,7 @@ function SnapshotSection() {
     }
   }, []); // eslint-disable-line
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(page); }, [load, page]);
 
   const handleRestore = async () => {
     try {
@@ -77,52 +84,60 @@ function SnapshotSection() {
     <Paper sx={{ p: 3, mb: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
         <Typography variant="h6">操作快照備份</Typography>
-        <Tooltip title="重新整理"><IconButton size="small" onClick={load}><RefreshIcon fontSize="small" /></IconButton></Tooltip>
+        <Tooltip title="重新整理"><IconButton size="small" onClick={() => load(page)}><RefreshIcon fontSize="small" /></IconButton></Tooltip>
       </Box>
       {restoreMsg && <Alert severity={restoreMsg.type} sx={{ mb: 2 }} onClose={() => setRestoreMsg(null)}>{restoreMsg.text}</Alert>}
       {loading ? <CircularProgress size={24} /> : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>時間</TableCell>
-                <TableCell>操作</TableCell>
-                <TableCell>資料集</TableCell>
-                <TableCell>文件 ID</TableCell>
-                <TableCell align="center">恢復</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {snapshots.length === 0 ? (
-                <TableRow><TableCell colSpan={5} align="center">尚無快照記錄</TableCell></TableRow>
-              ) : snapshots.map((s) => (
-                <TableRow key={s._id} hover>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(s.timestamp)}</TableCell>
-                  <TableCell>
-                    <Chip label={s.operation} size="small" color={opColor(s.operation)} />
-                    {s.metadata?.description && (
-                      <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.3 }}>
-                        {s.metadata.description}
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>{s.collection}</TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{s.documentId || '（批次）'}</TableCell>
-                  <TableCell align="center">
-                    {s.operation === 'end-session' || Array.isArray(s.beforeData) ? (
-                      <Chip label="不支援" size="small" variant="outlined" />
-                    ) : (
-                      <Button size="small" startIcon={<RestoreIcon />}
-                        onClick={() => { setRestoreDialog({ open: true, snapshot: s }); setConfirmToken(''); }}>
-                        恢復
-                      </Button>
-                    )}
-                  </TableCell>
+        <>
+          <TableContainer sx={{ maxHeight: 400 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>時間</TableCell>
+                  <TableCell>操作</TableCell>
+                  <TableCell>資料集</TableCell>
+                  <TableCell>文件 ID</TableCell>
+                  <TableCell align="center">恢復</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {snapshots.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} align="center">尚無快照記錄</TableCell></TableRow>
+                ) : snapshots.map((s) => (
+                  <TableRow key={s._id} hover>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(s.timestamp)}</TableCell>
+                    <TableCell>
+                      <Chip label={s.operation} size="small" color={opColor(s.operation)} />
+                      {s.metadata?.description && (
+                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.3 }}>
+                          {s.metadata.description}
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>{s.collection}</TableCell>
+                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{s.documentId || '（批次）'}</TableCell>
+                    <TableCell align="center">
+                      {s.operation === 'end-session' || Array.isArray(s.beforeData) ? (
+                        <Chip label="不支援" size="small" variant="outlined" />
+                      ) : (
+                        <Button size="small" startIcon={<RestoreIcon />}
+                          onClick={() => { setRestoreDialog({ open: true, snapshot: s }); setConfirmToken(''); }}>
+                          恢復
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          {/* 分頁控制 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mt: 1.5 }}>
+            <Button size="small" onClick={() => setPage(p => p - 1)} disabled={page <= 1}>＜ 上一頁</Button>
+            <Typography variant="body2">第 {page} / {totalPages} 頁</Typography>
+            <Button size="small" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>下一頁 ＞</Button>
+          </Box>
+        </>
       )}
 
       {/* 恢復確認 Dialog */}
@@ -245,14 +260,21 @@ function ApiLogSection() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dangerOnly, setDangerOnly] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const PAGE_SIZE = 20;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (p = 1) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: 50 });
+      const params = new URLSearchParams({ page: p, limit: PAGE_SIZE });
       if (dangerOnly) params.set('tag', 'danger');
       const res = await axios.get(`${ADMIN_API}/logs?${params}`, { headers: getAuthHeaders() });
       setLogs(res.data.data?.logs || []);
+      const pagination = res.data.data?.pagination;
+      if (pagination) {
+        setTotalPages(pagination.pages || 1);
+      }
     } catch {
       setLogs([]);
     } finally {
@@ -260,7 +282,9 @@ function ApiLogSection() {
     }
   }, [dangerOnly]); // eslint-disable-line
 
-  useEffect(() => { load(); }, [load]);
+  // dangerOnly 切換時重置到第 1 頁
+  useEffect(() => { setPage(1); }, [dangerOnly]);
+  useEffect(() => { load(page); }, [load, page]);
 
   const methodColor = (m) => ({ GET: 'default', POST: 'primary', PUT: 'warning', DELETE: 'error', PATCH: 'warning' }[m] || 'default');
 
@@ -268,7 +292,7 @@ function ApiLogSection() {
     <Paper sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1, flexWrap: 'wrap' }}>
         <Typography variant="h6">API Log</Typography>
-        <Tooltip title="重新整理"><IconButton size="small" onClick={load}><RefreshIcon fontSize="small" /></IconButton></Tooltip>
+        <Tooltip title="重新整理"><IconButton size="small" onClick={() => load(page)}><RefreshIcon fontSize="small" /></IconButton></Tooltip>
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
           <FilterIcon fontSize="small" color={dangerOnly ? 'error' : 'action'} />
           <ToggleButtonGroup size="small" value={dangerOnly ? 'danger' : 'all'}
@@ -279,41 +303,49 @@ function ApiLogSection() {
         </Box>
       </Box>
       {loading ? <CircularProgress size={24} /> : (
-        <TableContainer sx={{ maxHeight: 400 }}>
-          <Table size="small" stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell>時間</TableCell>
-                <TableCell>方法</TableCell>
-                <TableCell>路徑</TableCell>
-                <TableCell>狀態</TableCell>
-                <TableCell>耗時</TableCell>
-                <TableCell>標籤</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {logs.length === 0 ? (
-                <TableRow><TableCell colSpan={6} align="center">無記錄</TableCell></TableRow>
-              ) : logs.map((l) => (
-                <TableRow key={l._id} hover>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>{formatDate(l.timestamp)}</TableCell>
-                  <TableCell><Chip label={l.method} size="small" color={methodColor(l.method)} /></TableCell>
-                  <TableCell sx={{ fontSize: '0.75rem', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.path}</TableCell>
-                  <TableCell>
-                    <Chip label={l.statusCode} size="small" color={l.statusCode >= 400 ? 'error' : 'success'} variant="outlined" />
-                  </TableCell>
-                  <TableCell>{l.responseTimeMs != null ? `${l.responseTimeMs}ms` : '-'}</TableCell>
-                  <TableCell>
-                    {(l.tags || []).map((t) => (
-                      <Chip key={t} label={t} size="small" sx={{ mr: 0.3 }}
-                        color={t === 'danger' ? 'error' : t === 'error' ? 'warning' : 'default'} />
-                    ))}
-                  </TableCell>
+        <>
+          <TableContainer sx={{ maxHeight: 400 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>時間</TableCell>
+                  <TableCell>方法</TableCell>
+                  <TableCell>路徑</TableCell>
+                  <TableCell>狀態</TableCell>
+                  <TableCell>耗時</TableCell>
+                  <TableCell>標籤</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {logs.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} align="center">無記錄</TableCell></TableRow>
+                ) : logs.map((l) => (
+                  <TableRow key={l._id} hover>
+                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>{formatDate(l.timestamp)}</TableCell>
+                    <TableCell><Chip label={l.method} size="small" color={methodColor(l.method)} /></TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.path}</TableCell>
+                    <TableCell>
+                      <Chip label={l.statusCode} size="small" color={l.statusCode >= 400 ? 'error' : 'success'} variant="outlined" />
+                    </TableCell>
+                    <TableCell>{l.responseTimeMs != null ? `${l.responseTimeMs}ms` : '-'}</TableCell>
+                    <TableCell>
+                      {(l.tags || []).map((t) => (
+                        <Chip key={t} label={t} size="small" sx={{ mr: 0.3 }}
+                          color={t === 'danger' ? 'error' : t === 'error' ? 'warning' : 'default'} />
+                      ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          {/* 分頁控制 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mt: 1.5 }}>
+            <Button size="small" onClick={() => setPage(p => p - 1)} disabled={page <= 1}>＜ 上一頁</Button>
+            <Typography variant="body2">第 {page} / {totalPages} 頁</Typography>
+            <Button size="small" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>下一頁 ＞</Button>
+          </Box>
+        </>
       )}
     </Paper>
   );
