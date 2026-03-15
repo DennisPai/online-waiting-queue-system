@@ -77,6 +77,92 @@ function normalizeBirthData(data, existingData = {}) {
   return result;
 }
 
+/**
+ * 共用：依客戶現有第一筆地址自動歸組 Household
+ * 邏輯：
+ *   1. 取客戶第一筆非「臨時地址」的地址
+ *   2. 查找同地址的其他客戶（排除自己）
+ *   3. 有同地址客戶 → 加入或建立 household
+ *   4. 無同地址客戶 → householdId = null
+ */
+async function autoAssignHousehold(customerId) {
+  try {
+    const customer = await Customer.findById(customerId).lean();
+    if (!customer) return;
+
+    const firstAddr = (customer.addresses || []).find(
+      a => a.address && a.address.trim() && a.address.trim() !== '臨時地址'
+    );
+
+    if (!firstAddr) {
+      // 無有效地址，確保 householdId 是 null
+      await Customer.findByIdAndUpdate(customerId, { householdId: null });
+      return;
+    }
+
+    const address = firstAddr.address.trim();
+
+    // 查找同地址的其他客戶（排除自己）
+    const sameAddrCustomers = await Customer.find({
+      _id: { $ne: customerId },
+      'addresses.address': address
+    }).select('_id householdId').lean();
+
+    if (sameAddrCustomers.length === 0) {
+      // 獨居 → 無 household
+      await Customer.findByIdAndUpdate(customerId, { householdId: null });
+      return;
+    }
+
+    // 有同地址客戶：找看看有沒有已存在的 household
+    let household = await Household.findOne({ address }).lean();
+
+    if (!household) {
+      // 建立新 household
+      const allMemberIds = [customerId, ...sameAddrCustomers.map(c => c._id)];
+      household = await Household.create({ address, memberIds: allMemberIds });
+      await Customer.updateMany(
+        { _id: { $in: allMemberIds } },
+        { $set: { householdId: household._id } }
+      );
+    } else {
+      // 加入已有 household
+      await Household.findByIdAndUpdate(household._id, {
+        $addToSet: { memberIds: customerId }
+      });
+      await Customer.findByIdAndUpdate(customerId, { householdId: household._id });
+    }
+  } catch (err) {
+    logger.error(`[autoAssignHousehold] 客戶 ${customerId} 歸組失敗:`, err);
+  }
+}
+
+/**
+ * 共用：從 household 移除客戶，如果 household 剩 0-1 人就解散
+ */
+async function removeFromHousehold(customerId, householdId) {
+  if (!householdId) return;
+  try {
+    const household = await Household.findByIdAndUpdate(
+      householdId,
+      { $pull: { memberIds: customerId } },
+      { new: true }
+    ).lean();
+
+    if (!household) return;
+
+    // 剩 0-1 人 → 解散 household
+    if ((household.memberIds || []).length <= 1) {
+      if (household.memberIds.length === 1) {
+        await Customer.findByIdAndUpdate(household.memberIds[0], { householdId: null });
+      }
+      await Household.findByIdAndDelete(householdId);
+    }
+  } catch (err) {
+    logger.error(`[removeFromHousehold] 移除失敗 customer=${customerId}:`, err);
+  }
+}
+
 // 客戶列表（分頁 + 搜尋）
 exports.listCustomers = async (req, res) => {
   try {
@@ -145,7 +231,14 @@ exports.createCustomer = async (req, res) => {
   try {
     const data = normalizeBirthData(req.body, {});
     const customer = await Customer.create(data);
-    res.status(201).json({ success: true, message: '客戶新增成功', data: customer.toJSON() });
+
+    // Bug 4 修復：新增後自動歸組 household
+    if ((customer.addresses || []).length > 0) {
+      await autoAssignHousehold(customer._id);
+    }
+
+    const updated = await Customer.findById(customer._id).lean();
+    res.status(201).json({ success: true, message: '客戶新增成功', data: updated });
   } catch (error) {
     logger.error('新增客戶錯誤:', error);
     if (error.name === 'ValidationError') return res.status(400).json({ success: false, message: error.message });
@@ -172,8 +265,18 @@ exports.updateCustomer = async (req, res) => {
     // existingData = before，讓國農曆互轉有完整的舊值可以參考
     const updateBody = normalizeBirthData(req.body, before);
 
-    const customer = await Customer.findByIdAndUpdate(req.params.id, updateBody, { new: true, runValidators: true });
-    res.status(200).json({ success: true, message: '客戶資料已更新', data: customer.toJSON() });
+    await Customer.findByIdAndUpdate(req.params.id, updateBody, { new: true, runValidators: true });
+
+    // Bug 1 修復：地址有變更時，重新歸組 household
+    if ('addresses' in req.body) {
+      // 先從舊 household 移除
+      await removeFromHousehold(before._id, before.householdId);
+      // 再依新地址重新歸組
+      await autoAssignHousehold(before._id);
+    }
+
+    const customer = await Customer.findById(req.params.id).lean();
+    res.status(200).json({ success: true, message: '客戶資料已更新', data: customer });
   } catch (error) {
     logger.error('編輯客戶錯誤:', error);
     res.status(500).json({ success: false, message: '伺服器內部錯誤' });
@@ -354,17 +457,14 @@ exports.deleteCustomer = async (req, res) => {
       metadata: { description: `刪除客戶（${customer.name}，含 ${visitsToDelete} 筆來訪記錄）` }
     });
 
+    // Bug 3 修復：先從 household 移除（含解散判斷），再刪除客戶
+    if (customer.householdId) {
+      await removeFromHousehold(customer._id, customer.householdId);
+    }
+
     // 先刪 visits，再刪 customer
     const { deletedCount } = await VisitRecord.deleteMany({ customerId: id });
     await Customer.findByIdAndDelete(id);
-
-    // 若屬於 household，從 memberIds 移除
-    if (customer.householdId) {
-      const Household = require('../models/household.model');
-      await Household.findByIdAndUpdate(customer.householdId, {
-        $pull: { memberIds: customer._id }
-      });
-    }
 
     return res.status(200).json({
       success: true,

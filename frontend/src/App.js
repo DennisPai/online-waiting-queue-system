@@ -19,6 +19,7 @@ import PDFPreviewPage from './pages/admin/PDFPreviewPage';
 // 匯入客戶資料庫頁面
 import CustomerListPage from './pages/admin/CustomerListPage';
 import CustomerDetailPage from './pages/admin/CustomerDetailPage';
+import CustomerCreatePage from './pages/admin/CustomerCreatePage';
 import SystemPage from './pages/admin/SystemPage';
 
 // 匯入元件
@@ -90,6 +91,7 @@ function App() {
             
             {/* 客戶資料庫 */}
             <Route path="customers" element={<CustomerListPage />} />
+            <Route path="customers/new" element={<CustomerCreatePage />} />
             <Route path="customers/:id" element={<CustomerDetailPage />} />
             <Route path="system" element={<SystemPage />} />
           </Route>
