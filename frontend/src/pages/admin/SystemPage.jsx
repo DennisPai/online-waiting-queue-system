@@ -43,7 +43,7 @@ function SnapshotSection() {
   const load = useCallback(async (p = 1) => {
     setLoading(true);
     try {
-      const res = await axios.get(`${ADMIN_API}/backups?page=${p}&limit=${PAGE_SIZE}`, { headers: getAuthHeaders() });
+      const res = await axios.get(`${ADMIN_API}/backups?page=${p}&limit=100`, { headers: getAuthHeaders() });
       setSnapshots(res.data.data?.snapshots || []);
       const pagination = res.data.data?.pagination;
       if (pagination) {
@@ -89,7 +89,7 @@ function SnapshotSection() {
       {restoreMsg && <Alert severity={restoreMsg.type} sx={{ mb: 2 }} onClose={() => setRestoreMsg(null)}>{restoreMsg.text}</Alert>}
       {loading ? <CircularProgress size={24} /> : (
         <>
-          <TableContainer sx={{ maxHeight: 400 }}>
+          <TableContainer sx={{ maxHeight: 800 }}>
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
@@ -260,21 +260,14 @@ function ApiLogSection() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dangerOnly, setDangerOnly] = useState(false);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const PAGE_SIZE = 20;
 
-  const load = useCallback(async (p = 1) => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: p, limit: PAGE_SIZE });
+      const params = new URLSearchParams({ limit: 50 });
       if (dangerOnly) params.set('tag', 'danger');
       const res = await axios.get(`${ADMIN_API}/logs?${params}`, { headers: getAuthHeaders() });
       setLogs(res.data.data?.logs || []);
-      const pagination = res.data.data?.pagination;
-      if (pagination) {
-        setTotalPages(pagination.pages || 1);
-      }
     } catch {
       setLogs([]);
     } finally {
@@ -282,9 +275,7 @@ function ApiLogSection() {
     }
   }, [dangerOnly]); // eslint-disable-line
 
-  // dangerOnly 切換時重置到第 1 頁
-  useEffect(() => { setPage(1); }, [dangerOnly]);
-  useEffect(() => { load(page); }, [load, page]);
+  useEffect(() => { load(); }, [load]);
 
   const methodColor = (m) => ({ GET: 'default', POST: 'primary', PUT: 'warning', DELETE: 'error', PATCH: 'warning' }[m] || 'default');
 
@@ -292,7 +283,7 @@ function ApiLogSection() {
     <Paper sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1, flexWrap: 'wrap' }}>
         <Typography variant="h6">API Log</Typography>
-        <Tooltip title="重新整理"><IconButton size="small" onClick={() => load(page)}><RefreshIcon fontSize="small" /></IconButton></Tooltip>
+        <Tooltip title="重新整理"><IconButton size="small" onClick={load}><RefreshIcon fontSize="small" /></IconButton></Tooltip>
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
           <FilterIcon fontSize="small" color={dangerOnly ? 'error' : 'action'} />
           <ToggleButtonGroup size="small" value={dangerOnly ? 'danger' : 'all'}
@@ -303,49 +294,41 @@ function ApiLogSection() {
         </Box>
       </Box>
       {loading ? <CircularProgress size={24} /> : (
-        <>
-          <TableContainer sx={{ maxHeight: 400 }}>
-            <Table size="small" stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell>時間</TableCell>
-                  <TableCell>方法</TableCell>
-                  <TableCell>路徑</TableCell>
-                  <TableCell>狀態</TableCell>
-                  <TableCell>耗時</TableCell>
-                  <TableCell>標籤</TableCell>
+        <TableContainer sx={{ maxHeight: 400 }}>
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell>時間</TableCell>
+                <TableCell>方法</TableCell>
+                <TableCell>路徑</TableCell>
+                <TableCell>狀態</TableCell>
+                <TableCell>耗時</TableCell>
+                <TableCell>標籤</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {logs.length === 0 ? (
+                <TableRow><TableCell colSpan={6} align="center">無記錄</TableCell></TableRow>
+              ) : logs.map((l) => (
+                <TableRow key={l._id} hover>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>{formatDate(l.timestamp)}</TableCell>
+                  <TableCell><Chip label={l.method} size="small" color={methodColor(l.method)} /></TableCell>
+                  <TableCell sx={{ fontSize: '0.75rem', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.path}</TableCell>
+                  <TableCell>
+                    <Chip label={l.statusCode} size="small" color={l.statusCode >= 400 ? 'error' : 'success'} variant="outlined" />
+                  </TableCell>
+                  <TableCell>{l.responseTimeMs != null ? `${l.responseTimeMs}ms` : '-'}</TableCell>
+                  <TableCell>
+                    {(l.tags || []).map((t) => (
+                      <Chip key={t} label={t} size="small" sx={{ mr: 0.3 }}
+                        color={t === 'danger' ? 'error' : t === 'error' ? 'warning' : 'default'} />
+                    ))}
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {logs.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} align="center">無記錄</TableCell></TableRow>
-                ) : logs.map((l) => (
-                  <TableRow key={l._id} hover>
-                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>{formatDate(l.timestamp)}</TableCell>
-                    <TableCell><Chip label={l.method} size="small" color={methodColor(l.method)} /></TableCell>
-                    <TableCell sx={{ fontSize: '0.75rem', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.path}</TableCell>
-                    <TableCell>
-                      <Chip label={l.statusCode} size="small" color={l.statusCode >= 400 ? 'error' : 'success'} variant="outlined" />
-                    </TableCell>
-                    <TableCell>{l.responseTimeMs != null ? `${l.responseTimeMs}ms` : '-'}</TableCell>
-                    <TableCell>
-                      {(l.tags || []).map((t) => (
-                        <Chip key={t} label={t} size="small" sx={{ mr: 0.3 }}
-                          color={t === 'danger' ? 'error' : t === 'error' ? 'warning' : 'default'} />
-                      ))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          {/* 分頁控制 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mt: 1.5 }}>
-            <Button size="small" onClick={() => setPage(p => p - 1)} disabled={page <= 1}>＜ 上一頁</Button>
-            <Typography variant="body2">第 {page} / {totalPages} 頁</Typography>
-            <Button size="small" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>下一頁 ＞</Button>
-          </Box>
-        </>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </Paper>
   );
