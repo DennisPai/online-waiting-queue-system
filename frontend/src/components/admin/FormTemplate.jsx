@@ -48,6 +48,7 @@ const cellBase = {
   lineHeight: 1.3,
   wordBreak: 'break-word',
   boxSizing: 'border-box',
+  height: '15mm',
 };
 
 const headerCell = {

@@ -96,7 +96,7 @@ function buildGroup(c, addr, addrType) {
  * 將 groups 按列數分頁（同一群組不拆頁）
  * maxRowsPerPage：每頁最大列數
  */
-function paginateGroups(groups, maxRowsPerPage = 20) {
+function paginateGroups(groups, maxRowsPerPage = 12) {
   const pages = [];
   let currentPage = [];
   let currentRowCount = 0;
