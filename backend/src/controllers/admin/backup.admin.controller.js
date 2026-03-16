@@ -121,6 +121,14 @@ exports.restoreBackup = async (req, res) => {
       });
     }
 
+    // === DEBUG LOG: 印出各 model 的 connection DB name ===
+    const RequiredCustomer = require('../../models/customer.model');
+    logger.info(`[restore-debug] Model.db.databaseName = ${Model.db?.databaseName}`);
+    logger.info(`[restore-debug] Model === RequiredCustomer ? ${Model === RequiredCustomer}`);
+    logger.info(`[restore-debug] RequiredCustomer.db.databaseName = ${RequiredCustomer.db?.databaseName}`);
+    logger.info(`[restore-debug] getCustomerConn().db.databaseName = ${getCustomerConn().db?.databaseName}`);
+    logger.info(`[restore-debug] getQueueConn().db.databaseName = ${getQueueConn().db?.databaseName}`);
+
     // 移除 mongoose 內部欄位後 restore
     const restoreData = { ...snapshot.beforeData };
     delete restoreData.__v;
@@ -139,9 +147,11 @@ exports.restoreBackup = async (req, res) => {
     );
     logger.info(`[backup restore] replaceOne 結果 — matchedCount=${replaceResult.matchedCount} modifiedCount=${replaceResult.modifiedCount} upsertedCount=${replaceResult.upsertedCount} upsertedId=${replaceResult.upsertedId}`);
 
-    // 驗證：查詢是否真的寫入
+    // 驗證：用 Model 和 RequiredCustomer 分別查詢，比較結果
     const verifyDoc = await Model.findById(objectId).lean();
-    logger.info(`[backup restore] 驗證查詢 — findById=${verifyDoc ? '找到' : '查無此文件'} name=${verifyDoc?.name || '—'}`);
+    const verifyDoc2 = await RequiredCustomer.findById(objectId).lean();
+    logger.info(`[backup restore] 驗證 Model.findById = ${verifyDoc ? '找到' : '查無'} (DB: ${Model.db?.databaseName})`);
+    logger.info(`[backup restore] 驗證 RequiredCustomer.findById = ${verifyDoc2 ? '找到' : '查無'} (DB: ${RequiredCustomer.db?.databaseName})`);
 
     logger.info(`[backup restore] ${snapshot.collection}/${snapshot.documentId} 已恢復 by ${req.user?.id}`);
 
