@@ -58,7 +58,7 @@ const headerCell = {
   padding: '1.5mm 2mm',
 };
 
-const COL_WIDTHS = ['4%', '5%', '7%', '4%', '12%', '5%', '28%', '7%', '10%', '18%'];
+const COL_WIDTHS = ['4%', '5%', '7%', '4%', '12%', '5%', '21%', '5%', '7%', '30%'];
 const COL_LABELS = ['完成', '序號', '姓名', '性別', '農曆生日', '虛歲', '地址', '類型', '諮詢主題', '備註'];
 
 const FormTemplate = ({ groups = [], pageIndex = 0 }) => {
@@ -75,18 +75,6 @@ const FormTemplate = ({ groups = [], pageIndex = 0 }) => {
         overflow: 'hidden',
       }}
     >
-      {/* 標題 */}
-      <Box sx={{
-        textAlign: 'center',
-        fontFamily: "'Noto Sans TC', 'Microsoft JhengHei', sans-serif",
-        fontWeight: 'bold',
-        fontSize: '16px',
-        mb: '2mm',
-        letterSpacing: '2px',
-      }}>
-        修玄宮玄請示單
-      </Box>
-
       {/* 表格 */}
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
         <table
@@ -121,7 +109,7 @@ const FormTemplate = ({ groups = [], pageIndex = 0 }) => {
                   {/* 合併欄：完成（勾選框） */}
                   {rowIdx === 0 && (
                     <td rowSpan={rowSpan} style={{ ...cellBase, border: innerBorder }}>
-                      <span style={{ fontSize: '16px' }}>☐</span>
+                      &nbsp;
                     </td>
                   )}
 
