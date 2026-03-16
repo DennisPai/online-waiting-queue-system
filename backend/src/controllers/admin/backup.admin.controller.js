@@ -233,6 +233,18 @@ exports.debugSnapshot = async (req, res) => {
       existingAfter = await Model.findById(objectId).lean();
     }
 
+    // 取 require('customer.model') 的 Model，比較兩者 DB name
+    const RequiredCustomer = require('../../models/customer.model');
+    const dbInfo = {
+      getModelForCollection_dbName: Model?.db?.databaseName || Model?.db?.name || 'N/A',
+      getModelForCollection_collectionName: Model?.collection?.name || 'N/A',
+      requiredCustomer_dbName: RequiredCustomer?.db?.databaseName || RequiredCustomer?.db?.name || 'N/A',
+      requiredCustomer_collectionName: RequiredCustomer?.collection?.name || 'N/A',
+      getCustomerConn_dbName: getCustomerConn()?.db?.databaseName || getCustomerConn()?.db?.name || 'N/A',
+      getQueueConn_dbName: getQueueConn()?.db?.databaseName || getQueueConn()?.db?.name || 'N/A',
+      areSameModel: Model === RequiredCustomer,
+    };
+
     return res.json({
       success: true,
       snapshot: {
@@ -250,6 +262,7 @@ exports.debugSnapshot = async (req, res) => {
           upsertedId: replaceResult.upsertedId
         } : '文件已存在，未執行 replaceOne',
         existingAfterRestore: existingAfter ? { _id: existingAfter._id, name: existingAfter.name } : null,
+        dbInfo,
         beforeData: {
           _idType: bdIdType,
           _idValue: String(bd._id),
