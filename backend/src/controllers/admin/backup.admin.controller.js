@@ -8,6 +8,41 @@ const logger = require('../../utils/logger');
 const BackupSnapshot = require('../../models/backup-snapshot.model');
 const mongoose = require('mongoose');
 const { runFullBackup, getRecentBackupLogs } = require('../../services/gdrive-backup.service');
+const { getCustomerConn, getQueueConn } = require('../../config/db');
+
+/**
+ * 取得 collection 對應的 Mongoose Model，直接綁定到正確的 DB connection
+ * 用 conn.model() 而不是 require cache，確保使用 rebind 後的正確 connection
+ */
+function getModelForCollection(collection) {
+  const customerCollections = ['customer_profiles', 'customer_visits', 'customer_households'];
+  const conn = customerCollections.includes(collection) ? getCustomerConn() : getQueueConn();
+
+  const schemaMap = {
+    'waitingrecords': require('../../models/waiting-record.model')._schema,
+    'customer_profiles': require('../../models/customer.model')._schema,
+    'customer_visits': require('../../models/visit-record.model')._schema,
+    'customer_households': require('../../models/household.model')._schema,
+  };
+
+  const schema = schemaMap[collection];
+  if (!schema) return null;
+
+  // 用 conn.model() 取已有的 model（或建立），確保在正確 connection 上
+  const modelNameMap = {
+    'waitingrecords': 'WaitingRecord',
+    'customer_profiles': 'Customer',
+    'customer_visits': 'VisitRecord',
+    'customer_households': 'Household',
+  };
+  const modelName = modelNameMap[collection];
+  try {
+    return conn.model(modelName);
+  } catch (e) {
+    // model 尚未在此 connection 上建立，建立之
+    return conn.model(modelName, schema);
+  }
+}
 
 // 列出 snapshot（分頁 + 篩選）
 exports.listBackups = async (req, res) => {
@@ -76,15 +111,8 @@ exports.restoreBackup = async (req, res) => {
       });
     }
 
-    // 根據 collection 找對應的 model
-    const collectionModelMap = {
-      'waitingrecords': require('../../models/waiting-record.model'),
-      'customer_profiles': require('../../models/customer.model'),
-      'customer_visits': require('../../models/visit-record.model'),
-      'customer_households': require('../../models/household.model')
-    };
-
-    const Model = collectionModelMap[snapshot.collection];
+    // 根據 collection 取對應的 model（直接綁定正確 DB connection）
+    const Model = getModelForCollection(snapshot.collection);
     if (!Model) {
       return res.status(400).json({
         success: false,
@@ -167,14 +195,7 @@ exports.debugSnapshot = async (req, res) => {
     const snapshot = await BackupSnapshot.findById(id).lean();
     if (!snapshot) return res.status(404).json({ success: false, message: '找不到 snapshot' });
 
-    const ModelMap = {
-      'waitingrecords': require('../../models/waiting-record.model'),
-      'customer_profiles': require('../../models/customer.model'),
-      'customer_visits': require('../../models/visit-record.model'),
-      'customer_households': require('../../models/household.model')
-    };
-
-    const Model = ModelMap[snapshot.collection];
+    const Model = getModelForCollection(snapshot.collection);
     const objectId = mongoose.Types.ObjectId.isValid(snapshot.documentId)
       ? new mongoose.Types.ObjectId(snapshot.documentId)
       : snapshot.documentId;
