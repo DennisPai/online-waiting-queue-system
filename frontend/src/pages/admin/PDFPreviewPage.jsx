@@ -13,44 +13,18 @@ import FormTemplate from '../../components/admin/FormTemplate';
 import { generatePDFFromDOMPages } from '../../utils/pdfGenerator';
 
 /**
- * 將候位清單轉換為「以家庭為單位的分組陣列」
- * 同 addresses[0].address（trim）歸同組，空地址/臨時地址各自獨立
+ * 將候位清單轉換為分組陣列
+ * 每筆候位記錄（每個 queueNumber）= 一個獨立的組
+ * 組內成員：主記錄本人 + familyMembers（依陣列順序）
+ * 組間按 queueNumber 升序
  */
 function groupByAddress(customers) {
-  // 按 queueNumber 升序排列
   const sorted = [...customers].sort((a, b) => (a.queueNumber || 0) - (b.queueNumber || 0));
-
-  const addrMap = new Map(); // address → group（同地址第一個 queueNumber 為代表）
-  const groups = [];
-
-  for (const c of sorted) {
-    const rawAddr = (c.addresses?.[0]?.address || '').trim();
-    const addr = rawAddr === '臨時地址' ? '' : rawAddr;
+  return sorted.map(c => {
+    const addr = (c.addresses?.[0]?.address || '').trim();
     const addrType = c.addresses?.[0]?.addressType || '';
-
-    // 空地址或臨時地址 → 獨立一組
-    if (!addr) {
-      groups.push(buildGroup(c, addr, addrType));
-      continue;
-    }
-
-    if (addrMap.has(addr)) {
-      // 加入已有群組的 rows（只加主記錄本人，家人會在主記錄的 familyMembers 裡）
-      // 這裡把後來同地址的候位記錄 append 到同一組
-      const existing = addrMap.get(addr);
-      existing.rows.push(buildPersonRow(c));
-      // 家人也一起加入
-      for (const fm of (c.familyMembers || [])) {
-        existing.rows.push(buildFamilyRow(fm));
-      }
-    } else {
-      const group = buildGroup(c, addr, addrType);
-      addrMap.set(addr, group);
-      groups.push(group);
-    }
-  }
-
-  return groups;
+    return buildGroup(c, addr, addrType);
+  });
 }
 
 function buildPersonRow(c) {
