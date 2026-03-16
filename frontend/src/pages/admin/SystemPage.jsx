@@ -24,6 +24,32 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
+// token 是否已就位
+function hasToken() {
+  const token = store.getState().auth?.token || localStorage.getItem('token');
+  return !!token && token !== 'null' && token !== 'undefined';
+}
+
+/**
+ * 共用 hook：token 就位後才執行 loadFn，否則訂閱 store 等 token 出現
+ * deps 改變時重新執行（同 useEffect）
+ */
+function useLoadWhenReady(loadFn, deps) {
+  useEffect(() => {
+    if (hasToken()) {
+      loadFn();
+    } else {
+      const unsubscribe = store.subscribe(() => {
+        if (hasToken()) {
+          unsubscribe();
+          loadFn();
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 function formatDate(ts) {
   if (!ts) return '-';
   return new Date(ts).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
@@ -41,6 +67,7 @@ function SnapshotSection() {
   const PAGE_SIZE = 20;
 
   const load = useCallback(async (p = 1) => {
+    if (!hasToken()) return;
     setLoading(true);
     try {
       const res = await axios.get(`${ADMIN_API}/backups?page=${p}&limit=100`, { headers: getAuthHeaders() });
@@ -56,7 +83,7 @@ function SnapshotSection() {
     }
   }, []); // eslint-disable-line
 
-  useEffect(() => { load(page); }, [load, page]);
+  useLoadWhenReady(() => load(page), [load, page]);
 
   const handleRestore = async () => {
     try {
@@ -180,6 +207,7 @@ function GDriveSection() {
   const [msg, setMsg] = useState(null);
 
   const load = useCallback(async () => {
+    if (!hasToken()) return;
     setLoading(true);
     try {
       const res = await axios.get(`${ADMIN_API}/backup/logs`, { headers: getAuthHeaders() });
@@ -191,7 +219,7 @@ function GDriveSection() {
     }
   }, []); // eslint-disable-line
 
-  useEffect(() => { load(); }, [load]);
+  useLoadWhenReady(load, [load]);
 
   const handleBackup = async () => {
     setBackingUp(true);
@@ -262,6 +290,7 @@ function ApiLogSection() {
   const [dangerOnly, setDangerOnly] = useState(false);
 
   const load = useCallback(async () => {
+    if (!hasToken()) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: 50 });
@@ -275,7 +304,7 @@ function ApiLogSection() {
     }
   }, [dangerOnly]); // eslint-disable-line
 
-  useEffect(() => { load(); }, [load]);
+  useLoadWhenReady(load, [load]);
 
   const methodColor = (m) => ({ GET: 'default', POST: 'primary', PUT: 'warning', DELETE: 'error', PATCH: 'warning' }[m] || 'default');
 
