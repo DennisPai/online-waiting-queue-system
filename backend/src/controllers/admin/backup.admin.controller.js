@@ -99,23 +99,42 @@ exports.restoreBackup = async (req, res) => {
     // 使用 raw MongoDB driver 繞過 Mongoose connection 問題
     const customerCollections = ['customer_profiles', 'customer_visits', 'customer_households'];
     const conn = customerCollections.includes(snapshot.collection) ? getCustomerConn() : getQueueConn();
+    const connDbName = conn.db?.databaseName || conn.db?.db?.databaseName || 'unknown';
     const rawCollection = conn.db.collection(snapshot.collection);
 
-    await rawCollection.replaceOne({ _id: objectId }, restoreData, { upsert: true });
+    const replaceResult = await rawCollection.replaceOne({ _id: objectId }, restoreData, { upsert: true });
 
-    // 驗證寫入是否成功
-    const verified = await rawCollection.findOne({ _id: objectId });
-    if (!verified) {
-      throw new Error('replaceOne 執行後仍查無文件');
+    // 驗證寫入是否成功（raw driver）
+    const verifiedRaw = await rawCollection.findOne({ _id: objectId });
+    if (!verifiedRaw) {
+      throw new Error(`replaceOne 執行後仍查無文件（DB: ${connDbName}, collection: ${snapshot.collection}）`);
     }
 
-    logger.info(`[backup restore] ${snapshot.collection}/${snapshot.documentId} 已恢復 by ${req.user?.id}`);
+    // 同時用 Mongoose model 驗證（確認 API 讀得到）
+    const RequiredCustomer = require('../../models/customer.model');
+    const verifiedMongoose = snapshot.collection === 'customer_profiles'
+      ? await RequiredCustomer.findById(objectId).lean()
+      : null;
+    const mongooseDbName = RequiredCustomer?.db?.databaseName || RequiredCustomer?.db?.db?.databaseName || 'unknown';
+
+    logger.info(`[backup restore] ${snapshot.collection}/${snapshot.documentId} 已恢復 — rawDriver DB: ${connDbName}, mongoose DB: ${mongooseDbName}, rawFound: ${!!verifiedRaw}, mongooseFound: ${!!verifiedMongoose}`);
 
     return res.status(200).json({
       success: true,
       code: 'OK',
       message: `已恢復 ${snapshot.collection} 的資料（操作：${snapshot.operation}）`,
-      data: { snapshotId: id, collection: snapshot.collection, documentId: snapshot.documentId }
+      data: {
+        snapshotId: id,
+        collection: snapshot.collection,
+        documentId: snapshot.documentId,
+        debug: {
+          rawDriver_dbName: connDbName,
+          mongoose_dbName: mongooseDbName,
+          rawDriver_found: !!verifiedRaw,
+          mongoose_found: verifiedMongoose !== null ? !!verifiedMongoose : 'N/A（非 customer_profiles）',
+          replaceResult: { matchedCount: replaceResult.matchedCount, modifiedCount: replaceResult.modifiedCount, upsertedCount: replaceResult.upsertedCount }
+        }
+      }
     });
   } catch (error) {
     logger.error('恢復 backup 錯誤:', error);
