@@ -96,6 +96,7 @@ exports.restoreBackup = async (req, res) => {
     // 移除 mongoose 內部欄位後 restore
     const restoreData = { ...snapshot.beforeData };
     delete restoreData.__v;
+    delete restoreData._id;
 
     const objectId = mongoose.Types.ObjectId.isValid(snapshot.documentId)
       ? new mongoose.Types.ObjectId(snapshot.documentId)
