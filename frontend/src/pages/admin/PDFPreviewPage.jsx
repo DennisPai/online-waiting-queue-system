@@ -129,7 +129,7 @@ const PDFPreviewPage = () => {
 
       // 分組 → 分頁
       const groups = groupByAddress(active);
-      const paginated = paginateGroups(groups, 20);
+      const paginated = paginateGroups(groups, 12);
       setPages(paginated);
 
       sessionStorage.removeItem('exportCustomers');
