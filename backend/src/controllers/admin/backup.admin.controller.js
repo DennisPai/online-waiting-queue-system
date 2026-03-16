@@ -159,3 +159,57 @@ exports.getBackupLogs = async (req, res) => {
     return res.status(500).json({ success: false, code: 'INTERNAL_ERROR', message: '伺服器內部錯誤' });
   }
 };
+
+// [DEBUG] 查看 snapshot 詳細內容（含 beforeData 的型別資訊）
+exports.debugSnapshot = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const snapshot = await BackupSnapshot.findById(id).lean();
+    if (!snapshot) return res.status(404).json({ success: false, message: '找不到 snapshot' });
+
+    const { collectionModelMap } = require('./backup.admin.controller.helpers') || {};
+    const ModelMap = {
+      'waitingrecords': require('../../models/waiting-record.model'),
+      'customer_profiles': require('../../models/customer.model'),
+      'customer_visits': require('../../models/visit-record.model'),
+      'customer_households': require('../../models/household.model')
+    };
+
+    const Model = ModelMap[snapshot.collection];
+    const objectId = mongoose.Types.ObjectId.isValid(snapshot.documentId)
+      ? new mongoose.Types.ObjectId(snapshot.documentId)
+      : snapshot.documentId;
+
+    // 查現有文件
+    const existing = Model ? await Model.findById(objectId).lean() : null;
+
+    // 分析 beforeData
+    const bd = snapshot.beforeData || {};
+    const bdIdType = typeof bd._id;
+    const bdKeys = Object.keys(bd);
+
+    return res.json({
+      success: true,
+      snapshot: {
+        _id: snapshot._id,
+        collection: snapshot.collection,
+        documentId: snapshot.documentId,
+        operation: snapshot.operation,
+        objectId: objectId.toString(),
+        modelFound: !!Model,
+        existingDoc: existing ? { _id: existing._id, name: existing.name } : null,
+        beforeData: {
+          _idType: bdIdType,
+          _idValue: String(bd._id),
+          keys: bdKeys,
+          nameValue: bd.name,
+          // 前 3 個 key 的值預覽
+          preview: Object.fromEntries(bdKeys.slice(0, 5).map(k => [k, bd[k]]))
+        }
+      }
+    });
+  } catch (error) {
+    logger.error('debugSnapshot 錯誤:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

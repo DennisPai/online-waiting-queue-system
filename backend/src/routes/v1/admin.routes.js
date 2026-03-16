@@ -92,6 +92,7 @@ router.get('/logs', adminController.getLogs);
 
 // 操作快照備份
 router.get('/backups', adminController.listBackups);
+router.get('/backups/:id/debug', adminController.debugSnapshot);
 router.post('/backups/:id/restore', adminController.restoreBackup);
 
 // Google Drive 備份
