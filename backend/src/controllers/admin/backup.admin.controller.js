@@ -103,11 +103,17 @@ exports.restoreBackup = async (req, res) => {
       : snapshot.documentId;
 
     // replaceOne + upsert：文件存在則整體取代，不存在（已刪除）則重新建立
-    await Model.replaceOne(
+    logger.info(`[backup restore] 開始 replaceOne — collection=${snapshot.collection} documentId=${snapshot.documentId} objectId=${objectId} restoreDataKeys=${Object.keys(restoreData).join(',')}`);
+    const replaceResult = await Model.replaceOne(
       { _id: objectId },
       { _id: objectId, ...restoreData },
       { upsert: true }
     );
+    logger.info(`[backup restore] replaceOne 結果 — matchedCount=${replaceResult.matchedCount} modifiedCount=${replaceResult.modifiedCount} upsertedCount=${replaceResult.upsertedCount} upsertedId=${replaceResult.upsertedId}`);
+
+    // 驗證：查詢是否真的寫入
+    const verifyDoc = await Model.findById(objectId).lean();
+    logger.info(`[backup restore] 驗證查詢 — findById=${verifyDoc ? '找到' : '查無此文件'} name=${verifyDoc?.name || '—'}`);
 
     logger.info(`[backup restore] ${snapshot.collection}/${snapshot.documentId} 已恢復 by ${req.user?.id}`);
 
