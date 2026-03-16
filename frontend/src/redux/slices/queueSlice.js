@@ -151,6 +151,20 @@ export const updateQueueOrder = createAsyncThunk(
   }
 );
 
+// 批量重排序（方案 B，一次 API 取代多個並行請求）
+export const reorderQueue = createAsyncThunk(
+  'queue/reorder',
+  async ({ orderedIds }, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await queueService.reorderQueue(orderedIds, token);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || '批量排序失敗');
+    }
+  }
+);
+
 // 設置下次辦事時間（管理員）
 export const setNextSessionDate = createAsyncThunk(
   'queue/setNextSessionDate',
@@ -681,6 +695,22 @@ const queueSlice = createSlice({
         // 如果沒有allRecords，保持現有狀態不變（等 loadQueueList 重新拉）
       })
       .addCase(updateQueueOrder.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+
+      // 批量重排序
+      .addCase(reorderQueue.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(reorderQueue.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const allRecords = action.payload?.allRecords;
+        if (Array.isArray(allRecords)) {
+          state.queueList = allRecords.filter(r => ['waiting', 'processing'].includes(r.status));
+        }
+      })
+      .addCase(reorderQueue.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })

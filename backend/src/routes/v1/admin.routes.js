@@ -38,6 +38,7 @@ router.put(
   adminController.updateQueueOrder
 );
 
+router.put('/queue/reorder', [body('orderedIds').isArray({ min: 1 })], validateRequest, adminController.reorderQueue);
 router.put('/settings/next-session', [body('nextSessionDate').notEmpty()], validateRequest, adminController.setNextSessionDate);
 router.put('/settings/queue-status', [body('isOpen').isBoolean()], validateRequest, adminController.toggleQueueStatus);
 router.put('/settings/max-order-index', [body('maxOrderIndex').isInt({ min: 1 })], validateRequest, adminController.setMaxOrderIndex);

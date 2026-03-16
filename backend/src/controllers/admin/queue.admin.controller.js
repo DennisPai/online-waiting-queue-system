@@ -464,3 +464,51 @@ exports.clearAllQueue = async (req, res) => {
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
+
+/**
+ * 批量重排序（方案 B）
+ * PUT /admin/queue/reorder
+ * Body: { orderedIds: ["id1", "id2", ...] }
+ * 依陣列順序設定 orderIndex = 1, 2, 3...
+ * isOpen=false 時同步 queueNumber = orderIndex
+ * 最後呼叫 ensureOrderIndexConsistency() 確保無空洞
+ */
+exports.reorderQueue = async (req, res) => {
+  try {
+    const { orderedIds } = req.body;
+
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'orderedIds 必須是非空陣列' });
+    }
+
+    const settings = await SystemSetting.getSettings();
+    const isOpen = settings.isQueueOpen;
+
+    // 依陣列順序批量 set orderIndex（用 Promise.all 仍然安全，因為每筆只設固定值，不依賴其他記錄狀態）
+    await Promise.all(
+      orderedIds.map((id, index) => {
+        const newOrderIndex = index + 1;
+        const update = isOpen
+          ? { orderIndex: newOrderIndex }
+          : { orderIndex: newOrderIndex, queueNumber: newOrderIndex };
+        return WaitingRecord.findByIdAndUpdate(id, update);
+      })
+    );
+
+    // 安全網：確保無空洞/重複
+    await ensureOrderIndexConsistency();
+
+    const updatedRecords = await WaitingRecord.find({
+      status: { $in: ['waiting', 'processing'] }
+    }).sort({ orderIndex: 1 });
+
+    res.status(200).json({
+      success: true,
+      message: '排序已更新',
+      data: { allRecords: updatedRecords }
+    });
+  } catch (error) {
+    logger.error('批量重排序錯誤:', error);
+    res.status(500).json({ success: false, message: '伺服器內部錯誤' });
+  }
+};

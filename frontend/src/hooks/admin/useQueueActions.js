@@ -4,6 +4,7 @@ import {
   callNextQueue,
   updateQueueStatus,
   updateQueueOrder,
+  reorderQueue,
   updateQueueData,
   deleteCustomer,
   clearAllQueue,
@@ -146,84 +147,34 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
     }
   }, [dispatch, loadQueueList]);
 
-  // 拖曳結束處理
+  // 拖曳結束處理（方案 B：單一批量 reorder API，無並行衝突）
   const handleDragEnd = useCallback(async (result) => {
     if (!result.destination) return;
+    if (result.destination.index === result.source.index) return;
 
     const items = Array.from(localQueueList);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
 
-    // 更新本地順序（isOpen=false 時同步 queueNumber = orderIndex）
+    // 更新本地顯示（isOpen=false 時同步 queueNumber = orderIndex）
     const updatedItems = items.map((item, index) => ({
       ...item,
       orderIndex: index + 1,
       ...(isQueueOpen ? {} : { queueNumber: index + 1 })
     }));
-
     setLocalQueueList(updatedItems);
 
-    // 批量更新後端
-    const updatePromises = updatedItems
-      .filter((item, index) => {
-        const originalItem = localQueueList.find(q => q._id === item._id);
-        return originalItem && originalItem.orderIndex !== item.orderIndex;
-      })
-      .map(item => 
-        dispatch(updateQueueOrder({
-          queueId: item._id,
-          newOrder: item.orderIndex
-        })).unwrap()
-      );
-
-    // 等待所有更新完成
+    // 一次 API 傳完整 orderedIds，後端依序設定 orderIndex
     try {
-      const results = await Promise.allSettled(updatePromises);
-      
-      // 統計成功和失敗的數量
-      const successCount = results.filter(r => r.status === 'fulfilled').length;
-      const failCount = results.filter(r => r.status === 'rejected').length;
-      
-      // 輸出詳細錯誤（debug 用）
-      results.forEach((r, i) => {
-        if (r.status === 'rejected') {
-          console.error(`[拖動排序] 第 ${i+1} 筆更新失敗:`, r.reason);
-        }
-      });
-      
-      if (failCount === 0) {
-        // 全部成功
-        dispatch(showAlert({
-          message: '拖曳順序已更新',
-          severity: 'success'
-        }));
-      } else if (successCount > 0) {
-        // 部分成功
-        dispatch(showAlert({
-          message: `已更新 ${successCount} 筆，${failCount} 筆失敗`,
-          severity: 'warning'
-        }));
-      } else {
-        // 全部失敗
-        const firstError = results.find(r => r.status === 'rejected');
-        const errMsg = firstError?.reason?.message || firstError?.reason || '未知錯誤';
-        dispatch(showAlert({
-          message: `更新順序失敗：${errMsg}`,
-          severity: 'error'
-        }));
-      }
-      
-      loadQueueList(); // 重新載入以確保資料一致
+      const orderedIds = updatedItems.map(item => item._id);
+      await dispatch(reorderQueue({ orderedIds })).unwrap();
+      dispatch(showAlert({ message: '排序已更新', severity: 'success' }));
+      loadQueueList();
     } catch (error) {
-      // Promise.allSettled 不會拋出錯誤，這裡是預防性處理
-      console.error('更新拖曳順序失敗:', error);
-      dispatch(showAlert({
-        message: '更新順序失敗，請重試',
-        severity: 'error'
-      }));
+      dispatch(showAlert({ message: `更新排序失敗：${error}`, severity: 'error' }));
       loadQueueList();
     }
-  }, [localQueueList, setLocalQueueList, dispatch, loadQueueList]);
+  }, [localQueueList, setLocalQueueList, dispatch, loadQueueList, isQueueOpen]);
 
   // 清空所有候位
   const handleClearAllQueue = useCallback(() => {

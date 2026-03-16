@@ -219,6 +219,18 @@ const updateQueueStatus = async (queueId, status, token) => {
   }
 };
 
+// 批量重排序（方案 B）
+const reorderQueue = async (orderedIds, token) => {
+  const config = { headers: { Authorization: `Bearer ${token}` } };
+  const response = await axios.put(
+    `${API_ENDPOINTS.ADMIN}/queue/reorder`,
+    { orderedIds },
+    config
+  );
+  if (!response.data?.success) throw new Error('批量排序 API 回應格式不正確');
+  return response.data.data;
+};
+
 // 更新候位順序
 const updateQueueOrder = async (queueId, newOrder, token) => {
   try {
@@ -597,6 +609,7 @@ const queueService = {
   callNextQueue,
   updateQueueStatus,
   updateQueueOrder,
+  reorderQueue,
   setNextSessionDate,
   toggleQueueStatus,
   setMaxOrderIndex,
