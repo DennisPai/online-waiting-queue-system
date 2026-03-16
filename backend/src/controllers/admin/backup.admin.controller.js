@@ -167,7 +167,6 @@ exports.debugSnapshot = async (req, res) => {
     const snapshot = await BackupSnapshot.findById(id).lean();
     if (!snapshot) return res.status(404).json({ success: false, message: '找不到 snapshot' });
 
-    const { collectionModelMap } = require('./backup.admin.controller.helpers') || {};
     const ModelMap = {
       'waitingrecords': require('../../models/waiting-record.model'),
       'customer_profiles': require('../../models/customer.model'),
@@ -181,12 +180,27 @@ exports.debugSnapshot = async (req, res) => {
       : snapshot.documentId;
 
     // 查現有文件
-    const existing = Model ? await Model.findById(objectId).lean() : null;
+    const existingBefore = Model ? await Model.findById(objectId).lean() : null;
 
     // 分析 beforeData
     const bd = snapshot.beforeData || {};
     const bdIdType = typeof bd._id;
     const bdKeys = Object.keys(bd);
+
+    // 嘗試執行 replaceOne（dry-run 模式：先 replaceOne 再 findById 確認）
+    let replaceResult = null;
+    let existingAfter = null;
+    if (Model && !existingBefore) {
+      const restoreData = { ...bd };
+      delete restoreData.__v;
+      delete restoreData._id;
+      replaceResult = await Model.replaceOne(
+        { _id: objectId },
+        { _id: objectId, ...restoreData },
+        { upsert: true }
+      );
+      existingAfter = await Model.findById(objectId).lean();
+    }
 
     return res.json({
       success: true,
@@ -197,14 +211,20 @@ exports.debugSnapshot = async (req, res) => {
         operation: snapshot.operation,
         objectId: objectId.toString(),
         modelFound: !!Model,
-        existingDoc: existing ? { _id: existing._id, name: existing.name } : null,
+        existingBeforeRestore: existingBefore ? { _id: existingBefore._id, name: existingBefore.name } : null,
+        replaceResult: replaceResult ? {
+          matchedCount: replaceResult.matchedCount,
+          modifiedCount: replaceResult.modifiedCount,
+          upsertedCount: replaceResult.upsertedCount,
+          upsertedId: replaceResult.upsertedId
+        } : '文件已存在，未執行 replaceOne',
+        existingAfterRestore: existingAfter ? { _id: existingAfter._id, name: existingAfter.name } : null,
         beforeData: {
           _idType: bdIdType,
           _idValue: String(bd._id),
           keys: bdKeys,
           nameValue: bd.name,
-          // 前 3 個 key 的值預覽
-          preview: Object.fromEntries(bdKeys.slice(0, 5).map(k => [k, bd[k]]))
+          preview: Object.fromEntries(bdKeys.slice(0, 5).map(k => [k, String(bd[k]).slice(0, 80)]))
         }
       }
     });
