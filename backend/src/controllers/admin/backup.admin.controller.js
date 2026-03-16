@@ -102,10 +102,11 @@ exports.restoreBackup = async (req, res) => {
       ? new mongoose.Types.ObjectId(snapshot.documentId)
       : snapshot.documentId;
 
-    await Model.findByIdAndUpdate(
-      objectId,
-      restoreData,
-      { upsert: true, new: true, overwrite: true }
+    // replaceOne + upsert：文件存在則整體取代，不存在（已刪除）則重新建立
+    await Model.replaceOne(
+      { _id: objectId },
+      { _id: objectId, ...restoreData },
+      { upsert: true }
     );
 
     logger.info(`[backup restore] ${snapshot.collection}/${snapshot.documentId} 已恢復 by ${req.user?.id}`);
