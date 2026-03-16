@@ -1,9 +1,9 @@
 const logger = require('../../utils/logger');
 const WaitingRecord = require('../../models/waiting-record.model');
 const SystemSetting = require('../../models/system-setting.model');
-const Customer = require('../../models/customer.model');
-const VisitRecord = require('../../models/visit-record.model');
-const Household = require('../../models/household.model');
+const getCustomer = () => require("../../models/customer.model");
+const getVisitRecord = () => require("../../models/visit-record.model");
+const getHousehold = () => require("../../models/household.model");
 const { saveSnapshot } = require('../../utils/snapshot');
 
 /**
@@ -29,7 +29,7 @@ async function findOrCreateCustomer(data, sessionDate) {
     matchQuery.lunarBirthDay = lunarBirthDay || null;
   }
 
-  let existing = await Customer.findOne(matchQuery);
+  let existing = await getCustomer().findOne(matchQuery);
   let isNew = false;
 
   if (existing) {
@@ -51,7 +51,7 @@ async function findOrCreateCustomer(data, sessionDate) {
   } else {
     // 新客：建立
     isNew = true;
-    existing = await Customer.create({
+    existing = await getCustomer().create({
       name: trimmedName,
       phone: phone || '',
       gender: gender || '',
@@ -142,7 +142,7 @@ exports.endSession = async (req, res) => {
       processedCustomerIds.push(customer._id);
 
       // 2. 建立主客戶 VisitRecord
-      await VisitRecord.create({
+      await getVisitRecord().create({
         customerId: customer._id,
         sessionDate,
         consultationTopics: record.consultationTopics || [],
@@ -182,7 +182,7 @@ exports.endSession = async (req, res) => {
         if (fmIsNew) newCustomers++; else returningCustomers++;
         processedCustomerIds.push(fmCustomer._id);
 
-        await VisitRecord.create({
+        await getVisitRecord().create({
           customerId: fmCustomer._id,
           sessionDate,
           consultationTopics: [],
@@ -241,7 +241,7 @@ exports.endSession = async (req, res) => {
 async function autoGroupHouseholds(customerIds) {
   if (!customerIds || customerIds.length === 0) return 0;
 
-  const customers = await Customer.find({ _id: { $in: customerIds } })
+  const customers = await getCustomer().find({ _id: { $in: customerIds } })
     .select('_id addresses householdId');
 
   // 按地址分組（取第一個 address 欄位）
@@ -260,7 +260,7 @@ async function autoGroupHouseholds(customerIds) {
   for (const [address, members] of Object.entries(addressGroups)) {
     if (members.length < 2) continue;
 
-    let household = await Household.findOne({ address });
+    let household = await getHousehold().findOne({ address });
 
     if (household) {
       const existingIds = household.memberIds.map(id => id.toString());
@@ -271,7 +271,7 @@ async function autoGroupHouseholds(customerIds) {
       }
       await household.save();
     } else {
-      const created = await Household.create({
+      const created = await getHousehold().create({
         address,
         memberIds: members.map(m => m._id)
       });
@@ -280,7 +280,7 @@ async function autoGroupHouseholds(customerIds) {
     }
 
     const memberIdList = members.map(m => m._id);
-    await Customer.updateMany(
+    await getCustomer().updateMany(
       { _id: { $in: memberIdList } },
       { $set: { householdId: household._id } }
     );

@@ -1,7 +1,7 @@
 const logger = require('../../utils/logger');
 const WaitingRecord = require('../../models/waiting-record.model');
 const SystemSetting = require('../../models/system-setting.model');
-const Customer = require('../../models/customer.model');
+const getCustomer = () => require("../../models/customer.model");
 const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = require('../../utils/calendarConverter');
 const { ensureOrderIndexConsistency } = require('../../utils/orderIndex');
 const { saveSnapshot } = require('../../utils/snapshot');
@@ -47,7 +47,7 @@ exports.getQueueList = async (req, res) => {
 
       // 第1層：name + 農曆年月日 精確匹配
       if (record.lunarBirthYear && record.lunarBirthMonth && record.lunarBirthDay) {
-        existing = await Customer.findOne({
+        existing = await getCustomer().findOne({
           name,
           lunarBirthYear: record.lunarBirthYear,
           lunarBirthMonth: record.lunarBirthMonth,
@@ -57,7 +57,7 @@ exports.getQueueList = async (req, res) => {
 
       // 第2層：name + phone（phone 不為空）
       if (!existing && record.phone) {
-        existing = await Customer.findOne({
+        existing = await getCustomer().findOne({
           name,
           phone: record.phone
         }).select('_id').lean();
@@ -65,7 +65,7 @@ exports.getQueueList = async (req, res) => {
 
       // 第3層：name + 農曆年（同名同年，容許月日誤差）
       if (!existing && record.lunarBirthYear) {
-        existing = await Customer.findOne({
+        existing = await getCustomer().findOne({
           name,
           lunarBirthYear: record.lunarBirthYear
         }).select('_id').lean();

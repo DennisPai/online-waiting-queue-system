@@ -1,7 +1,8 @@
 const logger = require('../utils/logger');
-const Customer = require('../models/customer.model');
-const VisitRecord = require('../models/visit-record.model');
-const Household = require('../models/household.model');
+// Customer / VisitRecord / Household 用 getter 延遲取得，確保 initDbConnections rebind 後拿到正確 model
+const getCustomer = () => require('../models/customer.model');
+const getVisitRecord = () => require('../models/visit-record.model');
+const getHousehold = () => require('../models/household.model');
 const { saveSnapshot } = require('../utils/snapshot');
 const { autoFillDates, addZodiac, addVirtualAge } = require('../utils/calendarConverter');
 
@@ -87,7 +88,7 @@ function normalizeBirthData(data, existingData = {}) {
  */
 async function autoAssignHousehold(customerId) {
   try {
-    const customer = await Customer.findById(customerId).lean();
+    const customer = await getCustomer().findById(customerId).lean();
     if (!customer) return;
 
     const firstAddr = (customer.addresses || []).find(
@@ -96,41 +97,41 @@ async function autoAssignHousehold(customerId) {
 
     if (!firstAddr) {
       // 無有效地址，確保 householdId 是 null
-      await Customer.findByIdAndUpdate(customerId, { householdId: null });
+      await getCustomer().findByIdAndUpdate(customerId, { householdId: null });
       return;
     }
 
     const address = firstAddr.address.trim();
 
     // 查找同地址的其他客戶（排除自己）
-    const sameAddrCustomers = await Customer.find({
+    const sameAddrCustomers = await getCustomer().find({
       _id: { $ne: customerId },
       'addresses.address': address
     }).select('_id householdId').lean();
 
     if (sameAddrCustomers.length === 0) {
       // 獨居 → 無 household
-      await Customer.findByIdAndUpdate(customerId, { householdId: null });
+      await getCustomer().findByIdAndUpdate(customerId, { householdId: null });
       return;
     }
 
     // 有同地址客戶：找看看有沒有已存在的 household
-    let household = await Household.findOne({ address }).lean();
+    let household = await getHousehold().findOne({ address }).lean();
 
     if (!household) {
       // 建立新 household
       const allMemberIds = [customerId, ...sameAddrCustomers.map(c => c._id)];
-      household = await Household.create({ address, memberIds: allMemberIds });
-      await Customer.updateMany(
+      household = await getHousehold().create({ address, memberIds: allMemberIds });
+      await getCustomer().updateMany(
         { _id: { $in: allMemberIds } },
         { $set: { householdId: household._id } }
       );
     } else {
       // 加入已有 household
-      await Household.findByIdAndUpdate(household._id, {
+      await getHousehold().findByIdAndUpdate(household._id, {
         $addToSet: { memberIds: customerId }
       });
-      await Customer.findByIdAndUpdate(customerId, { householdId: household._id });
+      await getCustomer().findByIdAndUpdate(customerId, { householdId: household._id });
     }
   } catch (err) {
     logger.error(`[autoAssignHousehold] 客戶 ${customerId} 歸組失敗:`, err);
@@ -143,7 +144,7 @@ async function autoAssignHousehold(customerId) {
 async function removeFromHousehold(customerId, householdId) {
   if (!householdId) return;
   try {
-    const household = await Household.findByIdAndUpdate(
+    const household = await getHousehold().findByIdAndUpdate(
       householdId,
       { $pull: { memberIds: customerId } },
       { new: true }
@@ -154,9 +155,9 @@ async function removeFromHousehold(customerId, householdId) {
     // 剩 0-1 人 → 解散 household
     if ((household.memberIds || []).length <= 1) {
       if (household.memberIds.length === 1) {
-        await Customer.findByIdAndUpdate(household.memberIds[0], { householdId: null });
+        await getCustomer().findByIdAndUpdate(household.memberIds[0], { householdId: null });
       }
-      await Household.findByIdAndDelete(householdId);
+      await getHousehold().findByIdAndDelete(householdId);
     }
   } catch (err) {
     logger.error(`[removeFromHousehold] 移除失敗 customer=${customerId}:`, err);
@@ -179,8 +180,8 @@ exports.listCustomers = async (req, res) => {
     if (tag) query.tags = tag;
 
     const [customers, total] = await Promise.all([
-      Customer.find(query).sort({ updatedAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
-      Customer.countDocuments(query)
+      getCustomer().find(query).sort({ updatedAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
+      getCustomer().countDocuments(query)
     ]);
 
     res.status(200).json({
@@ -199,19 +200,19 @@ exports.listCustomers = async (req, res) => {
 // 客戶詳情（含 household 成員）
 exports.getCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id).lean();
+    const customer = await getCustomer().findById(req.params.id).lean();
     if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
 
     // 附帶 household 成員（排除自己）
     let householdMembers = [];
     if (customer.householdId) {
-      const household = await Household.findById(customer.householdId).lean();
+      const household = await getHousehold().findById(customer.householdId).lean();
       if (household && household.memberIds.length > 0) {
         const memberIds = household.memberIds.filter(
           mid => mid.toString() !== customer._id.toString()
         );
         if (memberIds.length > 0) {
-          householdMembers = await Customer.find(
+          householdMembers = await getCustomer().find(
             { _id: { $in: memberIds } },
             { _id: 1, name: 1, gender: 1, zodiac: 1, totalVisits: 1 }
           ).lean();
@@ -230,14 +231,14 @@ exports.getCustomer = async (req, res) => {
 exports.createCustomer = async (req, res) => {
   try {
     const data = normalizeBirthData(req.body, {});
-    const customer = await Customer.create(data);
+    const customer = await getCustomer().create(data);
 
     // Bug 4 修復：新增後自動歸組 household
     if ((customer.addresses || []).length > 0) {
       await autoAssignHousehold(customer._id);
     }
 
-    const updated = await Customer.findById(customer._id).lean();
+    const updated = await getCustomer().findById(customer._id).lean();
     res.status(201).json({ success: true, message: '客戶新增成功', data: updated });
   } catch (error) {
     logger.error('新增客戶錯誤:', error);
@@ -249,7 +250,7 @@ exports.createCustomer = async (req, res) => {
 // 編輯客戶
 exports.updateCustomer = async (req, res) => {
   try {
-    const before = await Customer.findById(req.params.id).lean();
+    const before = await getCustomer().findById(req.params.id).lean();
     if (!before) return res.status(404).json({ success: false, message: '查無此客戶' });
 
     await saveSnapshot({
@@ -265,7 +266,7 @@ exports.updateCustomer = async (req, res) => {
     // existingData = before，讓國農曆互轉有完整的舊值可以參考
     const updateBody = normalizeBirthData(req.body, before);
 
-    await Customer.findByIdAndUpdate(req.params.id, updateBody, { new: true, runValidators: true });
+    await getCustomer().findByIdAndUpdate(req.params.id, updateBody, { new: true, runValidators: true });
 
     // Bug 1 修復：地址有變更時，重新歸組 household
     if ('addresses' in req.body) {
@@ -275,7 +276,7 @@ exports.updateCustomer = async (req, res) => {
       await autoAssignHousehold(before._id);
     }
 
-    const customer = await Customer.findById(req.params.id).lean();
+    const customer = await getCustomer().findById(req.params.id).lean();
     res.status(200).json({ success: true, message: '客戶資料已更新', data: customer });
   } catch (error) {
     logger.error('編輯客戶錯誤:', error);
@@ -288,10 +289,10 @@ exports.updateVisitRecord = async (req, res) => {
   try {
     const { id, visitId } = req.params;
 
-    const customer = await Customer.findById(id);
+    const customer = await getCustomer().findById(id);
     if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
 
-    const visit = await VisitRecord.findOne({ _id: visitId, customerId: id });
+    const visit = await getVisitRecord().findOne({ _id: visitId, customerId: id });
     if (!visit) return res.status(404).json({ success: false, message: '查無此來訪記錄' });
 
     // 操作前快照
@@ -314,16 +315,16 @@ exports.updateVisitRecord = async (req, res) => {
     if (otherDetails !== undefined) updateFields.otherDetails = otherDetails;
     if (familyMembers !== undefined) updateFields.familyMembers = familyMembers;
 
-    const updated = await VisitRecord.findByIdAndUpdate(visitId, updateFields, { new: true, runValidators: true });
+    const updated = await getVisitRecord().findByIdAndUpdate(visitId, updateFields, { new: true, runValidators: true });
 
     // 如果 sessionDate 有改，重算 customer firstVisitDate / lastVisitDate
     if (sessionDate !== undefined) {
-      const allVisits = await VisitRecord.find({ customerId: id }).sort({ sessionDate: 1 }).lean();
+      const allVisits = await getVisitRecord().find({ customerId: id }).sort({ sessionDate: 1 }).lean();
       const customerUpdates = {
         firstVisitDate: allVisits.length > 0 ? allVisits[0].sessionDate : null,
         lastVisitDate: allVisits.length > 0 ? allVisits[allVisits.length - 1].sessionDate : null
       };
-      await Customer.findByIdAndUpdate(id, customerUpdates);
+      await getCustomer().findByIdAndUpdate(id, customerUpdates);
     }
 
     return res.status(200).json({
@@ -343,10 +344,10 @@ exports.deleteVisitRecord = async (req, res) => {
   try {
     const { id, visitId } = req.params;
 
-    const customer = await Customer.findById(id);
+    const customer = await getCustomer().findById(id);
     if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
 
-    const visit = await VisitRecord.findOne({ _id: visitId, customerId: id });
+    const visit = await getVisitRecord().findOne({ _id: visitId, customerId: id });
     if (!visit) return res.status(404).json({ success: false, message: '查無此來訪記錄' });
 
     // 操作前快照
@@ -361,16 +362,16 @@ exports.deleteVisitRecord = async (req, res) => {
     });
 
     // 刪除
-    await VisitRecord.findByIdAndDelete(visitId);
+    await getVisitRecord().findByIdAndDelete(visitId);
 
     // 重新計算 totalVisits / firstVisitDate / lastVisitDate
-    const remaining = await VisitRecord.find({ customerId: id }).sort({ sessionDate: 1 }).lean();
+    const remaining = await getVisitRecord().find({ customerId: id }).sort({ sessionDate: 1 }).lean();
     const updates = {
       totalVisits: remaining.length,
       firstVisitDate: remaining.length > 0 ? remaining[0].sessionDate : null,
       lastVisitDate: remaining.length > 0 ? remaining[remaining.length - 1].sessionDate : null
     };
-    await Customer.findByIdAndUpdate(id, updates);
+    await getCustomer().findByIdAndUpdate(id, updates);
 
     return res.status(200).json({
       success: true,
@@ -394,10 +395,10 @@ exports.createVisitRecord = async (req, res) => {
       return res.status(400).json({ success: false, message: 'sessionDate 為必填' });
     }
 
-    const customer = await Customer.findById(id);
+    const customer = await getCustomer().findById(id);
     if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
 
-    const visit = await VisitRecord.create({
+    const visit = await getVisitRecord().create({
       customerId: id,
       sessionDate: new Date(sessionDate),
       consultationTopics: consultationTopics || [],
@@ -423,7 +424,7 @@ exports.createVisitRecord = async (req, res) => {
     if (!customer.firstVisitDate || visitDate < customer.firstVisitDate) {
       updates.firstVisitDate = visitDate;
     }
-    await Customer.findByIdAndUpdate(id, updates);
+    await getCustomer().findByIdAndUpdate(id, updates);
 
     return res.status(201).json({
       success: true,
@@ -441,12 +442,12 @@ exports.createVisitRecord = async (req, res) => {
 exports.deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    const customer = await Customer.findById(id);
+    const customer = await getCustomer().findById(id);
     if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
 
     // 操作前快照（先備份客戶資料）
     // 先查 visits 數量以便 description 使用
-    const visitsToDelete = await VisitRecord.countDocuments({ customerId: id });
+    const visitsToDelete = await getVisitRecord().countDocuments({ customerId: id });
 
     await saveSnapshot({
       operation: 'delete-customer',
@@ -463,8 +464,8 @@ exports.deleteCustomer = async (req, res) => {
     }
 
     // 先刪 visits，再刪 customer
-    const { deletedCount } = await VisitRecord.deleteMany({ customerId: id });
-    await Customer.findByIdAndDelete(id);
+    const { deletedCount } = await getVisitRecord().deleteMany({ customerId: id });
+    await getCustomer().findByIdAndDelete(id);
 
     return res.status(200).json({
       success: true,
@@ -484,12 +485,12 @@ exports.getVisitHistory = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const customer = await Customer.findById(id);
+    const customer = await getCustomer().findById(id);
     if (!customer) return res.status(404).json({ success: false, message: '查無此客戶' });
 
     const [visits, total] = await Promise.all([
-      VisitRecord.find({ customerId: id }).sort({ sessionDate: -1 }).skip(skip).limit(parseInt(limit)).lean(),
-      VisitRecord.countDocuments({ customerId: id })
+      getVisitRecord().find({ customerId: id }).sort({ sessionDate: -1 }).skip(skip).limit(parseInt(limit)).lean(),
+      getVisitRecord().countDocuments({ customerId: id })
     ]);
 
     res.status(200).json({

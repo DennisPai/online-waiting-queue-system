@@ -3,8 +3,8 @@
  * 家庭戶 (Household) 管理相關 controller
  */
 const logger = require('../../utils/logger');
-const Customer = require('../../models/customer.model');
-const Household = require('../../models/household.model');
+const getCustomer = () => require("../../models/customer.model");
+const getHousehold = () => require("../../models/household.model");
 
 /**
  * POST /admin/customers/rebuild-households
@@ -16,14 +16,14 @@ const Household = require('../../models/household.model');
 exports.rebuildHouseholds = async (req, res) => {
   try {
     // 步驟 1：清除所有 Household
-    const deletedCount = await Household.deleteMany({});
+    const deletedCount = await getHousehold().deleteMany({});
     logger.info(`[rebuild-households] 刪除舊 Household ${deletedCount.deletedCount} 組`);
 
     // 步驟 2：清除所有客戶的 householdId
-    await Customer.updateMany({}, { $set: { householdId: null } });
+    await getCustomer().updateMany({}, { $set: { householdId: null } });
 
     // 步驟 3：取出所有有地址的客戶
-    const customers = await Customer.find({
+    const customers = await getCustomer().find({
       'addresses.0': { $exists: true }
     }).select('_id addresses householdId');
 
@@ -42,13 +42,13 @@ exports.rebuildHouseholds = async (req, res) => {
     for (const [address, members] of Object.entries(addressGroups)) {
       if (members.length < 2) continue; // 只有 1 人不建 household
 
-      const household = await Household.create({
+      const household = await getHousehold().create({
         address,
         memberIds: members.map(m => m._id)
       });
 
       const memberIds = members.map(m => m._id);
-      await Customer.updateMany(
+      await getCustomer().updateMany(
         { _id: { $in: memberIds } },
         { $set: { householdId: household._id } }
       );
