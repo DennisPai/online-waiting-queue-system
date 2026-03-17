@@ -51,6 +51,15 @@ function initDbConnections() {
   // 將候位相關 Model 重新綁定到 queueConn
   _rebindQueueModels(queueConn);
 
+  // 任務 3：log 每個 Model 綁定的 DB name，方便確認 rebind 正確
+  logger.info(`[DB Binding] Customer      → ${customerConn.db.databaseName}.customer_profiles`);
+  logger.info(`[DB Binding] VisitRecord   → ${customerConn.db.databaseName}.customer_visits`);
+  logger.info(`[DB Binding] Household     → ${customerConn.db.databaseName}.customer_households`);
+  logger.info(`[DB Binding] WaitingRecord → ${queueConn.db.databaseName}.waitingrecords`);
+
+  // 任務 2：非同步檢查 queue DB 是否有殘留 customer 資料（不阻塞啟動）
+  _checkResidualCustomerData().catch(e => logger.error('殘留資料檢查失敗:', e));
+
   return { queueConn, customerConn };
 }
 
@@ -104,6 +113,29 @@ function _rebindQueueModels(conn) {
       rebuilt._schema = schema;
     } catch(e) {
       logger.warn(`[db.js] rebind ${name} 失敗: ${e.message}`);
+    }
+  }
+}
+
+/**
+ * 任務 2：檢查 queue DB 是否有殘留的 customer collection
+ * 若 queue DB 出現 customer_profiles / customer_visits / customer_households 且有資料
+ * → 發出 warn log，提示需要資料遷移
+ */
+async function _checkResidualCustomerData() {
+  if (CUSTOMER_DB_NAME === QUEUE_DB_NAME) return; // 單 DB 模式不需要檢查
+
+  const queueDb = queueConn.db;
+  const collections = await queueDb.listCollections().toArray();
+  const customerCollections = ['customer_profiles', 'customer_visits', 'customer_households'];
+
+  for (const colName of customerCollections) {
+    const found = collections.find(c => c.name === colName);
+    if (found) {
+      const count = await queueDb.collection(colName).countDocuments();
+      if (count > 0) {
+        logger.warn(`⚠️ [DB 錯位警告] queue DB 發現 ${colName} (${count} 筆)，應在 customer DB。請執行資料遷移。`);
+      }
     }
   }
 }
