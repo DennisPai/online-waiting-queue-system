@@ -105,6 +105,64 @@ router.delete('/queue/clear-all', (req, res, next) => {
   next();
 }, adminController.clearAllQueue);
 
+// POST /admin/migrate?mode=dry-run|execute
+router.post('/migrate', protect, async (req, res) => {
+  try {
+    const { getQueueConn, getCustomerConn, QUEUE_DB_NAME, CUSTOMER_DB_NAME } = require('../../config/db');
+
+    if (QUEUE_DB_NAME === CUSTOMER_DB_NAME) {
+      return res.status(400).json({ success: false, message: '單一 DB 模式不需要遷移' });
+    }
+
+    const mode = req.query.mode;
+    if (mode !== 'dry-run' && mode !== 'execute') {
+      return res.status(400).json({ success: false, message: 'query 參數 mode 必須是 dry-run 或 execute' });
+    }
+
+    const sourceDb = getQueueConn().db;
+    const targetDb = getCustomerConn().db;
+    const collections = ['customer_profiles', 'customer_visits', 'customer_households'];
+
+    if (mode === 'dry-run') {
+      const result = { mode: 'dry-run', source: sourceDb.databaseName, target: targetDb.databaseName, collections: {} };
+      for (const colName of collections) {
+        const sourceCount = await sourceDb.collection(colName).countDocuments();
+        const targetCount = await targetDb.collection(colName).countDocuments();
+        result.collections[colName] = { sourceCount, targetCount };
+      }
+      return res.json({ success: true, data: result });
+    }
+
+    // execute
+    const result = { mode: 'execute', source: sourceDb.databaseName, target: targetDb.databaseName, collections: {} };
+    for (const colName of collections) {
+      const sourceCount = await sourceDb.collection(colName).countDocuments();
+      if (sourceCount === 0) {
+        result.collections[colName] = { sourceCount: 0, copied: 0, skipped: 0 };
+        continue;
+      }
+
+      const docs = await sourceDb.collection(colName).find().toArray();
+      let copied = 0;
+      try {
+        const r = await targetDb.collection(colName).insertMany(docs, { ordered: false });
+        copied = r.insertedCount;
+      } catch (err) {
+        if (err.code === 11000 || err.name === 'MongoBulkWriteError') {
+          copied = err.result?.nInserted || 0;
+        } else {
+          throw err;
+        }
+      }
+      result.collections[colName] = { sourceCount, copied, skipped: sourceCount - copied };
+    }
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
 
 
