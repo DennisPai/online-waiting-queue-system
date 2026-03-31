@@ -128,8 +128,9 @@ const PDFPreviewPage = () => {
       }
 
       // 分組 → 分頁
+      // maxRowsPerPage=10：保留 buffer 防諮詢主題文字換行造成列高超過 15mm
       const groups = groupByAddress(active);
-      const paginated = paginateGroups(groups, 12);
+      const paginated = paginateGroups(groups, 10);
       setPages(paginated);
 
       sessionStorage.removeItem('exportCustomers');
@@ -220,12 +221,11 @@ const PDFPreviewPage = () => {
               ref={el => { pageRefs.current[pageIndex] = el; }}
               sx={{
                 width: '297mm',
-                height: '210mm',
+                minHeight: '210mm',
                 backgroundColor: 'white',
                 margin: '0 auto',
                 border: '1px solid #ddd',
-                overflow: 'hidden',
-                '@media print': { border: 'none', width: '100%', height: '100vh' }
+                '@media print': { border: 'none', width: '100%', minHeight: '100vh' }
               }}
             >
               <FormTemplate groups={pageGroups} pageIndex={pageIndex} />

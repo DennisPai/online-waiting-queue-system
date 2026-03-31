@@ -67,13 +67,12 @@ const FormTemplate = ({ groups = [], pageIndex = 0 }) => {
     <Box
       sx={{
         width: '297mm',
-        height: '210mm',
+        minHeight: '210mm',
         backgroundColor: 'white',
         boxSizing: 'border-box',
         padding: '5mm 8mm',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden',
       }}
     >
       {/* 表格 */}
