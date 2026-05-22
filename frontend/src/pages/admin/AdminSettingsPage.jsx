@@ -38,7 +38,6 @@ import {
   updateEventBanner,
   getEventBanner,
   setScheduledOpenTime,
-  getScheduledOpenTime,
   setAutoOpenEnabled,
   setShowQueueNumberInQuery
 } from '../../redux/slices/queueSlice';

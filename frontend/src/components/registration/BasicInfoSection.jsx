@@ -10,7 +10,6 @@ import {
   FormHelperText
 } from '@mui/material';
 import BirthdayPicker from '../shared/BirthdayPicker';
-import { gregorianToMinguo } from '../../utils/lunarDays';
 
 const BasicInfoSection = ({
   formData,

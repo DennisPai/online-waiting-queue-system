@@ -236,7 +236,7 @@ export const useQueueUI = () => {
       confirmDialog.onConfirm();
     }
     handleCloseConfirmDialog();
-  }, [confirmDialog.onConfirm, handleCloseConfirmDialog]);
+  }, [confirmDialog, handleCloseConfirmDialog]);
 
   // 欄位顯示控制
   const handleColumnToggle = useCallback((columnKey, availableColumns) => {

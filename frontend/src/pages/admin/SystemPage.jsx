@@ -64,7 +64,6 @@ function SnapshotSection() {
   const [restoreMsg, setRestoreMsg] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const PAGE_SIZE = 20;
 
   const load = useCallback(async (p = 1) => {
     if (!hasToken()) return;

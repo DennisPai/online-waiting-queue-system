@@ -70,15 +70,6 @@ const StatusPage = () => {
     dispatch(getQueueStatus());
   }, [dispatch]);
 
-  // 格式化時間顯示（包含上下午）
-  const formatTimeWithAmPm = (date) => {
-    return date.toLocaleTimeString('zh-TW', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
   // 組件初始化時清除錯誤狀態和查詢結果
   useEffect(() => {
     dispatch(clearQueueSearch());

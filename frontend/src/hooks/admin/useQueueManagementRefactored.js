@@ -34,10 +34,15 @@ export const useQueueManagementRefactored = () => {
     handleCloseDialog: uiHook.handleCloseDialog
   });
 
+  // dataHook 內常用成員先解構，供下方 useEffect / useCallback 精確列入依賴，
+  // 避免將整個 dataHook 物件列為依賴（每次 render 都是新物件，會造成無限觸發）。
+  const currentTab = dataHook.currentTab;
+  const loadQueueList = dataHook.loadQueueList;
+
   // 初始化加載
   useEffect(() => {
-    dataHook.loadQueueList();
-  }, [dataHook.currentTab, dataHook.loadQueueList]);
+    loadQueueList();
+  }, [currentTab, loadQueueList]);
 
   // === Phase 4 / Task 4.8（兵推 4-Q2 新 bug）：後台「新增候位」成功後刷新候位列表 ===
   // 舊版 useQueueUI.handleRegisterSuccess 只關閉對話框，漏呼叫 loadQueueList()
@@ -50,7 +55,6 @@ export const useQueueManagementRefactored = () => {
   // 是正確的。順序：先 handleRegisterSuccess()（關對話框，同步）、後
   // loadQueueList()（觸發非同步 GET），不交錯。
   const uiHandleRegisterSuccess = uiHook.handleRegisterSuccess;
-  const loadQueueList = dataHook.loadQueueList;
   const handleRegisterSuccess = useCallback(() => {
     uiHandleRegisterSuccess();
     loadQueueList();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -21,16 +21,11 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  FormLabel,
-  RadioGroup,
-  Radio,
   IconButton,
   Tooltip,
-  Box,
-  FormHelperText
+  Box
 } from '@mui/material';
 import BirthdayPicker from '../shared/BirthdayPicker';
-import { gregorianToMinguo, minguoToGregorian } from '../../utils/lunarDays';
 import {
   Edit as EditIcon,
   Save as SaveIcon,
@@ -41,15 +36,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
-import { 
-  autoFillDates, 
-  autoFillFamilyMembersDates, 
-  formatMinguoYear, 
-  formatMinguoDate,
-  autoConvertToMinguo,
-  convertMinguoForStorage,
-  calculateZodiac
-} from '../../utils/calendarConverter';
+import { formatMinguoDate } from '../../utils/calendarConverter';
 
 const CustomerDetailDialog = ({
   open,

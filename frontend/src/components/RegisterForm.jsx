@@ -33,15 +33,11 @@ import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { registerQueue, resetRegistration, getQueueStatus, getMaxOrderIndex } from '../redux/slices/queueSlice';
 import { showAlert } from '../redux/slices/uiSlice';
-import { 
-  gregorianToLunar, 
-  lunarToGregorian, 
-  autoFillDates, 
-  autoConvertToMinguo, 
+import {
+  gregorianToLunar,
+  lunarToGregorian,
+  autoConvertToMinguo,
   convertMinguoForStorage,
-  formatMinguoYear,
-  formatMinguoDate,
-  addVirtualAge,
   calculateZodiac
 } from '../utils/calendarConverter';
 
@@ -86,7 +82,7 @@ const addressTypeOptions = [
 
 const RegisterForm = ({ onSuccess, isDialog = false }) => {
   const dispatch = useDispatch();
-  const { isLoading, registeredQueueNumber, waitingCount, estimatedWaitTime, estimatedEndTime, error, queueStatus, maxOrderIndex, maxOrderMessage } = useSelector(
+  const { isLoading, registeredQueueNumber, waitingCount, estimatedEndTime, error, queueStatus, maxOrderIndex, maxOrderMessage } = useSelector(
     (state) => state.queue
   );
   const [formData, setFormData] = useState(initialFormData);

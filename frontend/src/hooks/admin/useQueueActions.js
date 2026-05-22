@@ -1,11 +1,10 @@
-import React, { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   callNextQueue,
   updateQueueStatus,
   updateQueueOrder,
   reorderQueue,
-  updateQueueData,
   deleteCustomer,
   clearAllQueue,
   endSession
@@ -240,7 +239,6 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
   }, [dispatch, loadQueueList, setConfirmDialog, handleCloseConfirmDialog]);
 
   // 結束本期（歸檔 + 清空）
-  const [endSessionResult, setEndSessionResult] = React.useState(null);
   const handleEndSession = useCallback((waitingCount) => {
     setConfirmDialog({
       open: true,
@@ -250,7 +248,6 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
         handleCloseConfirmDialog();
         try {
           const result = await dispatch(endSession()).unwrap();
-          setEndSessionResult(result);
           dispatch(showAlert({
             message: `本期結束！已歸檔 ${result.totalProcessed} 位客戶（新客 ${result.newCustomers}，回頭客 ${result.returningCustomers}，新建家庭 ${result.newHouseholds} 組）`,
             severity: 'success'

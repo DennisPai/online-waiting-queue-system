@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -77,24 +77,7 @@ const CustomerDetailPage = () => {
   const [deleteCustomerConfirm, setDeleteCustomerConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [cust, visitData] = await Promise.all([
-        getCustomer(token, id),
-        getVisitHistory(token, id)
-      ]);
-      setCustomer(cust);
-      initEditData(cust);
-      setVisits(visitData.visits || []);
-    } catch (error) {
-      console.error('載入客戶資料失敗:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const initEditData = (cust) => {
+  const initEditData = useCallback((cust) => {
     // 決定初始曆法：優先以 gregorian 有值為準
     const hasGregorian = cust.gregorianBirthYear || cust.gregorianBirthMonth || cust.gregorianBirthDay;
     const hasLunar = cust.lunarBirthYear || cust.lunarBirthMonth || cust.lunarBirthDay;
@@ -126,9 +109,26 @@ const CustomerDetailPage = () => {
       lunarIsLeapMonth: cust.lunarIsLeapMonth || false,
       addresses: cust.addresses ? JSON.parse(JSON.stringify(cust.addresses)) : []
     });
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, [token, id]);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [cust, visitData] = await Promise.all([
+        getCustomer(token, id),
+        getVisitHistory(token, id)
+      ]);
+      setCustomer(cust);
+      initEditData(cust);
+      setVisits(visitData.visits || []);
+    } catch (error) {
+      console.error('載入客戶資料失敗:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, id, initEditData]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleSave = async () => {
     try {

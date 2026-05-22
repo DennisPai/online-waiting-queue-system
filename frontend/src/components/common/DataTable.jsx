@@ -10,7 +10,6 @@ import {
   Paper,
   CircularProgress,
   Typography,
-  Box,
   Chip
 } from '@mui/material';
 

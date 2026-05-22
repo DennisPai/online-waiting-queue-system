@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { formatMinguoDate } from './calendarConverter';
 
 // 格式化客戶資料以用於匯出（最詳細版本）
 export const formatCustomerDataForExport = (customers) => {

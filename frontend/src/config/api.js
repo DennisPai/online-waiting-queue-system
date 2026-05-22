@@ -52,8 +52,10 @@ export const API_ENDPOINTS = {
 // 健康檢查端點
 export const HEALTH_CHECK_URL = `${API_BASE_URL}/health`;
 
-export default {
+const apiConfig = {
   API_BASE_URL,
   API_ENDPOINTS,
   HEALTH_CHECK_URL
 };
+
+export default apiConfig;

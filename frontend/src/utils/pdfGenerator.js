@@ -15,7 +15,6 @@ export const generatePDFFromDOMPages = async (pageElements, filename = '修玄�
 
   const pdf = new jsPDF('landscape', 'mm', 'a4');
   const A4_W = 297;
-  const A4_H = 210;
 
   for (let i = 0; i < pageElements.length; i++) {
     const el = pageElements[i];

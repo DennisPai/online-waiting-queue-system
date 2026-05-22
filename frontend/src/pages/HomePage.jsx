@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link as RouterLink } from 'react-router-dom';
 import { getNextRegistrationDate } from '../utils/dateUtils';
@@ -12,38 +12,15 @@ import {
   Card,
   CardContent,
   CardActions,
-  Divider,
-  useTheme,
-  useMediaQuery
+  Divider
 } from '@mui/material';
 import QueueStatusDisplay from '../components/QueueStatusDisplay';
 import EventBanner from '../components/EventBanner';
 import { getQueueStatus, getOrderedQueueNumbers, getPublicOrderedNumbers } from '../redux/slices/queueSlice';
-import { API_ENDPOINTS } from '../config/api';
-
-// 獲取下一個等待的人
-const getNextWaitingNumber = async (currentNumber) => {
-  try {
-    // 檢查是否使用 v1 API，如果是則使用新端點路徑
-    const apiUrl = API_ENDPOINTS.QUEUE.includes('/v1/') 
-      ? `${API_ENDPOINTS.QUEUE}/next-waiting?currentNumber=${currentNumber}`
-      : `/api/queue/next-waiting?currentNumber=${currentNumber}`;
-    
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-    // 處理 v1 格式回應
-    return data.success ? (data.data?.nextWaitingNumber || data.data) : null;
-  } catch (error) {
-    console.error('獲取下一個等待號碼錯誤:', error);
-    return null;
-  }
-};
 
 const HomePage = () => {
   const dispatch = useDispatch();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { queueStatus, eventBanner, isLoading, currentQueue, isQueueOpen, isFull } = useSelector((state) => state.queue);
+  const { queueStatus, eventBanner, isLoading, isQueueOpen, isFull } = useSelector((state) => state.queue);
   const { isAuthenticated } = useSelector((state) => state.auth);
 
   // 計算顯示的時間：優先使用自訂值，否則使用動態計算

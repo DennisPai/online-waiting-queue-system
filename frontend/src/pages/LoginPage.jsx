@@ -9,7 +9,6 @@ import {
   Button,
   Paper,
   Avatar,
-  Alert,
   CircularProgress
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';

@@ -13,7 +13,6 @@ import {
   DialogActions,
   Tabs,
   Tab,
-  Menu,
   FormGroup,
   FormControlLabel,
   Checkbox,

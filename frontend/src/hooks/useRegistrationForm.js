@@ -3,13 +3,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { registerQueue, resetRegistration, getMaxOrderIndex } from '../redux/slices/queueSlice';
 import { showAlert } from '../redux/slices/uiSlice';
-import { 
-  gregorianToLunar, 
-  lunarToGregorian, 
-  autoFillDates, 
-  autoConvertToMinguo, 
-  convertMinguoForStorage,
-  addVirtualAge
+import {
+  gregorianToLunar,
+  lunarToGregorian,
+  autoFillDates,
+  autoConvertToMinguo,
+  convertMinguoForStorage
 } from '../utils/calendarConverter';
 
 // 表單初始值

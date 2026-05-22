@@ -3,7 +3,7 @@
  * 農曆/國曆日期工具函式
  * 依賴 lunar-javascript（已在 package.json）
  */
-import { Lunar, Solar } from 'lunar-javascript';
+import { Lunar } from 'lunar-javascript';
 
 /**
  * 判斷國曆閏年

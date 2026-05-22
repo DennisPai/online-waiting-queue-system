@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 
 const FontSizeContext = createContext();
 
@@ -17,8 +17,9 @@ export const FontSizeProvider = ({ children }) => {
     return savedFontSize || 'medium';
   });
 
-  // 字體大小選項
-  const fontSizeOptions = {
+  // 字體大小選項（靜態內容，useMemo 固定參考避免每次 render 產生新物件，
+  // 否則會讓下方依賴此物件的 useEffect 每次都重新觸發）
+  const fontSizeOptions = useMemo(() => ({
     small: {
       label: '小',
       multiplier: 1, // 16px 基準
@@ -35,7 +36,7 @@ export const FontSizeProvider = ({ children }) => {
       label: '特大',
       multiplier: 1.75, // 28px (+4px)
     }
-  };
+  }), []);
 
   // 當字體大小改變時，保存到localStorage並應用到全局CSS
   useEffect(() => {

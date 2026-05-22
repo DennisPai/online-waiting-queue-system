@@ -67,7 +67,7 @@ const ConfirmDialog = ({
     }
   };
 
-  const { icon, color } = getIconAndColor();
+  const { icon } = getIconAndColor();
 
   // 處理確認
   const handleConfirm = () => {
