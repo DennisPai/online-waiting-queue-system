@@ -4,6 +4,21 @@ const SystemSetting = require('../models/system-setting.model');
 const WaitingRecord = require('../models/waiting-record.model');
 const ApiError = require('../utils/ApiError');
 const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = require('../utils/calendarConverter');
+const { allocateOrderIndex, ensureOrderIndexConsistency } = require('../utils/orderIndex');
+
+// === Phase 4 / Task 4.7（design.md D12）：E11000 撞號 retry 策略常數 ===
+// 撞號處理「原子發號為主、retry 為輔」：正常情況靠 issuedCount 閘門 +
+// orderIndex 原子發號根本不撞，零 retry。retry 只當「理論上不該發生的
+// 偶發碰撞」的補救：上限 3 次、指數退避 + jitter。
+const REGISTER_MAX_RETRY = 3;        // 撞號 retry 上限（不含首次嘗試）
+const REGISTER_RETRY_BASE_MS = 50;   // 指數退避基數（毫秒）
+
+/** 指數退避 + jitter 的等待（design.md D12 (b)）。attempt 從 1 起算。 */
+function backoffDelay(attempt) {
+  const base = REGISTER_RETRY_BASE_MS * Math.pow(2, attempt - 1); // 50, 100, 200...
+  const jitter = Math.floor(Math.random() * REGISTER_RETRY_BASE_MS);
+  return new Promise(resolve => setTimeout(resolve, base + jitter));
+}
 
 /**
  * 候位系統業務邏輯層
@@ -16,21 +31,109 @@ class QueueService {
   async registerQueue(data) {
     // 獲取系統設定
     const settings = await SystemSetting.getSettings();
-    
+
     // 驗證必填欄位（簡化模式下跳過）
+    // 注意：驗證放在 issuedCount 閘門「之前」，避免不合法的請求白白佔掉一個名額。
     if (!settings.simplifiedMode) {
       this.validateRequiredFields(data);
     }
 
-    // 處理和驗證數據
-    const processedData = this.processQueueData(data, settings);
-    
-    // 檢查候位是否已額滿（使用與getQueueStatus一致的邏輯）
-    await this.checkQueueAvailability(settings);
+    // === D8：額滿用 issuedCount 原子閘門（取代舊的非原子「先查再寫」額滿判斷）===
+    // 報名第一步就原子地佔名額：findOneAndUpdate 在 issuedCount < maxOrderIndex 時
+    // 才 $inc 1。並發報名時 MongoDB 保證每次 $inc 互斥，不會多人同時讀到「還沒滿」而超收。
+    // 回傳 null = 已額滿（直接回友善訊息）；回傳文件 = 已原子佔到一個名額。
+    const gate = await SystemSetting.findOneAndUpdate(
+      { issuedCount: { $lt: settings.maxOrderIndex } },
+      { $inc: { issuedCount: 1 } },
+      { new: true }
+    );
+    if (gate === null) {
+      throw ApiError.forbidden('今日候位已滿，請下次再來');
+    }
 
-    // 計算 orderIndex（新報名排到隊尾）
-    const activeCustomerCount = await queueRepository.countActiveCustomers();
-    processedData.orderIndex = activeCustomerCount + 1;
+    // 閘門已佔名額，後續任何步驟失敗都必須把名額補回（無 transaction 環境下，
+    // 名額不能被吃掉卻沒人報成）。以 try/catch 包住閘門後的所有流程做補償。
+    //
+    // === Phase 4 / Task 4.7（design.md D12）：E11000 撞號 retry ===
+    // 「原子發號為主、retry 為輔」。正常情況靠 issuedCount 閘門 + orderIndex
+    // 原子發號根本不撞，零 retry。但若發生「理論上不該發生的偶發碰撞」
+    // （撞 partial unique index → E11000），在閘門「之內」retry：
+    //   (a) 上限 REGISTER_MAX_RETRY 次；
+    //   (b) 每次 retry 前指數退避 + jitter；
+    //   (c) 每次 retry 前重新判額滿（不能盲目重取 orderIndex 而超收）；
+    //   (d) 用盡仍失敗 → 回友善訊息；
+    //   (e) 報名最終失敗 → 補償把閘門已 $inc 的 issuedCount 補回 $inc -1。
+    // 補償只在「最終失敗」做一次（與 Phase 2 的閘門後補償協調，不雙重補償）：
+    // retry 之間不補償（名額仍要保留給這次報名繼續嘗試），只有跳出迴圈
+    // 確定失敗時才補一次。
+    try {
+      // 處理和驗證數據（與 orderIndex 無關，迴圈外做一次即可）
+      const processedData = this.processQueueData(data, settings);
+
+      let lastErr = null;
+      for (let attempt = 0; attempt <= REGISTER_MAX_RETRY; attempt++) {
+        // (b)(c)：第 2 次起的嘗試 = retry，先退避、再重新判額滿。
+        if (attempt > 0) {
+          await backoffDelay(attempt);
+          // (c) 重新判額滿：撞號 retry 期間若名額剛好被別人填滿，
+          // 不能盲目重取 orderIndex 而超收。注意這裡「只重判、不重佔」——
+          // 本次報名的名額早在最上方閘門就原子佔到了，issuedCount 不再 $inc。
+          const fresh = await SystemSetting.getSettings();
+          if ((fresh.issuedCount || 0) > fresh.maxOrderIndex) {
+            // issuedCount 已超過上限代表系統真的滿了，停止 retry。
+            // （正常不會發生，因為閘門保證 issuedCount ≤ maxOrderIndex。）
+            throw ApiError.forbidden('今日候位已滿，請下次再來');
+          }
+          logger.warn(`報名撞號 retry 第 ${attempt}/${REGISTER_MAX_RETRY} 次`);
+        }
+
+        try {
+          const result = await this._createQueueRecord(processedData, settings);
+          return result;
+        } catch (err) {
+          // 只對 E11000 撞號做 retry；其他錯誤直接往外拋（走最終補償）。
+          if (err && err.code === 11000 && attempt < REGISTER_MAX_RETRY) {
+            lastErr = err;
+            continue;
+          }
+          // 用盡 retry 的 E11000 → 轉成友善訊息（d）。
+          if (err && err.code === 11000) {
+            logger.error('報名撞號 retry 用盡仍失敗:', err);
+            throw ApiError.conflict('報名人數眾多，請稍後再送出一次');
+          }
+          throw err;
+        }
+      }
+      // 理論上迴圈內必 return 或 throw；防禦性處理。
+      throw ApiError.conflict('報名人數眾多，請稍後再送出一次', lastErr);
+    } catch (err) {
+      // (e) 報名最終失敗補償：把閘門已 $inc 的名額補回 $inc -1，名額不被吃掉。
+      // 只在這裡補一次（與 Phase 2 補償同一處，不雙重補償）。
+      try {
+        await SystemSetting.updateOne({}, { $inc: { issuedCount: -1 } });
+      } catch (compErr) {
+        logger.error('報名失敗後補償 issuedCount 失敗:', compErr);
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * 私有方法：建立一筆候位記錄（orderIndex 原子發號 + create + 一致性壓回）。
+   * 從 registerQueue 抽出，供 Task 4.7 的撞號 retry 迴圈重複呼叫。
+   * 注意：本方法「不」碰 issuedCount —— 名額已由上游閘門原子佔過（D14：
+   * orderIndex 與 issuedCount 解耦）。
+   */
+  async _createQueueRecord(processedDataInput, settings) {
+    // 每次嘗試用獨立副本，避免上一次失敗的 orderIndex/queueNumber 殘留。
+    const processedData = { ...processedDataInput };
+
+    // 計算 orderIndex（新報名排到隊尾）—— Phase 3 / Task 3.2 / Task 3.2a(a)
+    // 改用 allocateOrderIndex() 原子發號，取代舊的非原子「countActiveCustomers()+1」。
+    // 發號值保證唯一、單調遞增、大於目前所有 active 記錄 → 新報名排到隊尾、
+    // 不與任何 active 記錄撞 partial unique index。連續的 1..N 由本流程
+    // 最後的 ensureOrderIndexConsistency() 壓回。
+    processedData.orderIndex = await allocateOrderIndex();
 
     // 生成候位號碼
     // isOpen=false：queueNumber = orderIndex（拖曳前兩者同步）
@@ -43,23 +146,29 @@ class QueueService {
       }
     }
 
-    // 創建記錄
+    // 創建記錄（撞 partial unique index 會在這裡丟 E11000，由 registerQueue retry）
     const newRecord = await queueRepository.create(processedData);
 
+    // Phase 3 / Task 3.2：把 active 記錄的 orderIndex 壓回連續 1..N。
+    await ensureOrderIndexConsistency();
+
+    // 重新讀取壓回後的記錄，回傳正確的 orderIndex / queueNumber
+    const finalRecord = await WaitingRecord.findById(newRecord._id) || newRecord;
+
     // 計算等待信息
-    const waitingInfo = await this.calculateWaitingInfo(newRecord, settings);
+    const waitingInfo = await this.calculateWaitingInfo(finalRecord, settings);
 
     return {
-      queueNumber: newRecord.queueNumber,
-      orderIndex: newRecord.orderIndex,
+      queueNumber: finalRecord.queueNumber,
+      orderIndex: finalRecord.orderIndex,
       ...waitingInfo,
-      registeredAt: newRecord.createdAt,
+      registeredAt: finalRecord.createdAt,
       recordDetails: {
-        name: newRecord.name,
-        phone: newRecord.phone,
-        email: newRecord.email,
-        addressCount: newRecord.addresses.length,
-        familyMemberCount: newRecord.familyMembers.length
+        name: finalRecord.name,
+        phone: finalRecord.phone,
+        email: finalRecord.email,
+        addressCount: finalRecord.addresses.length,
+        familyMemberCount: finalRecord.familyMembers.length
       }
     };
   }
@@ -406,21 +515,6 @@ class QueueService {
           gregorianBirthDay: member.gregorianBirthDay || 1
         };
       });
-    }
-  }
-
-  /**
-   * 私有方法：檢查候位系統可用性
-   */
-  async checkQueueAvailability(settings) {
-    // 使用與getQueueStatus一致的邏輯：計算目前最大的 orderIndex
-    const maxOrderIndexRecord = await WaitingRecord.findOne({
-      status: { $in: ['waiting', 'processing'] }
-    }).sort({ orderIndex: -1 });
-    const currentMaxOrderIndex = maxOrderIndexRecord ? maxOrderIndexRecord.orderIndex : 0;
-    
-    if (currentMaxOrderIndex >= settings.maxOrderIndex) {
-      throw ApiError.forbidden('今日候位已滿，請下次再來');
     }
   }
 

@@ -1,3 +1,14 @@
+/*
+ * ⚠️ 手動一次性腳本 —— 不再掛在 app.js 開機流程（Phase 3 額外任務移除）。
+ *
+ * 此工具只 dropIndex('queueNumber_1')，以「精確索引名」定位，
+ * 絕不會誤拆 Phase 3 新加的 orderIndex partial unique index
+ * （orderIndex_active_unique）。保留此檔僅供日後「真的需要手動移除
+ * 舊 queueNumber 唯一索引」的一次性情境使用：
+ *   node src/utils/removeUniqueIndex.js
+ *
+ * 系統正常運作不需要、也不應該自動執行此腳本。
+ */
 const logger = require('./logger');
 const mongoose = require('mongoose');
 const WaitingRecord = require('../models/waiting-record.model');

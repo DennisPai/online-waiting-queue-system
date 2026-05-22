@@ -140,7 +140,8 @@ const StatusPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          queueNumber: record.queueNumber,
+          // D1：用記錄 _id 定位（唯一、永不漂移），不再用會漂移的 queueNumber
+          id: record._id,
           name: record.name,
           phone: record.phone
         })

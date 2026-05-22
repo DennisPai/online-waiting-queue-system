@@ -41,6 +41,29 @@ const systemSettingSchema = new mongoose.Schema({
     default: 0,
     min: 0  // 客戶總數不能為負數
   },
+  // 本期累計發出的候位名額數（額滿原子閘門用）
+  // D2/D8：只增不減 —— 報名成功 +1、管理員「刪除」記錄 -1（唯一允許下降的情況）。
+  // cancelled 仍佔名額，不會讓 issuedCount 下降，因此誤取消不會解除額滿。
+  // 報名第一步以 findOneAndUpdate({ issuedCount: { $lt: maxOrderIndex } }, { $inc: 1 })
+  // 原子地佔名額：回 null = 已額滿，回文件 = 已佔到一個名額。
+  issuedCount: {
+    type: Number,
+    default: 0,
+    min: 0  // 已發名額不能為負數
+  },
+  // orderIndex 原子發號計數器（Phase 3 / Task 3.2 / design.md D3 + D14）
+  // 用途：消除「讀目前最大 orderIndex → +1 → save」這個非原子分配的撞號競態。
+  // 每次要分配 orderIndex 時對本欄位做 findOneAndUpdate $inc 1，MongoDB 保證
+  // 每次 $inc 互斥 → 每個請求拿到「保證唯一、單調遞增」的發號值。
+  // 新報名 / 恢復報名先拿這個唯一值當 orderIndex（排到隊尾、彼此不撞號），
+  // 再由 ensureOrderIndexConsistency() 在安全時機把 active 記錄壓回連續 1..N。
+  // D14：orderIndexCounter 與 issuedCount 解耦 —— 前者管「排序發號」、
+  // 後者管「名額計數」，是兩件不同的事，互不影響。
+  orderIndexCounter: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   lastCompletedTime: {
     type: Date,
     default: null  // 上一位辦完時間，初始為 null
@@ -144,6 +167,33 @@ systemSettingSchema.statics.getSettings = async function() {
       logger.info(`初始化 totalCustomerCount: ${totalCount}`);
     }
     
+    if (settings.issuedCount === undefined) {
+      // D8/2.6：以「目前 active + cancelled 記錄數」初始化已發名額基準
+      // （cancelled 仍佔名額，故一併計入；completed 為已辦完、本期不再佔位故不計）
+      const WaitingRecord = require('./waiting-record.model');
+      const issued = await WaitingRecord.countDocuments({
+        status: { $in: ['waiting', 'processing', 'cancelled'] }
+      });
+      updateFields.issuedCount = issued;
+      needsUpdate = true;
+      logger.info(`初始化 issuedCount: ${issued}`);
+    }
+
+    if (settings.orderIndexCounter === undefined) {
+      // Phase 3 / D3：初始化 orderIndex 原子發號計數器。
+      // 基準必須 >= 目前所有 active 記錄的最大 orderIndex，
+      // 否則第一批新發號值會與既有記錄撞號。
+      const WaitingRecord = require('./waiting-record.model');
+      const maxRecord = await WaitingRecord.findOne(
+        { status: { $in: ['waiting', 'processing'] } },
+        { orderIndex: 1 },
+        { sort: { orderIndex: -1 } }
+      );
+      updateFields.orderIndexCounter = (maxRecord && maxRecord.orderIndex) ? maxRecord.orderIndex : 0;
+      needsUpdate = true;
+      logger.info(`初始化 orderIndexCounter: ${updateFields.orderIndexCounter}`);
+    }
+
     if (settings.lastCompletedTime === undefined) {
       // 查找最後一位已完成的客戶
       const WaitingRecord = require('./waiting-record.model');

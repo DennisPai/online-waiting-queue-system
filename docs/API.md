@@ -49,8 +49,9 @@ Base URL: `/api/v1`
 
 ### GET `/queue/status`
 取得系統候位狀態（含設定值）。
-- **回傳:** `{ isOpen, currentQueueNumber, maxOrderIndex, minutesPerCustomer, simplifiedMode, publicRegistrationEnabled, showQueueNumberInQuery, waitingCount, totalCustomerCount, lastCompletedTime, nextSessionDate, estimatedEndTime, currentMaxOrderIndex, isFull, eventBanner, scheduledOpenTime, autoOpenEnabled }`
+- **回傳:** `{ isOpen, currentQueueNumber, maxOrderIndex, minutesPerCustomer, simplifiedMode, publicRegistrationEnabled, showQueueNumberInQuery, waitingCount, totalCustomerCount, lastCompletedTime, nextSessionDate, estimatedEndTime, currentMaxOrderIndex, issuedCount, isFull, eventBanner, scheduledOpenTime, autoOpenEnabled }`
 - **說明:** `eventBanner` 含 `{ enabled, title, titleSize, titleColor, titleAlign, fontWeight, backgroundColor, buttonText, buttonUrl, buttonColor, buttonTextColor }`；`scheduledOpenTime` 為 Date 或 null（null 表示使用系統自動計算）
+- **額滿判斷（issuedCount 原子閘門）:** `issuedCount` = 本期累計發出的候位名額數（只增不減）。`isFull = issuedCount >= maxOrderIndex`。`issuedCount` 在報名成功時 +1、管理員「刪除」記錄時 -1；候位被「取消」（cancelled）**不會**讓 `issuedCount` 下降 —— 即 cancelled 仍佔名額、誤取消不會解除額滿。詳見下方「`cancelled` vs `deleted` 名額語意」。
 
 ### POST `/queue/register`
 公開候位登記。
@@ -59,6 +60,10 @@ Base URL: `/api/v1`
 - **說明:**
   - 前台報名家人上限：**3 人**；管理員（帶 JWT）上限：**5 人**；超過回傳 400
   - `zodiac` 欄位由系統依農曆生日自動計算（鼠/牛/虎/兔/龍/蛇/馬/羊/猴/雞/狗/豬），前端不需傳入
+  - **額滿閘門:** 報名第一步先對 `SystemSetting.issuedCount` 做原子閘門（`findOneAndUpdate({ issuedCount: { $lt: maxOrderIndex } }, { $inc: 1 })`）。並發報名時保證不會超收。
+  - **撞號 retry（D12）:** orderIndex 原子發號正常情況下不撞號。萬一偶發撞 partial unique index（`E11000`），在閘門內 retry：上限 3 次、指數退避 + jitter、每次 retry 前重新判額滿。retry 用盡仍失敗回 **409**「報名人數眾多，請稍後再送出一次」；報名最終失敗時把閘門已 `$inc` 的 `issuedCount` 補回 `$inc -1`（不雙重補償）。
+- **403:** `{ success: false, message: '今日候位已滿，請下次再來' }`（`issuedCount` 已達 `maxOrderIndex`）
+- **409:** `{ success: false, message: '報名人數眾多，請稍後再送出一次' }`（撞號 retry 用盡）
 
 ### GET `/queue/number/:queueNumber`
 依候位號碼查詢狀態。
@@ -72,7 +77,12 @@ Base URL: `/api/v1`
 
 ### POST `/queue/cancel`
 客戶自行取消候位。
-- **Body:** `{ queueNumber, name, phone }`
+- **Body:** `{ id, name, phone }`
+  - `id`：候位記錄的 MongoDB `_id`（唯一、永不漂移；改用 `_id` 定位以避免取消到別人的候位）
+  - `name` + `phone`：身分驗證用，須與該筆候位記錄一致
+- **400:** 缺 `id` / 缺 `name` 或 `phone`
+- **403:** `{ success: false, message: '姓名或電話與候位記錄不符，無法取消' }`（身分驗證不通過）
+- **404:** 查無此候位記錄（含 `id` 格式不合法）
 
 ### GET `/queue/next-waiting`
 取得下一個等待中的號碼。
@@ -86,6 +96,21 @@ Base URL: `/api/v1`
 ### GET `/queue/max-order`
 取得目前最大 orderIndex。
 - **回傳:** `{ maxOrderIndex, currentMaxOrderIndex, isFull }`
+
+---
+
+### `cancelled` vs `deleted` 名額語意（issuedCount 原子閘門）
+
+額滿用「佔用名額」定義，並以 `SystemSetting.issuedCount`（只增不減的累計計數）原子閘門實作：
+
+| 動作 | 對 `issuedCount` 的影響 | 名額是否釋出 | 說明 |
+|------|------------------------|--------------|------|
+| 報名成功 | `$inc +1` | — | 報名第一步原子佔名額 |
+| **取消候位**（`cancelled`，前台/後台） | **不變** | **否** | 記錄保留、狀態 `cancelled`，**仍佔本期名額**、可被恢復。誤取消不會解除額滿、新人不會趁機補進來。 |
+| **刪除候位**（`deleted`，後台 `DELETE /admin/queue/:queueId/delete`） | `$inc -1` | **是** | 管理員人工確認真的不來才刪。這是 `issuedCount` 唯一允許下降的情況。 |
+| 報名流程失敗（驗證/寫入錯誤） | `$inc -1` 補償 | 是 | 閘門已 `$inc` 但報名沒成功時，把名額補回，避免名額被吃掉。 |
+
+設計理由：誤取消若會自動釋出名額，會導致新人補進來、總辦事人數被灌爆。改成「取消不釋出、刪除才釋出」，把名額釋放的決定權交給管理員人工把關。代價是客戶真的不來時名額會暫時被 `cancelled` 記錄佔著，要管理員手動刪除才釋出。
 
 ### PUT `/queue/update`
 管理員更新候位資料（更新後自動重新計算 zodiac）。
@@ -108,12 +133,15 @@ Base URL: `/api/v1`
 取得叫號順序（同 Queue API）。
 
 #### PUT `/admin/queue/next`
-叫號下一位（標記完成 + orderIndex 遞補）。
+叫號下一位（標記第一筆 `completed`，其餘 orderIndex 由一致性修正壓回）。
 - **回傳:** `{ completedCustomer, nextCustomer, currentQueueNumber, lastCompletedTime }`
+- **行為（D11）:** 第一筆設 `completed` 並把 `orderIndex` 設為 `null`（離開排序約束），其餘記錄 orderIndex 不做全體平移（暫時留空洞），連續 1..N 由 `ensureOrderIndexConsistency()` 在安全時機壓回。不再用 `updateMany $inc -1`（避免與並發報名撞 unique index）。
+- **409:** orderIndex 撞號（`E11000`）回友善訊息「排序衝突，請重新整理後再操作」。
 
 #### PUT `/admin/queue/:queueId/status`
 更新候位狀態。
 - **Body:** `{ status }` — `waiting` | `processing` | `completed` | `cancelled`
+- **409:** orderIndex 撞號（`E11000`）回友善訊息「排序衝突，請重新整理後再操作」。
 
 #### PUT `/admin/queue/:queueId/update`
 更新客戶資料（姓名、生日、地址、家人等；更新出生日期後自動重新計算 zodiac）。
@@ -121,12 +149,22 @@ Base URL: `/api/v1`
 
 #### DELETE `/admin/queue/:queueId/delete`
 永久刪除客戶記錄。
+- **名額釋出:** 刪除記錄會對 `SystemSetting.issuedCount` 做 `$inc -1`，**釋出一個本期名額**（與「取消」不同 —— 取消不釋出名額）。詳見 Queue API 的「`cancelled` vs `deleted` 名額語意」。
 
 #### PUT `/admin/queue/order`
-更新候位順序（拖曳排序）。
+更新候位順序（單筆移動）。
 - **Body:** `{ queueId, newOrder }`
 - **回傳:** `{ record, allRecords }`（allRecords 只包含 waiting/processing，不含 completed/cancelled）
 - **注意:** `countDocuments`/`updateMany` 只操作 waiting/processing 狀態，不影響其他記錄
+- **409:** orderIndex 撞號（`E11000`）回友善訊息「排序衝突，請重新整理後再操作」。
+
+#### PUT `/admin/queue/reorder`
+批量重排序（拖曳排序，前端拖動完整列表後一次送出）。
+- **Body:** `{ orderedIds: ["id1", "id2", ...] }` — 依陣列順序設定 orderIndex = 1, 2, 3...
+- **回傳:** `{ allRecords }`（只包含 waiting/processing）
+- **後端驗證（D5）:** 收到的 id 列表必須 == DB 當前全部 active（waiting/processing）記錄（數量 + 內容比對）。不一致回 **409**「候位列表已變動，請重新整理後再排序」，**不照錯列表重算**。`orderedIds` 含重複項回 **400**。
+- **寫入方式（D10）:** 兩階段 offset 批量寫入 —— 先把要動的記錄 set 成大偏移臨時值（離開 1..N 區間），再壓回最終 1..N，避開中間態撞 partial unique index。
+- **409:** orderIndex 撞號（`E11000`）回友善訊息「排序衝突，請重新整理後再操作」。
 
 #### POST `/admin/queue/end-session`
 **結束本期** — 將所有非取消候位記錄歸檔至客戶永久資料庫，並清空候位資料。

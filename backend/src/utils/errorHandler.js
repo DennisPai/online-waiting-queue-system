@@ -22,9 +22,19 @@ const globalErrorHandler = (err, req, res, next) => {
   }
 
   // Mongoose 重複鍵錯誤
+  // D9 / Task 4.6：不直接吐欄位名（「orderIndex 已存在」對宮廟客戶是天書）。
+  // orderIndex / queueNumber 的撞號轉成可理解的友善訊息；其餘欄位才回退到
+  // 通用「資料重複」訊息（仍不暴露技術欄位名）。
   if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
-    const message = `${field} 已存在`;
+    const field = err.keyValue ? Object.keys(err.keyValue)[0] : '';
+    let message;
+    if (field === 'orderIndex') {
+      message = '排序衝突，請重新整理後再操作';
+    } else if (field === 'queueNumber') {
+      message = '候位號碼重複，請重新整理後再操作';
+    } else {
+      message = '資料重複，請重新整理後再操作';
+    }
     error = ApiError.conflict(message, 'DUPLICATE_FIELD');
   }
 

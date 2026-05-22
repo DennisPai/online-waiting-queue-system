@@ -177,7 +177,7 @@ const getQueueStatus = catchAsync(async (req, res) => {
       const nonCancelledCount = await WaitingRecord.countDocuments({
         status: { $in: ['waiting', 'processing'] }
       });
-      
+
       return res.status(200).json({
         success: true,
         data: {
@@ -193,7 +193,10 @@ const getQueueStatus = catchAsync(async (req, res) => {
           totalCustomerCount: settings.totalCustomerCount || 0,
           lastCompletedTime: settings.lastCompletedTime,
           currentMaxOrderIndex,
-          isFull: currentMaxOrderIndex >= settings.maxOrderIndex,
+          issuedCount: settings.issuedCount || 0,
+          // D8/2.3：isFull 改用 issuedCount 原子閘門的同一條件，
+          // 與後端「佔用名額」定義對齊（cancelled 仍佔名額）。
+          isFull: (settings.issuedCount || 0) >= settings.maxOrderIndex,
         eventBanner: settings.eventBanner,
         scheduledOpenTime: settings.scheduledOpenTime || null,
           autoOpenEnabled: settings.autoOpenEnabled || false,
@@ -251,7 +254,10 @@ const getQueueStatus = catchAsync(async (req, res) => {
         nextSessionDate: settings.nextSessionDate,
         estimatedEndTime: estimatedEndTime ? estimatedEndTime.toISOString() : null,
         currentMaxOrderIndex,
-        isFull: currentMaxOrderIndex >= settings.maxOrderIndex,
+        issuedCount: settings.issuedCount || 0,
+        // D8/2.3：isFull 改用 issuedCount 原子閘門的同一條件，
+        // 與後端「佔用名額」定義對齊（cancelled 仍佔名額）。
+        isFull: (settings.issuedCount || 0) >= settings.maxOrderIndex,
       eventBanner: settings.eventBanner,
       scheduledOpenTime: settings.scheduledOpenTime || null,
       autoOpenEnabled: settings.autoOpenEnabled || false,
@@ -303,47 +309,77 @@ const getNextWaitingNumber = catchAsync(async (req, res) => {
 
 /**
  * 客戶取消候位
+ *
+ * D1：用 MongoDB `_id` 定位記錄（唯一、永不漂移），不再用會漂移、不唯一的 queueNumber。
+ * 並比對「姓名 + 電話」做身分驗證，雙重確保不會取消到別人的候位。
  */
 const cancelQueueByCustomer = catchAsync(async (req, res) => {
-    const { queueNumber } = req.body;
-    
-    if (!queueNumber) {
+    const { id, name, phone } = req.body;
+
+    if (!id) {
       return res.status(400).json({
         success: false,
-        message: '請提供候位號碼'
+        message: '請提供候位記錄識別碼'
       });
     }
-    
-    // 使用候位號碼查找記錄（候位號碼是唯一標識，不需要額外驗證）
-    const record = await WaitingRecord.findOne({ 
-      queueNumber: parseInt(queueNumber)
-    });
-    
+
+    if (!name || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: '請提供姓名與電話以驗證身分'
+      });
+    }
+
+    // 用 _id 定位記錄（唯一、永不漂移）
+    let record;
+    try {
+      record = await WaitingRecord.findById(id);
+    } catch (err) {
+      // findById 遇到格式不合法的 id 會丟 CastError，視為查無記錄
+      if (err.name === 'CastError') {
+        return res.status(404).json({
+          success: false,
+          message: '查無此候位記錄'
+        });
+      }
+      throw err;
+    }
+
     if (!record) {
       return res.status(404).json({
         success: false,
         message: '查無此候位記錄'
       });
     }
-    
+
+    // 身分驗證：比對 request 帶的姓名 + 電話與 DB 記錄一致才允許取消
+    const nameMatch = (record.name || '').trim() === String(name).trim();
+    const phoneMatch = (record.phone || '').trim() === String(phone).trim();
+    if (!nameMatch || !phoneMatch) {
+      return res.status(403).json({
+        success: false,
+        message: '姓名或電話與候位記錄不符，無法取消'
+      });
+    }
+
     if (record.status === 'cancelled') {
       return res.status(400).json({
         success: false,
         message: '此候位已被取消'
       });
     }
-    
+
     if (record.status === 'completed') {
       return res.status(400).json({
         success: false,
         message: '此候位已完成，無法取消'
       });
     }
-    
+
     // 更新狀態為已取消
     record.status = 'cancelled';
     await record.save();
-    
+
     res.status(200).json({
       success: true,
       message: '預約取消成功',

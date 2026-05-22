@@ -3,8 +3,30 @@ const WaitingRecord = require('../../models/waiting-record.model');
 const SystemSetting = require('../../models/system-setting.model');
 const getCustomer = () => require("../../models/customer.model");
 const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = require('../../utils/calendarConverter');
-const { ensureOrderIndexConsistency } = require('../../utils/orderIndex');
+const { ensureOrderIndexConsistency, allocateOrderIndex } = require('../../utils/orderIndex');
 const { saveSnapshot } = require('../../utils/snapshot');
+
+// === Phase 4 / Task 4.6（design.md D9）：admin controller 撞號錯誤分流 ===
+// admin controller 的每個 try/catch 原本一律回 HTTP 500「伺服器內部錯誤」。
+// partial unique index 上線後，任何 admin 路徑撞號（E11000）→ 管理員只看到
+// 「系統壞了」，不知道是排序撞號、也無從處理。本 helper 統一分流：
+//   - error.code === 11000（撞號）→ 回 409 + 友善訊息（可重新整理後再操作）
+//   - 其他錯誤 → 維持原本 500
+// 各 controller 的 catch 區塊改呼叫此 helper，不再裸吐 500。
+function handleAdminError(res, error, logLabel) {
+  logger.error(`${logLabel}:`, error);
+  if (error && error.code === 11000) {
+    return res.status(409).json({
+      success: false,
+      message: '排序衝突，請重新整理後再操作'
+    });
+  }
+  return res.status(500).json({
+    success: false,
+    message: '伺服器內部錯誤',
+    error: process.env.NODE_ENV === 'development' ? error.message : {}
+  });
+}
 
 // 獲取候位列表
 exports.getQueueList = async (req, res) => {
@@ -99,41 +121,53 @@ exports.getQueueList = async (req, res) => {
 };
 
 // 呼叫下一位
+//
+// === Phase 4 / Task 4.5（design.md D11）：callNext 不用 updateMany $inc -1 全體平移 ===
+// 舊流程：第一筆 → completed + updateMany({status active}, {$inc:{orderIndex:-1}})
+// 全體 -1。問題是 updateMany $inc -1 與「並發新報名插入 active 集合」一起跑時，
+// 新報名者也在 active 集合裡會被一起 -1 → 與既有記錄撞號；且 updateMany 遇
+// unique 衝突會中止剩餘文件更新（半殘）→ 隊伍順序撕裂 + HTTP 500。
+//
+// 新流程：第一筆設 completed（一變 completed 就離開 partial unique index 約束
+// 範圍），其餘記錄的 orderIndex 完全不動 —— 讓 orderIndex 變成 2..N（留一個
+// 空洞）無妨，因為排序只看相對大小。連續的 1..N 交給 ensureOrderIndexConsistency()
+// 在安全時機（兩階段 offset 批量寫入）壓回。
 exports.callNext = async (req, res) => {
   try {
     await ensureOrderIndexConsistency();
     const settings = await SystemSetting.getSettings();
-    
+
     const firstRecord = await WaitingRecord.findOne({
       orderIndex: 1,
       status: { $in: ['waiting', 'processing'] }
     });
-    
+
     if (!firstRecord) {
       return res.status(404).json({ success: false, message: '目前沒有可叫號的客戶' });
     }
-    
+
     const now = new Date();
     firstRecord.status = 'completed';
     firstRecord.completedAt = now;
+    // D11：第一筆轉 completed 即離開 partial unique index 約束範圍。
+    // 設 orderIndex = null 與「取消候位」一致（D13），杜絕髒舊值。
+    firstRecord.orderIndex = null;
     await firstRecord.save();
-    
+
     settings.currentQueueNumber = firstRecord.queueNumber;
     settings.lastCompletedTime = now;
     await settings.save();
-    
-    await WaitingRecord.updateMany(
-      { status: { $in: ['waiting', 'processing'] }, _id: { $ne: firstRecord._id } },
-      { $inc: { orderIndex: -1 } }
-    );
-    
+
+    // D11：不再 updateMany $inc -1 全體平移。其餘記錄 orderIndex 不動
+    // （此時隊伍會是 2..N，留一個空洞），由下方 ensureOrderIndexConsistency()
+    // 用兩階段 offset 批量寫入安全地壓回連續 1..N。
     await ensureOrderIndexConsistency();
-    
+
     const newFirstRecord = await WaitingRecord.findOne({
       orderIndex: 1,
       status: { $in: ['waiting', 'processing'] }
     });
-    
+
     res.status(200).json({
       success: true,
       message: `已完成 ${firstRecord.queueNumber} 號，移至已完成分頁`,
@@ -153,8 +187,8 @@ exports.callNext = async (req, res) => {
       }
     });
   } catch (error) {
-    logger.error('叫號下一位錯誤:', error);
-    res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
+    // D9 / Task 4.6：撞號回友善訊息，非撞號才走 500。
+    return handleAdminError(res, error, '叫號下一位錯誤');
   }
 };
 
@@ -194,8 +228,33 @@ exports.updateQueueStatus = async (req, res) => {
     });
     
     const originalStatus = record.status;
+
+    // 判斷此次狀態切換是否為「恢復報名」（cancelled/completed → waiting）
+    const isRestore = status === 'waiting' && ['completed', 'cancelled'].includes(originalStatus);
+
+    // === Phase 3 / Task 3.2c（design.md D13）：恢復報名必須「先發 orderIndex、後改 status」===
+    // partialFilterExpression 只對 status ∈ {waiting, processing} 生效。
+    // 若先改 status 再分配 orderIndex（或漏分配），記錄會帶著舊的髒
+    // orderIndex 值瞬間進入 partial unique index 約束範圍 → 撞 E11000。
+    // 因此這裡先用 allocateOrderIndex() 原子發一個保證安全的新 orderIndex，
+    // 才把 status 改成 waiting。
+    //
+    // Task 3.2b（D14）：恢復報名沿用原名額。被恢復的記錄當初報名時已佔過
+    // 一個 issuedCount 名額（cancelled 仍佔名額），恢復時「不再 $inc issuedCount」，
+    // 只重新分配 orderIndex（排到隊尾）。issuedCount 與 orderIndex 解耦。
+    if (isRestore) {
+      const newOrderIndex = await allocateOrderIndex();
+      record.orderIndex = newOrderIndex;
+      // isOpen=false 時同步 queueNumber = 新 orderIndex（之後 consistency 會壓回正確值）
+      const statusSettings = await SystemSetting.getSettings();
+      if (!statusSettings.isQueueOpen) {
+        record.queueNumber = newOrderIndex;
+      }
+    }
+
+    // 發完安全的 orderIndex 後才改 status（D13 順序）
     record.status = status;
-    
+
     if (status === 'completed') {
       const now = new Date();
       record.completedAt = now;
@@ -203,30 +262,38 @@ exports.updateQueueStatus = async (req, res) => {
       settings.lastCompletedTime = now;
       await settings.save();
     }
-    
+
     if (originalStatus === 'completed' && status !== 'completed') {
       record.completedAt = null;
     }
-    
-    if (status === 'waiting' && ['completed', 'cancelled'].includes(originalStatus)) {
-      const maxOrderRecord = await WaitingRecord.findOne({
-        status: { $in: ['waiting', 'processing'] }
-      }).sort({ orderIndex: -1 });
-      const newOrderIndex = maxOrderRecord ? maxOrderRecord.orderIndex + 1 : 1;
-      record.orderIndex = newOrderIndex;
-      // isOpen=false 時同步 queueNumber = 新 orderIndex
-      const statusSettings = await SystemSetting.getSettings();
-      if (!statusSettings.isQueueOpen) {
-        record.queueNumber = newOrderIndex;
-      }
+
+    // === Phase 3 / Task 3.2c（design.md D13）：取消時把 orderIndex 設為 null ===
+    // 杜絕髒舊值在日後恢復報名時被帶回（恢復一律強制重新原子發號）。
+    // cancelled 不在 partial unique index 約束範圍，orderIndex=null 不影響 index。
+    if (status === 'cancelled') {
+      record.orderIndex = null;
     }
-    
+
     await record.save();
-    
-    res.status(200).json({ success: true, message: '候位狀態更新成功', data: record });
+
+    // === Phase 3 / Task 3.1（design.md D4）：恢復報名補一致性重算 ===
+    // 系統其他動 orderIndex 的操作（叫號 / 刪除 / reorder）都會呼叫
+    // ensureOrderIndexConsistency() 把 active 記錄 orderIndex 壓成連續 1..N，
+    // 唯獨恢復報名這條漏了 —— 補上即與其他路徑一致。
+    // 同時也把 allocateOrderIndex() 給的膨脹發號值壓回 1..N。
+    if (isRestore) {
+      await ensureOrderIndexConsistency();
+    }
+
+    // 重新讀取（恢復報名時 orderIndex/queueNumber 已被 consistency 壓回，回傳正確值）
+    const responseRecord = isRestore
+      ? (await WaitingRecord.findById(record._id) || record)
+      : record;
+
+    res.status(200).json({ success: true, message: '候位狀態更新成功', data: responseRecord });
   } catch (error) {
-    logger.error('更新候位狀態錯誤:', error);
-    res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
+    // D9 / Task 4.6：撞號回友善訊息，非撞號才走 500。
+    return handleAdminError(res, error, '更新候位狀態錯誤');
   }
 };
 
@@ -304,8 +371,8 @@ exports.updateQueueOrder = async (req, res) => {
       data: { record: recordToUpdate, allRecords: updatedRecords }
     });
   } catch (error) {
-    logger.error('更新候位順序錯誤:', error);
-    res.status(500).json({ success: false, message: '伺服器內部錯誤', error: error.message || '未知錯誤' });
+    // D9 / Task 4.6：撞號回友善訊息，非撞號才走 500。
+    return handleAdminError(res, error, '更新候位順序錯誤');
   }
 };
 
@@ -349,21 +416,22 @@ exports.updateQueueData = async (req, res) => {
     });
 
     await record.save();
-    
+
     res.status(200).json({ success: true, message: '客戶資料更新成功', data: record });
   } catch (error) {
     logger.error('更新客戶資料錯誤:', error);
-    
+
+    // D9 / G7：撞號（duplicate key）改回友善錯誤分流。
+    // 原本「遇 11000 就 dropIndex('queueNumber_1')」是地雷——會把未來加上的
+    // unique index 在一次撞號時自動拆掉防線，因此整段自動 drop index 邏輯移除。
+    // 另外原 catch 引用 try 內 block-scope 的 `record` 會丟 ReferenceError，一併修正。
     if (error.code === 11000) {
-      try {
-        await WaitingRecord.collection.dropIndex('queueNumber_1');
-        await record.save();
-        return res.status(200).json({ success: true, message: '客戶資料更新成功（已移除重複限制）', data: record });
-      } catch (dropError) {
-        return res.status(400).json({ success: false, message: '資料庫索引問題：請聯繫管理員移除唯一索引限制。' });
-      }
+      return res.status(409).json({
+        success: false,
+        message: '候位號碼重複，請改用其他號碼後再試。'
+      });
     }
-    
+
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
@@ -392,6 +460,18 @@ exports.getOrderedQueueNumbers = async (req, res) => {
 };
 
 // 刪除客戶資料
+//
+// === Phase 4.5 併修（design.md D11，懷特 2026-05-22 核可）：deleteCustomer
+//     不用 updateMany $inc -1 全體平移 ===
+// 舊流程：findByIdAndDelete + updateMany({orderIndex>deleted}, {$inc:-1})
+// 把後面所有記錄 orderIndex 全體 -1。這跟 callNext 已修掉的全體平移是同款地雷
+// —— updateMany $inc -1 與並發新報名一起跑時，新報名者也在 active 集合裡會被
+// 一起 -1 → 撞 partial unique index；且 updateMany 遇 unique 衝突會中止剩餘
+// 文件更新（半殘）→ 隊伍順序撕裂 + HTTP 500。
+//
+// 新流程（比照 D11 callNext）：刪除該筆後其餘記錄 orderIndex 完全不動 —— 隊伍
+// 留一個空洞無妨（排序只看相對大小），連續的 1..N 交給後面緊接的
+// ensureOrderIndexConsistency() 用兩階段 offset 批量寫入安全壓回。
 exports.deleteCustomer = async (req, res) => {
   try {
     const { queueId } = req.params;
@@ -422,19 +502,28 @@ exports.deleteCustomer = async (req, res) => {
       }
     });
     
-    const deletedOrderIndex = record.orderIndex;
+    // D11 同款修正：刪除該筆後「不」做 updateMany $inc -1 全體平移。
+    // 其餘記錄 orderIndex 不動（此時隊伍會留一個空洞），由下方
+    // ensureOrderIndexConsistency() 用兩階段 offset 批量寫入安全壓回 1..N。
     await WaitingRecord.findByIdAndDelete(queueId);
-    await WaitingRecord.updateMany({ orderIndex: { $gt: deletedOrderIndex } }, { $inc: { orderIndex: -1 } });
     await ensureOrderIndexConsistency();
-    
+
+    // D8/2.4：管理員「刪除」記錄是唯一允許 issuedCount 下降的情況
+    // —— 釋出一個本期名額（呼應 D2「刪除才釋出名額、取消不釋出」）。
+    // issuedCount 不會低於 0（schema min:0），多刪也不會變負數。
+    await SystemSetting.updateOne(
+      { issuedCount: { $gt: 0 } },
+      { $inc: { issuedCount: -1 } }
+    );
+
     res.status(200).json({
       success: true,
       message: `客戶 ${customerInfo.name} 的記錄已永久刪除`,
       data: { deletedCustomer: customerInfo }
     });
   } catch (error) {
-    logger.error('刪除客戶記錄錯誤:', error);
-    res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
+    // D9 / Task 4.6：撞號回友善訊息，非撞號才走 500。
+    return handleAdminError(res, error, '刪除客戶記錄錯誤');
   }
 };
 
@@ -471,7 +560,21 @@ exports.clearAllQueue = async (req, res) => {
  * Body: { orderedIds: ["id1", "id2", ...] }
  * 依陣列順序設定 orderIndex = 1, 2, 3...
  * isOpen=false 時同步 queueNumber = orderIndex
- * 最後呼叫 ensureOrderIndexConsistency() 確保無空洞
+ *
+ * === Phase 4 / Task 4.2（design.md D5）：後端驗證 + 不信任前端列表 ===
+ * 舊版完全信任前端送來的 id 列表、照下標重算整列 orderIndex。問題是前端
+ * 列表可能 stale（跨拖動競態）或殘缺。後端必須驗證：收到的 id 列表
+ * == DB 當前全部 active 記錄（數量 + 內容）。不一致就拒絕這次 reorder，
+ * 要前端重新整理，不照錯列表把 DB 改壞。
+ *
+ * === Phase 4 / Task 4.4（design.md D10）：兩階段 offset 寫入 ===
+ * 舊版用 Promise.all 把 N 筆同時 findByIdAndUpdate 成最終 1..N。並行寫入
+ * 沒有順序保證 —— 當目標排列是現有 orderIndex 的非平凡置換時，置換過程
+ * 必然出現「兩筆暫時同 orderIndex」的中間態 → partial unique index 把該筆
+ * 寫入擋下並丟 E11000 → Promise.all 整個 reject → 500。改成兩階段：
+ *   第一階段：把所有要動的記錄 set 成「大偏移臨時值」（離開 1..N 區間、
+ *             彼此唯一）→ 不與任何 active 記錄撞號。
+ *   第二階段：把這些記錄從臨時值 set 成最終 1..N。
  */
 exports.reorderQueue = async (req, res) => {
   try {
@@ -481,19 +584,71 @@ exports.reorderQueue = async (req, res) => {
       return res.status(400).json({ success: false, message: 'orderedIds 必須是非空陣列' });
     }
 
+    // === D5：驗證收到的 id 列表 == DB 當前全部 active 記錄 ===
+    const activeRecords = await WaitingRecord.find({
+      status: { $in: ['waiting', 'processing'] }
+    }).select('_id');
+    const dbIds = activeRecords.map(r => String(r._id));
+    const reqIds = orderedIds.map(id => String(id));
+
+    // (a) 數量比對
+    if (reqIds.length !== dbIds.length) {
+      return res.status(409).json({
+        success: false,
+        message: '候位列表已變動，請重新整理後再排序'
+      });
+    }
+    // (b) 內容比對：集合相同（且 reqIds 無重複）
+    const dbIdSet = new Set(dbIds);
+    const reqIdSet = new Set(reqIds);
+    if (reqIdSet.size !== reqIds.length) {
+      // reqIds 有重複 id
+      return res.status(400).json({
+        success: false,
+        message: '排序列表含重複項目，請重新整理後再排序'
+      });
+    }
+    const sameSet = reqIds.every(id => dbIdSet.has(id)) && dbIds.every(id => reqIdSet.has(id));
+    if (!sameSet) {
+      return res.status(409).json({
+        success: false,
+        message: '候位列表已變動，請重新整理後再排序'
+      });
+    }
+
     const settings = await SystemSetting.getSettings();
     const isOpen = settings.isQueueOpen;
 
-    // 依陣列順序批量 set orderIndex（用 Promise.all 仍然安全，因為每筆只設固定值，不依賴其他記錄狀態）
-    await Promise.all(
-      orderedIds.map((id, index) => {
-        const newOrderIndex = index + 1;
-        const update = isOpen
-          ? { orderIndex: newOrderIndex }
-          : { orderIndex: newOrderIndex, queueNumber: newOrderIndex };
-        return WaitingRecord.findByIdAndUpdate(id, update);
-      })
-    );
+    // === D10：兩階段 offset 批量寫入（避開中間態撞 partial unique index）===
+    // 大偏移量：保證臨時值離開 1..N 區間、且彼此唯一。
+    const OFFSET = 1000000;
+
+    // 第一階段：把每筆要動的記錄推到臨時值 = 最終位序 + OFFSET。
+    // 臨時值彼此唯一（最終位序 1..N 互不相同），且遠離任何 active 記錄
+    // 真實 orderIndex → 不與任何記錄撞號。
+    const phase1Ops = reqIds.map((id, index) => ({
+      updateOne: {
+        filter: { _id: id },
+        update: { $set: { orderIndex: (index + 1) + OFFSET } }
+      }
+    }));
+    await WaitingRecord.bulkWrite(phase1Ops, { ordered: false });
+
+    // 第二階段：把這些記錄從臨時值壓回最終 1..N（並同步 queueNumber）。
+    // 所有 active 記錄此刻都在臨時值區間，逐筆壓回 1..N 時目標值不會撞上
+    // 任何「尚停在臨時值區間」的記錄 → 全程不撞 partial unique index。
+    const phase2Ops = reqIds.map((id, index) => {
+      const newOrderIndex = index + 1;
+      const set = { orderIndex: newOrderIndex };
+      if (!isOpen) set.queueNumber = newOrderIndex;
+      return {
+        updateOne: {
+          filter: { _id: id },
+          update: { $set: set }
+        }
+      };
+    });
+    await WaitingRecord.bulkWrite(phase2Ops, { ordered: false });
 
     // 安全網：確保無空洞/重複
     await ensureOrderIndexConsistency();
@@ -508,7 +663,7 @@ exports.reorderQueue = async (req, res) => {
       data: { allRecords: updatedRecords }
     });
   } catch (error) {
-    logger.error('批量重排序錯誤:', error);
-    res.status(500).json({ success: false, message: '伺服器內部錯誤' });
+    // D9 / Task 4.6：撞號回友善訊息，非撞號才走 500。
+    return handleAdminError(res, error, '批量重排序錯誤');
   }
 };

@@ -250,6 +250,27 @@ waitingRecordSchema.statics.getNextQueueNumber = async function() {
   return lastRecord ? lastRecord.queueNumber + 1 : 1;
 };
 
+// === Phase 3 / Task 3.3（design.md D3）：orderIndex partial unique index ===
+// 只對 active 狀態（waiting / processing）約束 orderIndex 唯一，
+// cancelled / completed 不受約束（它們不參與排序，orderIndex 可重複或為 null）。
+//
+// 定位（D3）：這是「理論上不該發生的撞號」的最後一道防線，
+// 不是額滿判斷工具（額滿靠 issuedCount 原子閘門）、也不是填洞防護。
+//
+// partialFilterExpression 用 $in 形式（status ∈ {waiting, processing}）—
+// MongoDB 3.2 起 partial index 支援 $in（design.md D3 / Task 3.3a）。
+// 注意：orderIndex 預設值為 null；但 partialFilterExpression 已把約束範圍
+// 限縮在 active 狀態，新報名在「先發 orderIndex、後改 status」的順序下
+// （D13）不會帶 null 進入約束範圍，因此不需再排除 null。
+waitingRecordSchema.index(
+  { orderIndex: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: { $in: ['waiting', 'processing'] } },
+    name: 'orderIndex_active_unique'
+  }
+);
+
 const WaitingRecord = mongoose.model('WaitingRecord', waitingRecordSchema);
 
 module.exports = WaitingRecord;

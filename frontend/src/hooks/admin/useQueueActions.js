@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   callNextQueue,
@@ -19,6 +19,15 @@ import { showAlert } from '../../redux/slices/uiSlice';
 export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueList, setConfirmDialog, handleCloseConfirmDialog }) => {
   const dispatch = useDispatch();
   const isQueueOpen = useSelector(state => state.queue.isQueueOpen);
+
+  // === Phase 4 / Task 4.1（design.md D6）：拖動排序鎖 ===
+  // 跨拖動競態：第一次拖動的 reorder 還沒回，使用者就拖第二筆 → 拖到的是
+  // 尚未刷新的 stale 列表 → 後端被餵錯順序。解法：拖動送出後鎖住拖動，
+  // reorder API 回來（不論成功失敗）才解鎖。
+  // 用 ref 做即時同步判斷（避免 state 非同步更新造成的判斷空窗），
+  // 另用 state 讓 UI 能據此 disable 拖動。
+  const reorderingRef = useRef(false);
+  const [isReordering, setIsReordering] = useState(false);
 
   // 重新排序
   const handleReorderQueue = useCallback(async () => {
@@ -147,10 +156,30 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
     }
   }, [dispatch, loadQueueList]);
 
-  // 拖曳結束處理（方案 B：單一批量 reorder API，無並行衝突）
+  // 拖曳結束處理
+  //
+  // === Phase 4 / Task 4.1 + 4.1a（design.md D6 / G12）===
+  // 4.1：拖動送出後鎖住拖動 UI，reorder API 回來才解鎖 —— 防跨拖動競態。
+  // 4.1a：徹底移除「拖動後呼叫非同步 loadQueueList() 覆蓋 queueList」的路徑。
+  //       舊版在 reorder 成功/失敗後都呼叫 loadQueueList()，那個非同步 GET
+  //       回來的列表會覆蓋 reorder API 已寫進 queueList 的權威結果 ——
+  //       競態的根源。改以「reorder API 回傳的 allRecords」為唯一更新來源：
+  //       reorderQueue.fulfilled 已用 allRecords 更新 state.queueList，
+  //       localQueueList 透過 useQueueData 的 useEffect 自動同步。
+  //       失敗時也不再 loadQueueList，而是用 reorder.rejected 後重拉一次
+  //       —— 但這是「失敗復原」不是「成功覆蓋」，不構成競態（鎖已擋住
+  //       後續拖動，且失敗本來就需要拉回後端正確狀態）。
   const handleDragEnd = useCallback(async (result) => {
     if (!result.destination) return;
     if (result.destination.index === result.source.index) return;
+
+    // 4.1：上一次拖動的 reorder 還沒回來 → 直接擋掉這次拖動。
+    if (reorderingRef.current) {
+      dispatch(showAlert({ message: '排序更新中，請稍候再拖動', severity: 'warning' }));
+      return;
+    }
+    reorderingRef.current = true;
+    setIsReordering(true);
 
     const items = Array.from(localQueueList);
     const [reorderedItem] = items.splice(result.source.index, 1);
@@ -167,12 +196,19 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
     // 一次 API 傳完整 orderedIds，後端依序設定 orderIndex
     try {
       const orderedIds = updatedItems.map(item => item._id);
+      // reorderQueue.fulfilled 會用 API 回傳的 allRecords 更新 state.queueList，
+      // 即「唯一更新來源」—— 不再 loadQueueList() 覆蓋。
       await dispatch(reorderQueue({ orderedIds })).unwrap();
       dispatch(showAlert({ message: '排序已更新', severity: 'success' }));
-      loadQueueList();
     } catch (error) {
+      // 失敗復原：後端拒絕（如列表已變動）→ 拉回後端的正確狀態。
+      // 此時鎖尚未解開，不會與後續拖動競態。
       dispatch(showAlert({ message: `更新排序失敗：${error}`, severity: 'error' }));
       loadQueueList();
+    } finally {
+      // reorder 流程結束（成功或失敗復原都已處理）才解鎖。
+      reorderingRef.current = false;
+      setIsReordering(false);
     }
   }, [localQueueList, setLocalQueueList, dispatch, loadQueueList, isQueueOpen]);
 
@@ -263,6 +299,8 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
     handleDragEnd,
     handleClearAllQueue,
     handleEndSession,
-    handleDeleteCustomer
+    handleDeleteCustomer,
+    // Task 4.1：拖動排序鎖狀態，供 UI disable 拖動時使用
+    isReordering
   };
 };

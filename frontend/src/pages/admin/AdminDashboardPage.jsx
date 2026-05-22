@@ -114,6 +114,7 @@ const AdminDashboardPage = () => {
     handleOpenRegisterDialog,
     handleCloseRegisterDialog,
     handleRegisterSuccess,
+    isReordering,
     queueStatus,
     totalCustomerCountInput,
     lastCompletedTimeInput,
@@ -327,6 +328,7 @@ const AdminDashboardPage = () => {
               onCompletionChange={handleCompletionChange}
               onCancelCustomer={handleCancelCustomer}
               onRestoreCustomer={handleRestoreCustomer}
+              isReordering={isReordering}
             />
           </DragDropContext>
         )}

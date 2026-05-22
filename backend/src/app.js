@@ -185,18 +185,21 @@ mongoose.connect(mongoUri, { dbName: mongoDbName })
     // 初始化雙 DB 連線（候位 DB + 客戶 DB）
     // 必須在 mongoose.connect() 成功後、initializeData() 之前呼叫
     initDbConnections();
-    
-    // 移除舊的唯一索引（如果存在）
-    logger.info('檢查並移除queueNumber唯一索引...');
-    try {
-      const removeUniqueIndex = require('./utils/removeUniqueIndex');
-      await removeUniqueIndex();
-      logger.debug('索引檢查完成');
-    } catch (error) {
-      logger.error('索引處理時發生錯誤:', error);
-      // 不要因為索引錯誤而停止服務器啟動
-    }
-    
+
+    // === Phase 3 額外任務（design.md D3 / Phase 1 G7）===
+    // 已移除「開機就主動 dropIndex queueNumber 唯一索引」的常駐邏輯。
+    // 移除原因：
+    //   1. queueNumber 早已是普通（非唯一）索引，這段開機 drop 已無實際作用，
+    //      只是每次重啟跑一次 getIndexes()/dropIndex() 的死碼。
+    //   2. 「開機常駐 dropIndex」與 Phase 3 新加的 orderIndex partial unique
+    //      index（orderIndex_active_unique）思路相衝突 —— 標準防線就不該由
+    //      開機流程主動拆。保留這類「自動 drop index」邏輯是地雷：日後一旦
+    //      被擴充 / 誤改，可能把 Phase 3 的撞號最後防線在啟動時拆掉。
+    //   3. 與 Phase 1 Task 1.5（移除 updateQueueData catch 的自動 dropIndex）
+    //      同一原則 —— 系統內不再保留任何「自動 drop index」路徑。
+    // 若日後真的需要一次性移除某個舊索引，改用手動腳本
+    // （utils/removeUniqueIndex.js 仍可手動執行，但不再掛在開機流程）。
+
     // 初始化數據
     logger.info('開始執行數據初始化...');
     const initResult = await initializeData();

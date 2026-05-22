@@ -33,7 +33,9 @@ const QueueTable = ({
   onCompletionChange,
   onCancelCustomer,
   onRestoreCustomer,
-  renderColumnContent
+  renderColumnContent,
+  // Task 4.1：reorder API 進行中時鎖住拖動，防跨拖動競態
+  isReordering = false
 }) => {
   const getStatusChip = (status, orderIndex) => {
     if (status === 'completed') {
@@ -299,7 +301,7 @@ const QueueTable = ({
                       key={row._id}
                       draggableId={row._id}
                       index={index}
-                      isDragDisabled={currentTab !== 0}
+                      isDragDisabled={currentTab !== 0 || isReordering}
                     >
                       {(provided, snapshot) => (
                         <TableRow
