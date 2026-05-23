@@ -622,42 +622,30 @@ const CustomerDetailDialog = ({
                         </FormControl>
                       </Grid>
 
-                      {/* 家人農曆生日（Follow-up patch #5 D6：移除外部標題，BirthdayPicker 內部 default 接手） */}
-                      {/* Follow-up patch B1B：家人讀取 path 對齊（同主客戶邏輯） */}
+                      {/* 家人農曆生日（Follow-up UI fix 懷特 5/23：對齊主客戶 B1B 讀取 path）
+                          之前 default calendarType='gregorian' 餵 member.gregorianBirthYear 進去當 lunar
+                          顯示 → BirthdayPicker lunarOnly 強制 lunar → 「西元 1992 - 1911 = 民國 81」
+                          看起來像國曆值。改成永遠 lunar、讀 member.lunarBirthYear（民國年）
+                          → BirthdayPicker year prop 期望西元年 → 用 minguoToGregorian 轉。 */}
                       <Grid item xs={12}>
                         <BirthdayPicker
-                          calendarType={familyBirthCalendarTypes[index] || 'gregorian'}
-                          year={(familyBirthCalendarTypes[index] || 'gregorian') === 'gregorian'
-                            ? (member.gregorianBirthYear || '')
-                            : (member.lunarBirthYear
-                                ? (member.lunarBirthYear > 1911
-                                    ? member.lunarBirthYear
-                                    : minguoToGregorian(member.lunarBirthYear))
-                                : '')}
-                          month={(familyBirthCalendarTypes[index] || 'gregorian') === 'gregorian'
-                            ? (member.gregorianBirthMonth || '')
-                            : (member.lunarBirthMonth || '')}
-                          day={(familyBirthCalendarTypes[index] || 'gregorian') === 'gregorian'
-                            ? (member.gregorianBirthDay || '')
-                            : (member.lunarBirthDay || '')}
+                          year={member.lunarBirthYear
+                            ? (member.lunarBirthYear > 1911
+                                ? member.lunarBirthYear
+                                : minguoToGregorian(member.lunarBirthYear))
+                            : ''}
+                          month={member.lunarBirthMonth || ''}
+                          day={member.lunarBirthDay || ''}
                           isLeapMonth={member.lunarIsLeapMonth || false}
-                          onChange={({ year, month, day, isLeapMonth, calendarType }) => {
-                            setFamilyBirthCalendarTypes(prev => ({ ...prev, [index]: calendarType }));
-                            // 用批次 patch 避免多次 setState 互相覆蓋
-                            if (calendarType === 'gregorian') {
-                              onFamilyMemberChange(index, {
-                                gregorianBirthYear: year,
-                                gregorianBirthMonth: month,
-                                gregorianBirthDay: day
-                              });
-                            } else {
-                              onFamilyMemberChange(index, {
-                                lunarBirthYear: year,
-                                lunarBirthMonth: month,
-                                lunarBirthDay: day,
-                                lunarIsLeapMonth: isLeapMonth
-                              });
-                            }
+                          onChange={({ year, month, day, isLeapMonth }) => {
+                            // BirthdayPicker lunarOnly default → onChange 永遠帶 calendarType='lunar'
+                            // year 是西元年；useQueueValidation.formatSaveData 送出時 autoConvertToMinguo 轉民國年送 backend
+                            onFamilyMemberChange(index, {
+                              lunarBirthYear: year,
+                              lunarBirthMonth: month,
+                              lunarBirthDay: day,
+                              lunarIsLeapMonth: isLeapMonth
+                            });
                           }}
                           size="small"
                         />
