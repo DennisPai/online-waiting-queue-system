@@ -147,24 +147,24 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
       if (!formData.phone) errors.phone = '請輸入聯絡手機';
       else if (!/^[\d-+()]{8,}$/.test(formData.phone)) errors.phone = '請輸入有效的聯絡手機';
 
-      // 出生日期驗證
-      if (!formData.birthYear) errors.birthYear = '請輸入出生年';
+      // Follow-up patch #3：農曆生日必填、提示對齊「農曆生日」（Change C 全民國農曆）
+      if (!formData.birthYear) errors.birthYear = '請選擇農曆生日年份';
       else if (isNaN(formData.birthYear)) {
-        errors.birthYear = '請輸入有效的出生年';
+        errors.birthYear = '請輸入有效的農曆生日年份';
       } else {
         const year = parseInt(formData.birthYear);
         const currentYear = new Date().getFullYear();
         if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
-          errors.birthYear = '請輸入有效的出生年（民國1-150年或西元1900年後）';
+          errors.birthYear = '請輸入有效的農曆生日年份（民國1-150年或西元1900年後）';
         }
       }
-      
-      if (!formData.birthMonth) errors.birthMonth = '請輸入出生月';
+
+      if (!formData.birthMonth) errors.birthMonth = '請選擇農曆生日月份';
       else if (isNaN(formData.birthMonth) || formData.birthMonth < 1 || formData.birthMonth > 12) {
         errors.birthMonth = '請輸入1-12之間的數字';
       }
-      
-      if (!formData.birthDay) errors.birthDay = '請輸入出生日';
+
+      if (!formData.birthDay) errors.birthDay = '請選擇農曆生日日期';
       else if (isNaN(formData.birthDay) || formData.birthDay < 1 || formData.birthDay > 31) {
         errors.birthDay = '請輸入1-31之間的數字';
       }
@@ -181,22 +181,23 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
         if (!member.name) {
           errors[`familyMembers.${index}.name`] = '請輸入家人姓名';
         }
+        // Follow-up patch #3：家人農曆生日必填、提示對齊「農曆生日」
         if (!member.birthYear) {
-          errors[`familyMembers.${index}.birthYear`] = '請輸入出生年';
+          errors[`familyMembers.${index}.birthYear`] = '請選擇農曆生日年份';
         } else if (isNaN(member.birthYear)) {
-          errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年';
+          errors[`familyMembers.${index}.birthYear`] = '請輸入有效的農曆生日年份';
         } else {
           const year = parseInt(member.birthYear);
           const currentYear = new Date().getFullYear();
           if (year < 1 || (year > 150 && year < 1900) || year > currentYear) {
-            errors[`familyMembers.${index}.birthYear`] = '請輸入有效的出生年（民國1-150年或西元1900年後）';
+            errors[`familyMembers.${index}.birthYear`] = '請輸入有效的農曆生日年份（民國1-150年或西元1900年後）';
           }
         }
         if (!member.birthMonth) {
-          errors[`familyMembers.${index}.birthMonth`] = '請輸入出生月';
+          errors[`familyMembers.${index}.birthMonth`] = '請選擇農曆生日月份';
         }
         if (!member.birthDay) {
-          errors[`familyMembers.${index}.birthDay`] = '請輸入出生日';
+          errors[`familyMembers.${index}.birthDay`] = '請選擇農曆生日日期';
         }
         if (!member.address) {
           errors[`familyMembers.${index}.address`] = '請輸入地址';
@@ -497,18 +498,23 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
       // 對應 D2 決策：default calendarType='lunar'，不再有 gregorian 分支
       // 後端 autoFillDates 會自動把 lunarBirth* 轉成 gregorianBirth* 寫進 DB（calendarConverter line 134-138）
       // 仍帶 convertedGregorian*（autoConvertDate 算出來的前端 hint，後端會以自己的 autoFillDates 為準）
+      // Follow-up patch B1A：前端送民國年對齊後端 lunarToGregorian 民國年版
+      // 之前 convertMinguoForStorage 把民國年轉成西元年送出 → 後端 autoFillDates
+      // 把它當民國年再 +1911 → 算出西元 3902 的廢資料。改成只取 minguoYear，
+      // 直接送民國年（後端 lunarToGregorian 內部 +1911 即正確西元）。
       if (submitData.birthYear) {
-        // 主客戶：lunar 路徑 — 轉換民國年為西元年（autoConvertToMinguo round-trip 安全）
+        // 主客戶：lunar 路徑 — BirthdayPicker value 是西元年，先轉成民國年再送
         const { minguoYear } = autoConvertToMinguo(parseInt(submitData.birthYear));
-        submitData.lunarBirthYear = convertMinguoForStorage(minguoYear);
+        submitData.lunarBirthYear = minguoYear;
         submitData.lunarBirthMonth = parseInt(submitData.birthMonth);
         submitData.lunarBirthDay = parseInt(submitData.birthDay);
         submitData.lunarIsLeapMonth = submitData.lunarIsLeapMonth || false;
 
         // 前端 autoConvertDate 算出的國曆 hint，一併送（後端會 verify/覆寫）
+        // gregorianBirthYear 維持送西元年（lunar-javascript 算出來本來就是西元年），
+        // 後端 autoFillDates 仍會以民國農曆反推覆寫成正確值。
         if (submitData.convertedGregorianYear) {
-          const { minguoYear: gregorianMinguoYear } = autoConvertToMinguo(submitData.convertedGregorianYear);
-          submitData.gregorianBirthYear = convertMinguoForStorage(gregorianMinguoYear);
+          submitData.gregorianBirthYear = parseInt(submitData.convertedGregorianYear);
           submitData.gregorianBirthMonth = submitData.convertedGregorianMonth;
           submitData.gregorianBirthDay = submitData.convertedGregorianDay;
         }
@@ -516,22 +522,22 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
 
       // 處理家人數據的日期欄位
       // Change C / 階段 2.3：家人也只走 lunar 路徑
+      // Follow-up patch B1A：前端送民國年對齊後端 lunarToGregorian 民國年版
       if (submitData.familyMembers && submitData.familyMembers.length > 0) {
         submitData.familyMembers = submitData.familyMembers.map(member => {
           const processedMember = { ...member };
 
           if (member.birthYear) {
-            // 家人：lunar 路徑
+            // 家人：lunar 路徑 — BirthdayPicker value 是西元年，先轉成民國年再送
             const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear));
-            processedMember.lunarBirthYear = convertMinguoForStorage(minguoYear);
+            processedMember.lunarBirthYear = minguoYear;
             processedMember.lunarBirthMonth = parseInt(member.birthMonth);
             processedMember.lunarBirthDay = parseInt(member.birthDay);
             processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
 
-            // 前端 hint：國曆轉換結果
+            // 前端 hint：國曆轉換結果（gregorianBirth* 仍是西元年、後端會以 autoFillDates 覆寫）
             if (member.convertedGregorianYear) {
-              const { minguoYear: gregorianMinguoYear } = autoConvertToMinguo(member.convertedGregorianYear);
-              processedMember.gregorianBirthYear = convertMinguoForStorage(gregorianMinguoYear);
+              processedMember.gregorianBirthYear = parseInt(member.convertedGregorianYear);
               processedMember.gregorianBirthMonth = member.convertedGregorianMonth;
               processedMember.gregorianBirthDay = member.convertedGregorianDay;
             }
@@ -720,25 +726,13 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
           </FormControl>
         </Grid>
 
-        {/* 出生日期
-            Change C / 階段 2.3：改用共用 BirthdayPicker 元件（default lunarOnly=true）
-            - 移除「國曆/農曆」切換 RadioGroup（D1 決策：BirthdayPicker 內隱藏）
-            - 移除三個 TextField（年/月/日）改用 BirthdayPicker 內年月日下拉
-            - 移除「閏月」獨立 Checkbox（BirthdayPicker 內部含閏月勾選框）
-            - 對應 D2 決策：default calendarType='lunar' 已在 initialFormData 改好
-            - 對應 D3 決策：主客戶段也用 BirthdayPicker 共用元件 */}
+        {/* 農曆生日
+            Follow-up patch #5（OpenSpec 2026-05-23-followup-patches D6）：
+            移除外部 Typography 標題、改由 BirthdayPicker 內部 default 標題（「農曆生日」+
+            helper text「請先自行查好農曆生日」）統一 render，全系統 5+ 處呼叫點一致。 */}
         {!isSimplifiedMode && (
           <>
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main', mt: 2 }}>
-                農曆出生日期
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                請填寫農曆生日（系統會自動換算國曆並計算生肖）
-              </Typography>
-            </Grid>
-
-            <Grid item xs={12}>
+            <Grid item xs={12} sx={{ mt: 2 }}>
               <BirthdayPicker
                 year={formData.birthYear || ''}
                 month={formData.birthMonth || ''}
@@ -936,14 +930,10 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                         </FormControl>
                       </Grid>
 
-                      {/* 家人出生日期
-                          Change C / 階段 2.3：移除曆法切換 + 三個 TextField + 閏月 Checkbox
-                          改用共用 BirthdayPicker（default lunarOnly=true）
-                          對應 D1+D2+D3 決策 */}
+                      {/* 家人農曆生日
+                          Follow-up patch #5（D6）：移除外部 Typography 標題，
+                          改由 BirthdayPicker 內部 default 標題統一 render */}
                       <Grid item xs={12}>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          農曆出生日期
-                        </Typography>
                         <BirthdayPicker
                           year={member.birthYear || ''}
                           month={member.birthMonth || ''}

@@ -246,6 +246,76 @@ describe('QueueService.registerQueue — 問題 2/3/4 修正邏輯', () => {
     expect(payload.familyMembers[0].address).not.toBe('臨時地址');
   });
 
+  // === Follow-up patch #3（OpenSpec 2026-05-23-followup-patches D3）：lunar 三欄位必填驗證 ===
+  // validateRequiredFields 在非簡化模式下會擋下缺 lunarBirth* 的請求。
+  // 簡化模式仍 skip（保持既有行為，懷特沒要求簡化模式也必填）。
+
+  test('Follow-up #3：非簡化模式缺 lunarBirthYear → 回 400 友善錯誤（請輸入農曆生日年份）', async () => {
+    SystemSetting.getSettings.mockResolvedValue({ simplifiedMode: false, maxOrderIndex: 100, isQueueOpen: false });
+
+    // 帶完整 name/phone + lunarMonth/Day 但缺 lunarYear
+    const data = {
+      name: '王小明',
+      phone: '0912345678',
+      gender: 'male',
+      lunarBirthMonth: 1,
+      lunarBirthDay: 15,
+      addresses: [{ address: '台北市', addressType: 'home' }],
+      consultationTopics: ['body']
+    };
+
+    await expect(queueService.registerQueue(data)).rejects.toMatchObject({
+      statusCode: 400,
+      message: expect.stringContaining('農曆生日年份')
+    });
+    // 驗證在閘門前 → 不應佔名額
+    expect(SystemSetting.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  test('Follow-up #3：非簡化模式缺 lunarBirthDay → 回 400 友善錯誤（請輸入農曆生日日期）', async () => {
+    SystemSetting.getSettings.mockResolvedValue({ simplifiedMode: false, maxOrderIndex: 100, isQueueOpen: false });
+
+    const data = {
+      name: '王小明',
+      phone: '0912345678',
+      gender: 'male',
+      lunarBirthYear: 80,
+      lunarBirthMonth: 1,
+      // 故意不帶 lunarBirthDay
+      addresses: [{ address: '台北市', addressType: 'home' }],
+      consultationTopics: ['body']
+    };
+
+    await expect(queueService.registerQueue(data)).rejects.toMatchObject({
+      statusCode: 400,
+      message: expect.stringContaining('農曆生日日期')
+    });
+    expect(SystemSetting.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  test('Follow-up #3：簡化模式缺 lunar 三欄位 → 仍接受報名（簡化模式 skip 驗證，既有行為保留）', async () => {
+    // 簡化模式 = true → registerQueue line 37 `if (!settings.simplifiedMode)` 短路、
+    // validateRequiredFields 根本不被呼叫，缺 lunar 不擋
+    SystemSetting.getSettings.mockResolvedValue({ simplifiedMode: true, maxOrderIndex: 100, isQueueOpen: false, minutesPerCustomer: 13, nextSessionDate: new Date('2026-06-01T00:00:00Z') });
+    SystemSetting.findOneAndUpdate.mockResolvedValue({ issuedCount: 1, maxOrderIndex: 100 });
+    queueRepository.create.mockResolvedValue(createdRecord());
+
+    // 完全不帶 lunar 三欄位
+    const data = {
+      name: '王小明',
+      phone: '0912345678',
+      gender: 'male',
+      addresses: [{ address: '台北市', addressType: 'home' }],
+      consultationTopics: ['body']
+    };
+
+    const result = await queueService.registerQueue(data);
+
+    expect(result).toMatchObject({ queueNumber: expect.any(Number) });
+    expect(SystemSetting.findOneAndUpdate).toHaveBeenCalled();
+    expect(queueRepository.create).toHaveBeenCalled();
+  });
+
   test('Change B 4.1.1(b)：報名時帶家人不填 address → create payload address === \'\' （不是 \'臨時地址\'）', async () => {
     SystemSetting.getSettings.mockResolvedValue({ simplifiedMode: true, maxOrderIndex: 100, isQueueOpen: false, minutesPerCustomer: 13, nextSessionDate: new Date('2026-06-01T00:00:00Z') });
     SystemSetting.findOneAndUpdate.mockResolvedValue({ issuedCount: 1, maxOrderIndex: 100 });

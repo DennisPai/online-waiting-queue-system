@@ -125,18 +125,16 @@ export const registrationSchema = {
     }
   ]),
   
-  // 複合驗證：至少要有一組完整的出生日期
+  // Follow-up patch #3（OpenSpec 2026-05-23-followup-patches D3）：
+  // 農曆生日三欄位必填（Change C 全民國農曆、UI 無國曆輸入入口）
   birthDate: createValidator([
     (value, allValues) => {
-      const hasGregorian = allValues.gregorianBirthYear && 
-                          allValues.gregorianBirthMonth && 
-                          allValues.gregorianBirthDay;
-      const hasLunar = allValues.lunarBirthYear && 
-                      allValues.lunarBirthMonth && 
+      const hasLunar = allValues.lunarBirthYear &&
+                      allValues.lunarBirthMonth &&
                       allValues.lunarBirthDay;
-      
-      if (!hasGregorian && !hasLunar) {
-        return '必須提供國曆或農曆出生日期';
+
+      if (!hasLunar) {
+        return '請輸入完整的農曆生日（年/月/日）';
       }
       return null;
     }

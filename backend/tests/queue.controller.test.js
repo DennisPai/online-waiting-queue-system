@@ -200,6 +200,59 @@ describe('Queue Controller — 取消候位（問題 1 / D1）', () => {
       expect(res.json.mock.calls[0][0].message).toContain('已完成');
     });
 
+    // === Follow-up patch #2（OpenSpec 2026-05-23-followup-patches D2）：cancel response 不含 mongoose 內部 ===
+    // controller 改用 `record.toObject()` 而非 mongoose document 丟給 res.json，
+    // 確保對外 API contract 是純客戶資料欄位（不噴 $__/_doc/activePaths）。
+
+    test('Follow-up #2：成功取消時 response data 來自 record.toObject() 不含 mongoose 內部欄位', async () => {
+      const save = jest.fn().mockResolvedValue(true);
+      // mock toObject 回傳乾淨的 plain object（mongoose 真實行為）
+      const toObject = jest.fn().mockReturnValue({
+        _id: 'rec1',
+        name: '張三',
+        phone: '0912345678',
+        status: 'cancelled',
+        orderIndex: null,
+        queueNumber: 5
+      });
+      // 故意在 record 上掛 mongoose-like 內部欄位驗證它們不會漏進 response
+      const record = {
+        _id: 'rec1',
+        name: '張三',
+        phone: '0912345678',
+        status: 'waiting',
+        orderIndex: 5,
+        save,
+        toObject,
+        $__: { activePaths: { states: {} } },
+        _doc: { _id: 'rec1', name: '張三' },
+        $isNew: false
+      };
+      WaitingRecord.findById.mockResolvedValue(record);
+      const req = mockReq({ id: 'rec1', name: '張三', phone: '0912345678' });
+      const res = mockRes();
+
+      await runHandler(queueController.cancelQueueByCustomer, req, res);
+
+      // toObject 必須被呼叫（D2 要求）
+      expect(toObject).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+
+      // response data 必須是 toObject 的回傳值、不含 mongoose 內部欄位
+      const responsePayload = res.json.mock.calls[0][0];
+      expect(responsePayload.success).toBe(true);
+      expect(responsePayload.data).toBeDefined();
+      // 純資料欄位有
+      expect(responsePayload.data._id).toBe('rec1');
+      expect(responsePayload.data.name).toBe('張三');
+      expect(responsePayload.data.status).toBe('cancelled');
+      // mongoose 內部欄位絕不能出現
+      expect(responsePayload.data.$__).toBeUndefined();
+      expect(responsePayload.data._doc).toBeUndefined();
+      expect(responsePayload.data.activePaths).toBeUndefined();
+      expect(responsePayload.data.$isNew).toBeUndefined();
+    });
+
     // D1：取消用 _id 定位（findById），不用會漂移的 queueNumber（findOne）。
     test('取消是用 _id 定位（findById），不用 queueNumber（findOne）', async () => {
       const save = jest.fn().mockResolvedValue(true);

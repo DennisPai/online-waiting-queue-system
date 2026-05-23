@@ -14,6 +14,7 @@ import {
 } from '@mui/icons-material';
 import { createCustomer } from '../../services/customerService';
 import BirthdayPicker from '../../components/shared/BirthdayPicker';
+import { autoConvertToMinguo } from '../../utils/calendarConverter';
 
 const CustomerCreatePage = () => {
   const navigate = useNavigate();
@@ -59,7 +60,10 @@ const CustomerCreatePage = () => {
       };
       if (formData.birthYear && formData.birthMonth && formData.birthDay) {
         // Change C / 階段 2.6（擴大範圍補修）：提交分支簡化 — 移除 gregorian 分支，只走 lunar
-        data.lunarBirthYear = parseInt(formData.birthYear);
+        // Follow-up patch B1A：前端送民國年對齊後端 lunarToGregorian 民國年版
+        // BirthdayPicker value 是西元年，autoConvertToMinguo 轉成民國年送出
+        const { minguoYear } = autoConvertToMinguo(parseInt(formData.birthYear));
+        data.lunarBirthYear = minguoYear;
         data.lunarBirthMonth = parseInt(formData.birthMonth);
         data.lunarBirthDay = parseInt(formData.birthDay);
         data.lunarIsLeapMonth = formData.lunarIsLeapMonth || false;
@@ -117,9 +121,8 @@ const CustomerCreatePage = () => {
             </FormControl>
           </Grid>
 
-          {/* 出生日期 */}
+          {/* 農曆生日（Follow-up patch #5 D6：移除外部標題，BirthdayPicker 內部 default 接手） */}
           <Grid item xs={12}>
-            <Typography variant="body2" color="text.secondary" gutterBottom>出生日期</Typography>
             <BirthdayPicker
               calendarType={formData.birthCalendarType}
               year={formData.birthYear}

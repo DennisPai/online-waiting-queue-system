@@ -431,12 +431,36 @@ class QueueService {
 
   /**
    * 私有方法：驗證必填欄位
+   *
+   * Follow-up patch #3（OpenSpec 2026-05-23-followup-patches D3）：
+   * 加入 lunar 三欄位必填。Change C 全民國農曆需求隱含「lunar 必填」，
+   * 但原本只驗 name + phone、即使非簡化模式也讓缺 lunar 的請求過關
+   * → 該客戶 lunarBirth* 全 null、下游算 zodiac/virtualAge/顯示生日都會壞。
+   *
+   * 注意：簡化模式仍 skip（呼叫端 registerQueue line 37 `if (!settings.simplifiedMode)`
+   * 已包覆，此 method 本身不需要重複判斷簡化模式）。
    */
   validateRequiredFields(data) {
-    const required = ['name', 'phone'];
-    for (const field of required) {
+    // 基本欄位
+    const basicRequired = [
+      { field: 'name', label: '姓名' },
+      { field: 'phone', label: '聯絡手機' }
+    ];
+    for (const { field, label } of basicRequired) {
       if (!data[field]) {
-        throw ApiError.badRequest(`${field} 為必填欄位`);
+        throw ApiError.badRequest(`請輸入${label}`);
+      }
+    }
+
+    // Follow-up patch #3：lunar 三欄位必填（非簡化模式）
+    const lunarRequired = [
+      { field: 'lunarBirthYear', label: '農曆生日年份' },
+      { field: 'lunarBirthMonth', label: '農曆生日月份' },
+      { field: 'lunarBirthDay', label: '農曆生日日期' }
+    ];
+    for (const { field, label } of lunarRequired) {
+      if (!data[field]) {
+        throw ApiError.badRequest(`請輸入${label}`);
       }
     }
   }

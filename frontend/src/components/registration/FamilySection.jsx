@@ -116,14 +116,8 @@ const FamilySection = ({
                   </FormControl>
                 </Grid>
 
-                {/* 出生日期（BirthdayPicker）
-                    Change C / 階段 2.2：不傳 lunarOnly 即 default true 自動 lunar-only
-                    移除 calendarType prop 傳入（因 BirthdayPicker 內部會強制 'lunar'）
-                    onChange 回呼永遠帶 calendarType='lunar'（家人段永遠 lunar） */}
+                {/* 家人農曆生日（Follow-up patch #5 D6：移除外部標題，BirthdayPicker 內部 default 接手） */}
                 <Grid item xs={12}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    出生日期
-                  </Typography>
                   <BirthdayPicker
                     year={member.birthYear || ''}
                     month={member.birthMonth || ''}

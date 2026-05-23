@@ -80,21 +80,34 @@ function gregorianToLunar(year, month, day) {
 
 /**
  * 農曆轉國曆
- * @param {number} year - 農曆年（西元年）
+ *
+ * Follow-up patch #5（OpenSpec 2026-05-23-followup-patches D4）：
+ * 改接受「民國年」輸入（不再接受西元年）。系統內 lunarBirthYear 一律是民國年，
+ * 此 function 在被 autoFillDates / admin 工具呼叫時都應傳民國年。
+ * 內部先 +1911 轉成西元年，再丟給 lunar-javascript 算對應國曆日期。
+ *
+ * 對應 design.md D4 的「函式單一職責：民國農曆生日 → 西元國曆日期」。
+ * 注意：gregorianToLunar 保持接受西元年（給未來 admin 工具用，輸入是西元年國曆、
+ * 輸出農曆民國年）— 兩個函式語意不對稱但對應實際 use case。
+ *
+ * @param {number} minguoYear - 農曆年（民國年）
  * @param {number} month - 農曆月
  * @param {number} day - 農曆日
  * @param {boolean} isLeapMonth - 是否為閏月
- * @returns {object} - 國曆日期對象 {year, month, day}
+ * @returns {object} - 國曆日期對象（西元年）{year, month, day}
  */
-function lunarToGregorian(year, month, day, isLeapMonth = false) {
+function lunarToGregorian(minguoYear, month, day, isLeapMonth = false) {
   try {
+    // Follow-up patch #5：民國年 → 西元年（lunar-javascript 吃西元年）
+    const gregorianYear = minguoYear + 1911;
+
     // 創建農曆日期對象，閏月月份用負數表示
     const lunarMonth = isLeapMonth ? -month : month;
-    const lunar = Lunar.fromYmd(year, lunarMonth, day);
-    
+    const lunar = Lunar.fromYmd(gregorianYear, lunarMonth, day);
+
     // 轉換為國曆
     const solar = lunar.getSolar();
-    
+
     return {
       year: solar.getYear(),
       month: solar.getMonth(),
@@ -109,22 +122,47 @@ function lunarToGregorian(year, month, day, isLeapMonth = false) {
 /**
  * 自動填充缺失的日期數據
  *
- * Change C v3：全民國農曆，主流程不再做 lunar↔gregorian 轉換；
- * 保留 lunarToGregorian/gregorianToLunar export 給未來 admin 工具用
- * （這條 calendarConverter.js 內部仍 export）。
- * 此 function 仍存在純為 callsite 兼容（QueueService.processQueueData 仍呼叫），
- * 內部不再對 lunar/gregorian 做任何轉換 — 直接回傳原 data 的淺拷貝。
+ * Follow-up patch #5（OpenSpec 2026-05-23-followup-patches D5）：
+ * Change C v3 之前把這個 function 退化成淺拷貝（懷疑民國/西元年混淆轉換錯誤）。
+ * 5/23 懷特反饋設計反轉：要保留「農曆→國曆自動反推」、系統每次新資料匯入或
+ * 後台修改時自動算國曆填進 gregorianBirth* 欄位、UI 永遠不開國曆編輯入口。
+ *
+ * 此版本：
+ *   - 恢復「農曆→國曆 反推」：呼叫修好的 lunarToGregorian（民國年版）
+ *   - 移除「國曆→農曆 反推」：前端不再有國曆輸入入口、不需要這方向
+ *   - 觸發時機沿用既有：register / admin updateQueueData / customer normalize 等
+ *     callsite 都已呼叫此 function（不用改 callsite）
+ *
+ * 注意：只在 lunar 三欄位齊全、且 gregorian 任一欄位缺值時才反推。
+ * 若 gregorian 已存在完整值（例如歷史資料），仍會覆蓋成新算出來的西元值
+ * （懷特要求「每次儲存自動補正確國曆」、舊國曆 80/1/1 也會被覆蓋）。
  *
  * @param {object} data - 客戶數據
- * @returns {object} - 原 data（淺拷貝、欄位完整保留）
+ * @returns {object} - 自動填充後的數據
  */
 function autoFillDates(data) {
   try {
-    // Change C v3：不再做 lunar↔gregorian 反推。直接淺拷貝回傳。
-    return { ...data };
+    const result = { ...data };
+
+    // 農曆→國曆 反推（lunar 三欄位齊全才推）
+    if (result.lunarBirthYear && result.lunarBirthMonth && result.lunarBirthDay) {
+      const gregorianDate = lunarToGregorian(
+        result.lunarBirthYear,
+        result.lunarBirthMonth,
+        result.lunarBirthDay,
+        result.lunarIsLeapMonth || false
+      );
+      result.gregorianBirthYear = gregorianDate.year;
+      result.gregorianBirthMonth = gregorianDate.month;
+      result.gregorianBirthDay = gregorianDate.day;
+    }
+
+    // Follow-up patch #5：不再反推「國曆→農曆」（前端無國曆輸入入口）
+
+    return result;
   } catch (error) {
     logger.error('自動填充日期失敗:', error);
-    return data;
+    return { ...data };
   }
 }
 

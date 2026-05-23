@@ -293,7 +293,9 @@ exports.updateQueueStatus = async (req, res) => {
       ? (await WaitingRecord.findById(record._id) || record)
       : record;
 
-    res.status(200).json({ success: true, message: '候位狀態更新成功', data: responseRecord });
+    // Follow-up patch #2（OpenSpec 2026-05-23-followup-patches D2）：
+    // 回 toObject() 而非 mongoose document，避免 $__/_doc/activePaths 等內部欄位噴 JSON
+    res.status(200).json({ success: true, message: '候位狀態更新成功', data: responseRecord.toObject() });
   } catch (error) {
     // D9 / Task 4.6：撞號回友善訊息，非撞號才走 500。
     return handleAdminError(res, error, '更新候位狀態錯誤');
@@ -449,7 +451,9 @@ exports.updateQueueData = async (req, res) => {
 
     await record.save();
 
-    res.status(200).json({ success: true, message: '客戶資料更新成功', data: record });
+    // Follow-up patch #2（OpenSpec 2026-05-23-followup-patches D2）：
+    // 回 toObject() 而非 mongoose document，避免 $__/_doc/activePaths 等內部欄位噴 JSON
+    res.status(200).json({ success: true, message: '客戶資料更新成功', data: record.toObject() });
   } catch (error) {
     logger.error('更新客戶資料錯誤:', error);
 

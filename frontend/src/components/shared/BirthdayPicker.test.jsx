@@ -67,6 +67,27 @@ describe('Change C / Task 4.1.1 — BirthdayPicker lunarOnly 模式', () => {
     expect(screen.getByRole('checkbox')).toBeInTheDocument();
   });
 
+  // === Follow-up patch #5（OpenSpec 2026-05-23-followup-patches D6）：
+  // 內建 default 標題「農曆生日」+ 備註「請先自行查好農曆生日」 ===
+
+  test('Follow-up #5 / D6：default showTitle=true 時 render「農曆生日」標題', () => {
+    render(<BirthdayPicker onChange={() => {}} />);
+    // 元件內部 default title='農曆生日' + showTitle=true
+    expect(screen.getByText('農曆生日')).toBeInTheDocument();
+  });
+
+  test('Follow-up #5 / D6：default 顯示 helper text「請先自行查好農曆生日」', () => {
+    render(<BirthdayPicker onChange={() => {}} />);
+    // 元件內部 default helperText='請先自行查好農曆生日'，淺色 FormHelperText（用 Typography caption）
+    expect(screen.getByText('請先自行查好農曆生日')).toBeInTheDocument();
+  });
+
+  test('Follow-up #5 / D6：showTitle=false 時 callsite 自行 render 不重複（標題不顯示）', () => {
+    render(<BirthdayPicker showTitle={false} onChange={() => {}} />);
+    // 標題不該被內部 render（callsite 已自行放外部 Typography）
+    expect(screen.queryByText('農曆生日')).toBeNull();
+  });
+
   test('顯式傳 lunarOnly={false} 時行為 100% 不變（國曆/農曆切換按鈕仍顯示、預設 calendarType=gregorian 不被強制）', () => {
     const handleChange = jest.fn();
 

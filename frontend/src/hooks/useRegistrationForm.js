@@ -352,15 +352,17 @@ export const useRegistrationForm = (embedded = false) => {
       errors.phone = '請輸入有效的聯絡手機';
     }
 
-    // 出生日期驗證（BirthdayPicker 改為下拉，值為 number 或 ''）
+    // Follow-up patch #3（OpenSpec 2026-05-23-followup-patches D3）：
+    // 農曆生日三欄位必填驗證，提示文案對齊「農曆生日」
+    // （BirthdayPicker 改為下拉，值為 number 或 ''；lunarOnly default true）
     if (!formData.birthYear) {
-      errors.birthYear = '請選擇出生年';
+      errors.birthYear = '請選擇農曆生日年份';
     }
     if (!formData.birthMonth) {
-      errors.birthMonth = '請選擇出生月';
+      errors.birthMonth = '請選擇農曆生日月份';
     }
     if (!formData.birthDay) {
-      errors.birthDay = '請選擇出生日';
+      errors.birthDay = '請選擇農曆生日日期';
     }
 
     // 地址驗證
@@ -378,14 +380,15 @@ export const useRegistrationForm = (embedded = false) => {
       if (!member.gender) {
         errors[`familyMembers.${index}.gender`] = '請選擇性別';
       }
+      // Follow-up patch #3：家人農曆生日必填、提示對齊「農曆生日」
       if (!member.birthYear) {
-        errors[`familyMembers.${index}.birthYear`] = '請選擇出生年';
+        errors[`familyMembers.${index}.birthYear`] = '請選擇農曆生日年份';
       }
       if (!member.birthMonth) {
-        errors[`familyMembers.${index}.birthMonth`] = '請選擇出生月';
+        errors[`familyMembers.${index}.birthMonth`] = '請選擇農曆生日月份';
       }
       if (!member.birthDay) {
-        errors[`familyMembers.${index}.birthDay`] = '請選擇出生日';
+        errors[`familyMembers.${index}.birthDay`] = '請選擇農曆生日日期';
       }
       if (!member.address) {
         errors[`familyMembers.${index}.address`] = '請輸入地址';
@@ -432,16 +435,22 @@ export const useRegistrationForm = (embedded = false) => {
 
       // Change C / 階段 2.6（擴大範圍補修）：提交分支簡化 — 移除 gregorian 分支，只走 lunar
       // 全系統生日只填農曆，BirthdayPicker default lunarOnly=true 已強制鎖農曆
-      submissionData.lunarBirthYear = parseInt(formData.birthYear);
+      // Follow-up patch B1A：前端送民國年對齊後端 lunarToGregorian 民國年版
+      // formData.birthYear 由 BirthdayPicker（getBirthYearOptions value）拿到的是西元年，
+      // 透過 autoConvertToMinguo 轉成民國年再送，避免後端把西元年當民國年再 +1911 算出廢資料。
+      const mainMinguo = autoConvertToMinguo(parseInt(formData.birthYear)).minguoYear;
+      submissionData.lunarBirthYear = mainMinguo;
       submissionData.lunarBirthMonth = parseInt(formData.birthMonth);
       submissionData.lunarBirthDay = parseInt(formData.birthDay);
       submissionData.lunarIsLeapMonth = formData.lunarIsLeapMonth || false;
 
       // Change C / 階段 2.6：家人提交也只走 lunar
+      // Follow-up patch B1A：家人 lunarBirthYear 同樣送民國年
       submissionData.familyMembers = submissionData.familyMembers.map(member => {
         const processedMember = { ...member };
 
-        processedMember.lunarBirthYear = parseInt(member.birthYear);
+        const memberMinguo = autoConvertToMinguo(parseInt(member.birthYear)).minguoYear;
+        processedMember.lunarBirthYear = memberMinguo;
         processedMember.lunarBirthMonth = parseInt(member.birthMonth);
         processedMember.lunarBirthDay = parseInt(member.birthDay);
         processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;

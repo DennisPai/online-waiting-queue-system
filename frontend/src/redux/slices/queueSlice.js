@@ -1,8 +1,36 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import queueService from '../../services/queueService';
 
+// Follow-up patch #1（OpenSpec 2026-05-23-followup-patches D1）：
+// queueStatus 初始 state 從 null 改成完整 default object，避免 selector / hook
+// 在 `/queue/status` API 還沒回 response 前讀到 undefined 噴 pageerror
+// （Change A 階段 6.4 + Change C 階段 7.2 都觀察到的「Cannot read properties of
+// undefined (reading 'currentProcessingNumber' / 'maxOrderIndex')」根因）。
+// default 值對齊後端 /queue/status 回傳欄位 schema。
+const defaultQueueStatus = {
+  isOpen: false,
+  currentProcessingNumber: 0,
+  currentQueueNumber: 0,
+  nextWaitingNumber: null,
+  maxOrderIndex: 100,
+  currentMaxOrderIndex: 0,
+  waitingCount: 0,
+  estimatedWaitTime: 0,
+  estimatedEndTime: null,
+  nextSessionDate: null,
+  totalCustomerCount: 0,
+  lastCompletedTime: null,
+  minutesPerCustomer: 13,
+  simplifiedMode: true,
+  publicRegistrationEnabled: true,
+  showQueueNumberInQuery: true,
+  isFull: false,
+  scheduledOpenTime: null,
+  autoOpenEnabled: false
+};
+
 const initialState = {
-  queueStatus: null,
+  queueStatus: { ...defaultQueueStatus },
   currentQueue: null,
   registeredQueueNumber: null, // 新增：專門記錄用戶剛登記的號碼
   registeredOrderIndex: null, // 新增：記錄用戶剛登記的叫號順序
@@ -562,7 +590,9 @@ const queueSlice = createSlice({
       })
       .addCase(getQueueStatus.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.queueStatus = action.payload;
+        // Follow-up patch #1（D1）：merge 保留 default 值，避免後端回 partial response
+        // 時把已存在的 default 欄位清成 undefined → selector 撞 pageerror
+        state.queueStatus = { ...defaultQueueStatus, ...(action.payload || {}) };
         state.isQueueOpen = action.payload.isOpen;
         
         // 更新容量相關狀態（無論系統開啟或關閉都需要）
@@ -1024,12 +1054,16 @@ const queueSlice = createSlice({
       })
       .addCase(getOrderedQueueNumbers.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.currentQueue = action.payload.currentProcessingNumber || state.currentQueue;
+        // Follow-up patch #1（D1）：payload 可能是 undefined/null（API 失敗 fallback），
+        // 加 || {} 防止後續解構 undefined 噴 pageerror
+        const payload = action.payload || {};
+        state.currentQueue = payload.currentProcessingNumber || state.currentQueue;
         // 存儲下一個等待號碼，供前端顯示使用
         state.queueStatus = {
+          ...defaultQueueStatus,
           ...state.queueStatus,
-          currentQueueNumber: action.payload.currentProcessingNumber || state.currentQueue,
-          nextWaitingNumber: action.payload.nextWaitingNumber
+          currentQueueNumber: payload.currentProcessingNumber || state.currentQueue,
+          nextWaitingNumber: payload.nextWaitingNumber ?? null
         };
       })
       .addCase(getOrderedQueueNumbers.rejected, (state, action) => {
@@ -1043,12 +1077,16 @@ const queueSlice = createSlice({
       })
       .addCase(getPublicOrderedNumbers.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.currentQueue = action.payload.currentProcessingNumber || state.currentQueue;
+        // Follow-up patch #1（D1）：payload 可能是 undefined/null（API 失敗 fallback），
+        // 加 || {} 防止後續解構 undefined 噴 pageerror
+        const payload = action.payload || {};
+        state.currentQueue = payload.currentProcessingNumber || state.currentQueue;
         // 存儲下一個等待號碼，供前端顯示使用
         state.queueStatus = {
+          ...defaultQueueStatus,
           ...state.queueStatus,
-          currentQueueNumber: action.payload.currentProcessingNumber || state.currentQueue,
-          nextWaitingNumber: action.payload.nextWaitingNumber
+          currentQueueNumber: payload.currentProcessingNumber || state.currentQueue,
+          nextWaitingNumber: payload.nextWaitingNumber ?? null
         };
       })
       .addCase(getPublicOrderedNumbers.rejected, (state, action) => {
@@ -1062,8 +1100,11 @@ const queueSlice = createSlice({
       })
       .addCase(getMaxOrderIndex.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.maxOrderIndex = action.payload.maxOrderIndex;
-        state.maxOrderMessage = action.payload.message;
+        // Follow-up patch #1（D1）：payload 可能是 undefined/null（API 失敗 fallback），
+        // 加 || {} 防止後續解構 undefined 噴 pageerror
+        const payload = action.payload || {};
+        state.maxOrderIndex = payload.maxOrderIndex ?? 0;
+        state.maxOrderMessage = payload.message ?? '';
       })
       .addCase(getMaxOrderIndex.rejected, (state, action) => {
         state.isLoading = false;
@@ -1082,7 +1123,9 @@ const queueSlice = createSlice({
         state.waitingCount = 0;
         state.registeredQueueNumber = null;
         state.currentQueueStatus = null;
+        // Follow-up patch #1（D1）：merge default 防止 queueStatus 在 clearAll 後缺欄位
         state.queueStatus = {
+          ...defaultQueueStatus,
           ...state.queueStatus,
           currentQueueNumber: 0,
           nextWaitingNumber: null

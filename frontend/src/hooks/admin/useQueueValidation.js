@@ -44,19 +44,16 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
       errors.queueNumber = '候位號碼必須是正整數';
     }
 
-    // 出生日期驗證 - 使用嚴格的存在性檢查
-    const hasGregorianBirth = 
-      data.gregorianBirthYear != null && 
-      data.gregorianBirthMonth != null && 
-      data.gregorianBirthDay != null;
-    
-    const hasLunarBirth = 
-      data.lunarBirthYear != null && 
-      data.lunarBirthMonth != null && 
+    // Follow-up patch #3（OpenSpec 2026-05-23-followup-patches D3）：
+    // 農曆生日三欄位必填驗證（Change C 全民國農曆、UI 無國曆輸入入口、
+    // 後端 autoFillDates 會自動把農曆反推成國曆，不需要使用者填國曆）
+    const hasLunarBirth =
+      data.lunarBirthYear != null &&
+      data.lunarBirthMonth != null &&
       data.lunarBirthDay != null;
-    
-    if (!hasGregorianBirth && !hasLunarBirth) {
-      errors.birthDate = '必須提供國曆或農曆出生日期';
+
+    if (!hasLunarBirth) {
+      errors.birthDate = '請輸入完整的農曆生日（年/月/日）';
     }
 
     // 地址驗證 - 只在有地址時才驗證
@@ -86,24 +83,26 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
         processedData.gregorianBirthYear = convertMinguoForStorage(minguoYear);
       }
 
+      // Follow-up patch B1A：lunarBirthYear 送民國年對齊後端 lunarToGregorian 民國年版
       if (processedData.lunarBirthYear) {
         const { minguoYear } = autoConvertToMinguo(processedData.lunarBirthYear);
-        processedData.lunarBirthYear = convertMinguoForStorage(minguoYear);
+        processedData.lunarBirthYear = minguoYear;
       }
 
       // 處理家人的年份轉換
       if (processedData.familyMembers && Array.isArray(processedData.familyMembers)) {
         processedData.familyMembers = processedData.familyMembers.map(member => {
           const processedMember = { ...member };
-          
+
           if (processedMember.gregorianBirthYear) {
             const { minguoYear } = autoConvertToMinguo(processedMember.gregorianBirthYear);
             processedMember.gregorianBirthYear = convertMinguoForStorage(minguoYear);
           }
-          
+
+          // Follow-up patch B1A：家人 lunarBirthYear 送民國年
           if (processedMember.lunarBirthYear) {
             const { minguoYear } = autoConvertToMinguo(processedMember.lunarBirthYear);
-            processedMember.lunarBirthYear = convertMinguoForStorage(minguoYear);
+            processedMember.lunarBirthYear = minguoYear;
           }
           
           return processedMember;

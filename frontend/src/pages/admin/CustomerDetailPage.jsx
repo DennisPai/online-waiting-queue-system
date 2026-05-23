@@ -23,6 +23,7 @@ import {
 } from '../../services/customerService';
 import BirthdayPicker from '../../components/shared/BirthdayPicker';
 import VisitFormDialog from '../../components/admin/VisitFormDialog';
+import { autoConvertToMinguo, minguoToGregorian } from '../../utils/calendarConverter';
 
 const topicMap = {
   body: '身體', fate: '運途', karma: '因果', family: '家運/祖先',
@@ -83,8 +84,15 @@ const CustomerDetailPage = () => {
     // UI 雖被 lunarOnly 強制顯示 lunar，但 handleSave line 148 直接把 editData.birthYear 寫進 lunarBirthYear
     // → 國曆值被當農曆寫回 DB → 資料污染。
     // 修法：永遠 birthCalendarType='lunar'，讀取時優先取 lunarBirth*，若無則設空（讓管理員重填農曆）。
+    //
+    // Follow-up patch B1B：讀取 path 對齊 — DB 存民國年（lunarBirthYear=80），
+    // BirthdayPicker year prop 期望西元年（getBirthYearOptions value），
+    // 讀回時 +1911 轉成西元年餵下去；handleSave line 143 的 autoConvertToMinguo
+    // 會把西元年再轉回民國年送 DB，整條鏈不破。>1911 容錯處理已存在西元年資料。
     const birthCalendarType = 'lunar';
-    const birthYear = cust.lunarBirthYear || '';
+    const birthYear = cust.lunarBirthYear
+      ? (cust.lunarBirthYear > 1911 ? cust.lunarBirthYear : minguoToGregorian(cust.lunarBirthYear))
+      : '';
     const birthMonth = cust.lunarBirthMonth || '';
     const birthDay = cust.lunarBirthDay || '';
 
@@ -136,8 +144,11 @@ const CustomerDetailPage = () => {
       };
 
       // Change C / 階段 2.6（擴大範圍補修）：提交分支簡化 — 移除 gregorian 分支，只走 lunar
+      // Follow-up patch B1A：前端送民國年對齊後端 lunarToGregorian 民國年版
+      // BirthdayPicker value 是西元年，autoConvertToMinguo 轉成民國年送出
       if (editData.birthYear && editData.birthMonth && editData.birthDay) {
-        data.lunarBirthYear = parseInt(editData.birthYear);
+        const { minguoYear } = autoConvertToMinguo(parseInt(editData.birthYear));
+        data.lunarBirthYear = minguoYear;
         data.lunarBirthMonth = parseInt(editData.birthMonth);
         data.lunarBirthDay = parseInt(editData.birthDay);
         data.lunarIsLeapMonth = editData.lunarIsLeapMonth || false;
@@ -355,9 +366,9 @@ const CustomerDetailPage = () => {
             </Grid>
           )}
 
-          {/* 出生日期 */}
+          {/* 農曆生日（Follow-up patch #5 D6：editing 時 BirthdayPicker 內部 default 接手標題） */}
           <Grid item xs={12}>
-            <Typography variant="body2" color="text.secondary" gutterBottom>出生日期</Typography>
+            {!editing && <Typography variant="body2" color="text.secondary" gutterBottom>農曆生日</Typography>}
             {editing ? (
               <BirthdayPicker
                 calendarType={editData.birthCalendarType || 'gregorian'}

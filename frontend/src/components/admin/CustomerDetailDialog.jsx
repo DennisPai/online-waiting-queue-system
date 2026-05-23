@@ -36,7 +36,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
-import { formatMinguoDate } from '../../utils/calendarConverter';
+import { formatMinguoDate, minguoToGregorian } from '../../utils/calendarConverter';
 
 const CustomerDetailDialog = ({
   open,
@@ -445,17 +445,23 @@ const CustomerDetailDialog = ({
               </Grid>
             </Grid>
 
-            {/* 出生日期編輯 */}
+            {/* 農曆生日編輯（Follow-up patch #5 D6：移除外部標題，BirthdayPicker 內部 default 接手） */}
             <Grid item xs={12}>
               <Divider sx={{ my: 2 }} />
-              <Typography variant="h6" gutterBottom color="primary">
-                出生日期
-              </Typography>
+              {/* Follow-up patch B1B：讀取 path 對齊 — DB 存民國年（lunarBirthYear=80），
+                  但 BirthdayPicker year prop 期望西元年（getBirthYearOptions value），
+                  讀回時 +1911 轉成西元年餵下去，編輯後 onChange 回西元年 → onBatchInputChange
+                  寫回 editedData.lunarBirthYear（西元年），handleSaveData → formatSaveData
+                  的 autoConvertToMinguo（>1911 判定）會再轉回民國年送 DB，整條鏈不破。 */}
               <BirthdayPicker
                 calendarType={birthCalendarType}
                 year={birthCalendarType === 'gregorian'
                   ? (editedData.gregorianBirthYear || '')
-                  : (editedData.lunarBirthYear || '')}
+                  : (editedData.lunarBirthYear
+                      ? (editedData.lunarBirthYear > 1911
+                          ? editedData.lunarBirthYear
+                          : minguoToGregorian(editedData.lunarBirthYear))
+                      : '')}
                 month={birthCalendarType === 'gregorian'
                   ? (editedData.gregorianBirthMonth || '')
                   : (editedData.lunarBirthMonth || '')}
@@ -613,16 +619,18 @@ const CustomerDetailDialog = ({
                         </FormControl>
                       </Grid>
 
-                      {/* 家人出生日期（BirthdayPicker） */}
+                      {/* 家人農曆生日（Follow-up patch #5 D6：移除外部標題，BirthdayPicker 內部 default 接手） */}
+                      {/* Follow-up patch B1B：家人讀取 path 對齊（同主客戶邏輯） */}
                       <Grid item xs={12}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          出生日期
-                        </Typography>
                         <BirthdayPicker
                           calendarType={familyBirthCalendarTypes[index] || 'gregorian'}
                           year={(familyBirthCalendarTypes[index] || 'gregorian') === 'gregorian'
                             ? (member.gregorianBirthYear || '')
-                            : (member.lunarBirthYear || '')}
+                            : (member.lunarBirthYear
+                                ? (member.lunarBirthYear > 1911
+                                    ? member.lunarBirthYear
+                                    : minguoToGregorian(member.lunarBirthYear))
+                                : '')}
                           month={(familyBirthCalendarTypes[index] || 'gregorian') === 'gregorian'
                             ? (member.gregorianBirthMonth || '')
                             : (member.lunarBirthMonth || '')}

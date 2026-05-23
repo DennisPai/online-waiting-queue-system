@@ -12,6 +12,12 @@
  *   size                    — 'small' | 'medium'（傳給 Select）
  *   required                — boolean（顯示 * 標記用，驗證由外部處理）
  *   errors                  — { year, month, day } 錯誤訊息
+ *
+ *   Follow-up patch #5（OpenSpec 2026-05-23-followup-patches D6）：
+ *   title       — string，default「農曆生日」（取代舊版「出生日期」）。
+ *                  全系統 5+ 處呼叫點不傳即用 default、UI 標題一致。
+ *   helperText  — string，default「請先自行查好農曆生日」。淺色 FormHelperText。
+ *   showTitle   — boolean，default true。某些 callsite 自行 render 標題時可設 false 不重複。
  */
 import React, { useMemo } from 'react';
 import {
@@ -47,7 +53,13 @@ const BirthdayPicker = ({
   onChange,
   disabled = false,
   size = 'small',
-  errors = {}
+  errors = {},
+  // Follow-up patch #5（OpenSpec 2026-05-23-followup-patches D6）：
+  // 內建 default 標題「農曆生日」+ 備註「請先自行查好農曆生日」，
+  // 全系統 5+ 處呼叫點不傳即可一致顯示
+  title = '農曆生日',
+  helperText = '請先自行查好農曆生日',
+  showTitle = true
 }) => {
   // Change C / 階段 2.1：lunarOnly=true 時內部 effective calendarType 永遠為 'lunar'
   // 不論外部 props 傳什麼 calendarType 都被覆蓋
@@ -88,6 +100,19 @@ const BirthdayPicker = ({
 
   return (
     <Box>
+      {/* Follow-up patch #5（D6）：default 標題「農曆生日」+ helper text「請先自行查好農曆生日」
+          callsite 不傳即用 default；showTitle=false 時讓 callsite 自行 render 不重複 */}
+      {showTitle && title && (
+        <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 500 }}>
+          {title}
+        </Typography>
+      )}
+      {helperText && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+          {helperText}
+        </Typography>
+      )}
+
       {/* 國曆 / 農曆 切換（Change C / 階段 2.1：lunarOnly=true 時隱藏，保留 lunarOnly=false 雙模式） */}
       {!lunarOnly && (
         <ToggleButtonGroup

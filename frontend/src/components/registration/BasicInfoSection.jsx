@@ -105,11 +105,8 @@ const BasicInfoSection = ({
         </FormControl>
       </Grid>
 
-      {/* 出生日期 */}
-      <Grid item xs={12}>
-        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main', mt: 1 }}>
-          出生日期
-        </Typography>
+      {/* 農曆生日（Follow-up patch #5 D6：移除外部標題，BirthdayPicker 內部 default 接手） */}
+      <Grid item xs={12} sx={{ mt: 1 }}>
         <BirthdayPicker
           // Change C / 階段 5 sub-agent 審閱 NICE-TO-HAVE：fallback 改 'lunar' 對齊 D2 全系統 lunar-only
           calendarType={formData.calendarType || 'lunar'}

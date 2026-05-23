@@ -385,10 +385,13 @@ const cancelQueueByCustomer = catchAsync(async (req, res) => {
     record.orderIndex = null;
     await record.save();
 
+    // Follow-up patch #2（OpenSpec 2026-05-23-followup-patches D2）：
+    // 回 record.toObject() 而非 mongoose document，避免 $__/_doc/activePaths
+    // 等 mongoose 內部欄位噴 JSON。對外 API contract 必須是純客戶資料欄位。
     res.status(200).json({
       success: true,
       message: '預約取消成功',
-      data: record
+      data: record.toObject()
     });
 });
 
@@ -464,11 +467,13 @@ const updateQueueByCustomer = catchAsync(async (req, res) => {
     });
     
     await record.save();
-    
+
+    // Follow-up patch B2：公開 API 不應回傳 mongoose 內部結構（$__/_doc/activePaths），
+    // 改用 toObject() 序列化成純物件（對齊 cancelQueueByCustomer 同類 API 行為）。
     res.status(200).json({
       success: true,
       message: '資料修改成功',
-      data: record
+      data: record.toObject()
     });
 });
 
