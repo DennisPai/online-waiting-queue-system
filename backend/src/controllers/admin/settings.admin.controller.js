@@ -261,3 +261,76 @@ exports.resetLastCompletedTime = async (req, res) => {
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
+
+// Phase 6.4 hotfix：強制重算 issuedCount + orderIndexCounter
+// 根因：getSettings() 的「偵測缺失欄位才補」邏輯，撞到 DB 文件已有 issuedCount=0
+// 寫入（早期 commit 或別的 path 寫過）就再也補不正確值。提供一次性 admin 手動觸發
+// 的「強制覆寫」endpoint，依當前 WaitingRecord 真實狀況重算並直接寫入 raw DB 文件。
+//
+// 用法：
+//   POST /admin/settings/recalc-counters?mode=dry-run （只看不改）
+//   POST /admin/settings/recalc-counters?mode=execute （實際覆寫）
+exports.recalcCounters = async (req, res) => {
+  try {
+    const mode = req.query.mode === 'execute' ? 'execute' : 'dry-run';
+
+    // 依當前 WaitingRecord 計算正確值
+    // issuedCount = active + cancelled 計（cancelled 仍佔名額，D8/2.6）
+    const issuedCount = await WaitingRecord.countDocuments({
+      status: { $in: ['waiting', 'processing', 'cancelled'] }
+    });
+    // orderIndexCounter >= 目前 active 最大 orderIndex（避免下次發號撞既有）
+    const maxRecord = await WaitingRecord.findOne(
+      { status: { $in: ['waiting', 'processing'] } },
+      { orderIndex: 1 },
+      { sort: { orderIndex: -1 } }
+    );
+    const orderIndexCounter = (maxRecord && maxRecord.orderIndex) ? maxRecord.orderIndex : 0;
+
+    // raw 取 DB 文件現況（不被 mongoose default 遮蔽）
+    const before = await SystemSetting.collection.findOne({});
+    if (!before) {
+      return res.status(404).json({ success: false, message: '尚無 SystemSetting 文件，請先觸發 getSettings()' });
+    }
+    const beforeSnapshot = {
+      issuedCount: before.issuedCount,
+      orderIndexCounter: before.orderIndexCounter,
+      hasIssuedCount: Object.prototype.hasOwnProperty.call(before, 'issuedCount'),
+      hasOrderIndexCounter: Object.prototype.hasOwnProperty.call(before, 'orderIndexCounter')
+    };
+
+    if (mode === 'dry-run') {
+      return res.status(200).json({
+        success: true,
+        message: 'dry-run — 未寫入；mode=execute 才會覆寫',
+        data: {
+          mode,
+          before: beforeSnapshot,
+          computed: { issuedCount, orderIndexCounter }
+        }
+      });
+    }
+
+    // execute：raw 覆寫（繞過 mongoose 確保 $set 真實寫入）
+    await SystemSetting.collection.updateOne(
+      { _id: before._id },
+      { $set: { issuedCount, orderIndexCounter } }
+    );
+    const after = await SystemSetting.collection.findOne({ _id: before._id });
+    logger.info(`recalcCounters by ${req.user?.id || 'unknown'}: issuedCount ${beforeSnapshot.issuedCount} -> ${after.issuedCount}, orderIndexCounter ${beforeSnapshot.orderIndexCounter} -> ${after.orderIndexCounter}`);
+
+    res.status(200).json({
+      success: true,
+      message: '已強制重算 issuedCount + orderIndexCounter',
+      data: {
+        mode,
+        before: beforeSnapshot,
+        after: { issuedCount: after.issuedCount, orderIndexCounter: after.orderIndexCounter },
+        computed: { issuedCount, orderIndexCounter }
+      }
+    });
+  } catch (error) {
+    logger.error('recalcCounters 錯誤:', error);
+    res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
+  }
+};

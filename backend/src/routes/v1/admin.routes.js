@@ -55,6 +55,10 @@ router.post('/settings/reset-customer-count', adminController.resetTotalCustomer
 router.put('/settings/last-completed-time', [body('lastCompletedTime').notEmpty()], validateRequest, adminController.setLastCompletedTime);
 router.post('/settings/reset-completed-time', adminController.resetLastCompletedTime);
 
+// Phase 6.4 hotfix：強制重算 issuedCount + orderIndexCounter
+// ?mode=dry-run （只看不改） / ?mode=execute （實際覆寫）
+router.post('/settings/recalc-counters', adminController.recalcCounters);
+
 // 新增：活動報名區塊設定
 router.get('/settings/event-banner', adminController.getEventBanner);
 router.put('/settings/event-banner', [
