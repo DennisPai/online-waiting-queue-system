@@ -103,7 +103,14 @@ const BirthdayPicker = ({
       {/* Follow-up patch #5（D6）：default 標題「農曆生日」+ helper text「請先自行查好農曆生日」
           callsite 不傳即用 default；showTitle=false 時讓 callsite 自行 render 不重複 */}
       {showTitle && title && (
-        <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 500 }}>
+        // Follow-up UI 微調（懷特 5/23 反饋）：
+        // 跟「基本資料」「地址資訊」「家人資訊」等 section 標題格式對齊
+        // (variant=h6 + fontWeight bold + color primary.main + gutterBottom + mt:2)
+        <Typography
+          variant="h6"
+          gutterBottom
+          sx={{ fontWeight: 'bold', color: 'primary.main', mt: 2 }}
+        >
           {title}
         </Typography>
       )}
