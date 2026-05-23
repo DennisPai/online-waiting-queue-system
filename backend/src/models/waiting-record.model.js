@@ -31,6 +31,9 @@ const familyMemberSchema = new mongoose.Schema({
     required: true
   },
   // 國曆出生日期
+  // Change C v3：gregorianBirth* 保留欄位但主流程不寫入；歷史 record 已存的值不動。
+  // 保留欄位避免資料庫遷移；未來 admin 工具用 calendarConverter 的 lunarToGregorian/
+  // gregorianToLunar export 自行雙向轉換。
   gregorianBirthYear: {
     type: Number,
     default: null
@@ -48,6 +51,8 @@ const familyMemberSchema = new mongoose.Schema({
     max: 31
   },
   // 農曆出生日期
+  // Change C v3：lunar 為主要生日欄位（民國年），register 流程的主資料來源。
+  // 此處不加 required（避免歷史資料 hydrate 撞 validation），驗證留給 register 流程做。
   lunarBirthYear: {
     type: Number,
     default: null
@@ -128,6 +133,9 @@ const waitingRecordSchema = new mongoose.Schema({
     required: true
   },
   // 國曆出生日期
+  // Change C v3：gregorianBirth* 保留欄位但主流程不寫入；歷史 record 已存的值不動。
+  // 保留欄位避免資料庫遷移；未來 admin 工具用 calendarConverter 的 lunarToGregorian/
+  // gregorianToLunar export 自行雙向轉換。
   gregorianBirthYear: {
     type: Number,
     default: null
@@ -145,6 +153,8 @@ const waitingRecordSchema = new mongoose.Schema({
     max: 31
   },
   // 農曆出生日期
+  // Change C v3：lunar 為主要生日欄位（民國年），register 流程的主資料來源。
+  // 此處不加 required（避免歷史資料 hydrate 撞 validation），驗證留給 register 流程做。
   lunarBirthYear: {
     type: Number,
     default: null

@@ -1,90 +1,51 @@
 /**
  * calendar-converter-lunar-to-gregorian.test.js
  *
- * Change C / Task 4.1.2：lunar-only 系統 autoFillDates 反向補國曆驗證
+ * Change C v3：全民國農曆、主流程不再做 lunar↔gregorian 轉換。
  *
- * 背景：Change C 把全系統生日輸入改為「只填農曆」。前端只送 lunarBirthYear/Month/Day
- * （+ 視情況 lunarIsLeapMonth），後端 autoFillDates 必須能從農曆反推國曆三欄位，
- * 確保下游邏輯（既有依賴 gregorianBirth* 的 service / view）不被破壞。
+ * 背景：v2 系統前端只送 lunarBirth* 三欄位（+ 視情況 lunarIsLeapMonth），原本後端
+ * autoFillDates 會反推 gregorianBirth* 給下游邏輯。v3 改為「全民國農曆單一資料源」，
+ * autoFillDates 不再做雙向轉換 — 但 function 仍保留 callsite 兼容，
+ * lunarToGregorian / gregorianToLunar 也仍 export 給未來 admin 工具雙向轉換用。
  *
  * 驗證範圍：
- *   1. 只帶 lunar 三欄位 → autoFillDates 自動補 gregorian 三欄位
- *   2. 含閏月 (lunarIsLeapMonth: true) → 自動補 gregorian 三欄位
- *   3. 已帶完整 gregorian + lunar → autoFillDates 不亂改既有值（idempotent）
+ *   1. 只帶 lunar 三欄位 → autoFillDates 不會自動補 gregorian（保留欄位完整）
+ *   2. 既有 record 已帶完整 gregorian + lunar → autoFillDates 不亂改既有值（idempotent）
+ *   3. lunarToGregorian / gregorianToLunar function 仍 export 給未來 admin 用
  *
  * 不 mock mongoose、不連 DB，直接呼叫 utils function。
  */
 
-const { autoFillDates, lunarToGregorian } = require('../src/utils/calendarConverter');
+const calendarConverter = require('../src/utils/calendarConverter');
+const { autoFillDates, lunarToGregorian, gregorianToLunar } = calendarConverter;
 
-describe('Change C / Task 4.1.2 — lunar-only autoFillDates 反向補國曆', () => {
-  test('只帶 lunarBirthYear/Month/Day → 自動補 gregorianBirth*', () => {
-    // 隨意挑一個非閏月的農曆日期（2000 年農曆 1 月 1 日）
+describe('Change C v3 — autoFillDates 不再做 lunar↔gregorian 轉換', () => {
+  test('1. 只帶 lunarBirthYear/Month/Day → autoFillDates 不補 gregorianBirth*（保留原 data）', () => {
     const input = {
-      lunarBirthYear: 2000,
-      lunarBirthMonth: 1,
-      lunarBirthDay: 1,
+      lunarBirthYear: 80,   // 民國年（v3 全民國農曆）
+      lunarBirthMonth: 5,
+      lunarBirthDay: 18,
     };
 
     const result = autoFillDates(input);
 
-    // 應補上對應的 gregorian 三欄位（且為數字）
-    expect(typeof result.gregorianBirthYear).toBe('number');
-    expect(typeof result.gregorianBirthMonth).toBe('number');
-    expect(typeof result.gregorianBirthDay).toBe('number');
+    // v3：autoFillDates 不再反推國曆三欄位
+    expect(result.gregorianBirthYear).toBeUndefined();
+    expect(result.gregorianBirthMonth).toBeUndefined();
+    expect(result.gregorianBirthDay).toBeUndefined();
 
-    // 國曆年應該在合理範圍（農曆 2000 → 國曆應為 2000 年初/前一年底）
-    expect(result.gregorianBirthYear).toBeGreaterThanOrEqual(1999);
-    expect(result.gregorianBirthYear).toBeLessThanOrEqual(2001);
-
-    // 跟直接呼叫 lunarToGregorian 結果一致
-    const expected = lunarToGregorian(2000, 1, 1, false);
-    expect(result.gregorianBirthYear).toBe(expected.year);
-    expect(result.gregorianBirthMonth).toBe(expected.month);
-    expect(result.gregorianBirthDay).toBe(expected.day);
-
-    // 原 lunar 欄位不被改動
-    expect(result.lunarBirthYear).toBe(2000);
-    expect(result.lunarBirthMonth).toBe(1);
-    expect(result.lunarBirthDay).toBe(1);
+    // 原 lunar 欄位完整保留
+    expect(result.lunarBirthYear).toBe(80);
+    expect(result.lunarBirthMonth).toBe(5);
+    expect(result.lunarBirthDay).toBe(18);
   });
 
-  test('含閏月 (lunarIsLeapMonth: true) → 自動補 gregorianBirth*', () => {
-    // 2020 年農曆閏 4 月（lunar-javascript 認可的閏月年）
-    const input = {
-      lunarBirthYear: 2020,
-      lunarBirthMonth: 4,
-      lunarBirthDay: 15,
-      lunarIsLeapMonth: true,
-    };
-
-    const result = autoFillDates(input);
-
-    expect(typeof result.gregorianBirthYear).toBe('number');
-    expect(typeof result.gregorianBirthMonth).toBe('number');
-    expect(typeof result.gregorianBirthDay).toBe('number');
-
-    // 跟直接呼叫 lunarToGregorian(..., isLeapMonth=true) 結果一致
-    const expected = lunarToGregorian(2020, 4, 15, true);
-    expect(result.gregorianBirthYear).toBe(expected.year);
-    expect(result.gregorianBirthMonth).toBe(expected.month);
-    expect(result.gregorianBirthDay).toBe(expected.day);
-
-    // 閏月 vs 非閏月應為不同國曆日期（防呆：確認閏月旗標真的有作用）
-    const nonLeap = lunarToGregorian(2020, 4, 15, false);
-    const isDifferent =
-      expected.year !== nonLeap.year ||
-      expected.month !== nonLeap.month ||
-      expected.day !== nonLeap.day;
-    expect(isDifferent).toBe(true);
-  });
-
-  test('已帶完整 gregorian + lunar 時 autoFillDates 不亂改既有值（idempotent）', () => {
+  test('2. 已帶完整 gregorian + lunar 時 autoFillDates 不亂改既有值（idempotent）', () => {
     const input = {
       gregorianBirthYear: 2000,
       gregorianBirthMonth: 2,
       gregorianBirthDay: 5,
-      lunarBirthYear: 2000,
+      lunarBirthYear: 80,
       lunarBirthMonth: 1,
       lunarBirthDay: 1,
       lunarIsLeapMonth: false,
@@ -95,8 +56,40 @@ describe('Change C / Task 4.1.2 — lunar-only autoFillDates 反向補國曆', (
     expect(result.gregorianBirthYear).toBe(2000);
     expect(result.gregorianBirthMonth).toBe(2);
     expect(result.gregorianBirthDay).toBe(5);
-    expect(result.lunarBirthYear).toBe(2000);
+    expect(result.lunarBirthYear).toBe(80);
     expect(result.lunarBirthMonth).toBe(1);
     expect(result.lunarBirthDay).toBe(1);
+    expect(result.lunarIsLeapMonth).toBe(false);
+  });
+
+  test('3. lunarToGregorian / gregorianToLunar function 仍 export 給未來 admin 工具用', () => {
+    // Change C v3：主流程不再呼叫這兩個 fn，但仍須保留 export
+    expect(typeof lunarToGregorian).toBe('function');
+    expect(typeof gregorianToLunar).toBe('function');
+
+    // 簡單跑一個 round trip 驗證 fn 還能用（西元年輸入）
+    const lunar = gregorianToLunar(2000, 2, 5);
+    expect(lunar).toMatchObject({
+      year: expect.any(Number),
+      month: expect.any(Number),
+      day: expect.any(Number),
+      isLeapMonth: expect.any(Boolean),
+    });
+
+    const back = lunarToGregorian(lunar.year, lunar.month, lunar.day, lunar.isLeapMonth);
+    expect(back).toMatchObject({
+      year: 2000,
+      month: 2,
+      day: 5,
+    });
+  });
+
+  test('4. 不帶任何生日欄位 → autoFillDates 仍正常回傳（不丟錯）', () => {
+    const input = { name: '王小明', phone: '0912345678' };
+    const result = autoFillDates(input);
+    expect(result.name).toBe('王小明');
+    expect(result.phone).toBe('0912345678');
+    expect(result.gregorianBirthYear).toBeUndefined();
+    expect(result.lunarBirthYear).toBeUndefined();
   });
 });

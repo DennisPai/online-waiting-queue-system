@@ -483,11 +483,11 @@ class QueueService {
    * 私有方法：應用預設值
    */
   applyDefaultValues(data) {
+    // Change C v3：全民國農曆、不再 default 國曆生日。
+    // 主流程只認 lunarBirth*（民國年），gregorianBirth* 欄位保留在 schema
+    // 但不在此處 default 寫入 80/1/1（會誤導下游與 admin 介面）。
     const defaults = {
       gender: 'male',
-      gregorianBirthYear: 80,
-      gregorianBirthMonth: 1,
-      gregorianBirthDay: 1,
       phone: data.phone || '0900000000',
       // Change B / Phase 3：簡化模式 default 跟 schema default 對齊改 ''
       // 避免在 DB 寫入「臨時地址」字串誤導 admin（schema default 已改 ''）
@@ -507,15 +507,14 @@ class QueueService {
   processFamilyMembers(data) {
     if (data.familyMembers && Array.isArray(data.familyMembers)) {
       data.familyMembers = data.familyMembers.map(member => {
+        // Change C v3：全民國農曆、不再 default 國曆生日（80/1/1 會讓所有家人
+        // 出生日期都是民國 80 年 1 月 1 日，誤導 admin 與下游邏輯）。
         return {
           ...member,
           gender: member.gender || 'male',
           // Change B / Phase 3：跟 schema default '' 對齊，不寫入「臨時地址」字串
           address: member.address || '',
-          addressType: member.addressType || 'home',
-          gregorianBirthYear: member.gregorianBirthYear || 80,
-          gregorianBirthMonth: member.gregorianBirthMonth || 1,
-          gregorianBirthDay: member.gregorianBirthDay || 1
+          addressType: member.addressType || 'home'
         };
       });
     }

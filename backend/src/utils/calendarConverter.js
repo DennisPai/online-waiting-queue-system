@@ -107,47 +107,21 @@ function lunarToGregorian(year, month, day, isLeapMonth = false) {
 }
 
 /**
- * 自動填充缺失的日期數據（注意：內部使用西元年進行轉換）
+ * 自動填充缺失的日期數據
+ *
+ * Change C v3：全民國農曆，主流程不再做 lunar↔gregorian 轉換；
+ * 保留 lunarToGregorian/gregorianToLunar export 給未來 admin 工具用
+ * （這條 calendarConverter.js 內部仍 export）。
+ * 此 function 仍存在純為 callsite 兼容（QueueService.processQueueData 仍呼叫），
+ * 內部不再對 lunar/gregorian 做任何轉換 — 直接回傳原 data 的淺拷貝。
+ *
  * @param {object} data - 客戶數據
- * @returns {object} - 自動填充後的數據
+ * @returns {object} - 原 data（淺拷貝、欄位完整保留）
  */
 function autoFillDates(data) {
   try {
-    const result = { ...data };
-    
-    // 檢查是否有完整的國曆生日且缺少農曆生日
-    if (result.gregorianBirthYear && result.gregorianBirthMonth && result.gregorianBirthDay &&
-        (!result.lunarBirthYear || !result.lunarBirthMonth || !result.lunarBirthDay)) {
-      
-      const lunarDate = gregorianToLunar(
-        result.gregorianBirthYear,
-        result.gregorianBirthMonth,
-        result.gregorianBirthDay
-      );
-      
-      result.lunarBirthYear = lunarDate.year;
-      result.lunarBirthMonth = lunarDate.month;
-      result.lunarBirthDay = lunarDate.day;
-      result.lunarIsLeapMonth = lunarDate.isLeapMonth;
-    }
-    
-    // 檢查是否有完整的農曆生日且缺少國曆生日
-    if (result.lunarBirthYear && result.lunarBirthMonth && result.lunarBirthDay &&
-        (!result.gregorianBirthYear || !result.gregorianBirthMonth || !result.gregorianBirthDay)) {
-      
-      const gregorianDate = lunarToGregorian(
-        result.lunarBirthYear,
-        result.lunarBirthMonth,
-        result.lunarBirthDay,
-        result.lunarIsLeapMonth || false
-      );
-      
-      result.gregorianBirthYear = gregorianDate.year;
-      result.gregorianBirthMonth = gregorianDate.month;
-      result.gregorianBirthDay = gregorianDate.day;
-    }
-    
-    return result;
+    // Change C v3：不再做 lunar↔gregorian 反推。直接淺拷貝回傳。
+    return { ...data };
   } catch (error) {
     logger.error('自動填充日期失敗:', error);
     return data;
@@ -156,17 +130,24 @@ function autoFillDates(data) {
 
 /**
  * 計算生肖（基於農曆年）
- * @param {number} lunarBirthYear - 農曆出生年（西元年）
+ *
+ * Change C v3：lunarBirthYear 改視為「民國年」。內部 +1911 轉西元
+ * 後再丟給 lunar-javascript 取生肖。
+ *
+ * @param {number} lunarBirthYear - 農曆出生年（民國年）
  * @returns {string|null} - 生肖（如：「鼠」、「牛」、「虎」等）
  */
 function calculateZodiac(lunarBirthYear) {
   if (!lunarBirthYear) return null;
-  
+
   try {
+    // Change C v3：民國年 → 西元年（lunar-javascript 吃西元年）
+    const gregorianYear = lunarBirthYear + 1911;
+
     // 使用 lunar-javascript 獲取生肖
     // 創建農曆日期對象（使用年份的第一天即可獲取生肖）
-    const lunar = Lunar.fromYmd(lunarBirthYear, 1, 1);
-    
+    const lunar = Lunar.fromYmd(gregorianYear, 1, 1);
+
     // 取得生肖（lunar-javascript 回傳簡體，轉繁體）
     const simplifiedToTraditional = { '龙': '龍', '马': '馬', '鸡': '雞', '猪': '豬' };
     const raw = lunar.getYearShengXiao();
@@ -203,21 +184,22 @@ function addZodiac(data) {
 
 /**
  * 計算虛歲（基於農曆年）
- * @param {number} lunarBirthYear - 農曆出生年（西元年）
+ *
+ * Change C v3：lunarBirthYear 改視為「民國年」，虛歲算法簡化為
+ * 「今年民國年 - 出生民國年 + 1」（不再用 lunar-javascript 取當前農曆年）。
+ *
+ * @param {number} lunarBirthYear - 農曆出生年（民國年）
  * @returns {number} - 虛歲
  */
 function calculateVirtualAge(lunarBirthYear) {
   if (!lunarBirthYear) return null;
-  
+
   try {
-    // 取得當前農曆年份
-    const today = new Date();
-    const currentSolar = Solar.fromDate(today);
-    const currentLunar = currentSolar.getLunar();
-    const currentLunarYear = currentLunar.getYear();
-    
-    // 虛歲計算：當前農曆年 - 出生農曆年 + 1
-    return currentLunarYear - lunarBirthYear + 1;
+    // Change C v3：今年民國年 = 西元年 - 1911
+    const currentMinguoYear = new Date().getFullYear() - 1911;
+
+    // 虛歲計算：今年民國年 - 出生民國年 + 1
+    return currentMinguoYear - lunarBirthYear + 1;
   } catch (error) {
     logger.error('虛歲計算錯誤:', error);
     return null;
