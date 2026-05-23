@@ -189,6 +189,27 @@ describe('Queue Admin Controller', () => {
       expect(mockRecord.orderIndex).toBeNull();
     });
 
+    // Phase 6.4 hotfix（D4 對齊）：取消後也要呼叫 ensureOrderIndexConsistency 壓回連續
+    // 避免 admin cancel 後剩下記錄 orderIndex 出現空洞（UI 顯示 49→51 跳號）
+    test('取消候位應呼叫 ensureOrderIndexConsistency 壓回連續（D4 對齊）', async () => {
+      const { ensureOrderIndexConsistency } = require('../src/utils/orderIndex');
+      const mockRecord = {
+        _id: 'rec-cancel-consistency',
+        status: 'waiting',
+        orderIndex: 5,
+        save: jest.fn().mockResolvedValue(true)
+      };
+      WaitingRecord.findById.mockResolvedValue(mockRecord);
+      const req = mockReq({ status: 'cancelled' }, { queueId: 'rec-cancel-consistency' });
+      const res = mockRes();
+
+      await queueAdminController.updateQueueStatus(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(mockRecord.orderIndex).toBeNull();
+      expect(ensureOrderIndexConsistency).toHaveBeenCalledTimes(1);
+    });
+
     // Phase 3 / Task 3.1 + 3.2 + 3.2c（D13）：恢復報名先原子發號、後改 status，並補一致性重算
     test('恢復報名（cancelled→waiting）應原子發號並補一致性重算', async () => {
       const { allocateOrderIndex, ensureOrderIndexConsistency } = require('../src/utils/orderIndex');

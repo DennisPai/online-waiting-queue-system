@@ -276,12 +276,15 @@ exports.updateQueueStatus = async (req, res) => {
 
     await record.save();
 
-    // === Phase 3 / Task 3.1（design.md D4）：恢復報名補一致性重算 ===
+    // === Phase 3 / Task 3.1（design.md D4）：active 集合變動補一致性重算 ===
     // 系統其他動 orderIndex 的操作（叫號 / 刪除 / reorder）都會呼叫
-    // ensureOrderIndexConsistency() 把 active 記錄 orderIndex 壓成連續 1..N，
-    // 唯獨恢復報名這條漏了 —— 補上即與其他路徑一致。
-    // 同時也把 allocateOrderIndex() 給的膨脹發號值壓回 1..N。
-    if (isRestore) {
+    // ensureOrderIndexConsistency() 把 active 記錄 orderIndex 壓成連續 1..N。
+    // 兩條會改變 active 集合的 status 變化都要呼叫：
+    //   - 恢復（cancelled/completed → waiting）：active +1，把 allocateOrderIndex 膨脹發號值壓回 1..N
+    //   - 取消（waiting/processing → cancelled）：active -1，剩下記錄壓回 1..N，否則 UI 跳號
+    // ensureOrderIndexConsistency() 本身 idempotent，多呼叫一次無害；
+    // completed→cancelled 等 active 不變的情境會在 needsChange.length===0 早 return。
+    if (isRestore || status === 'cancelled') {
       await ensureOrderIndexConsistency();
     }
 
