@@ -297,11 +297,27 @@ exports.updateQueueStatus = async (req, res) => {
   }
 };
 
-// 更新候位順序
+// 更新候位順序（單筆移動 endpoint）
+//
+// === Phase 6.4 後續修補（design.md D10 同款）===
+// 前端 `useQueueActions.handleReorderQueue`（後台「重新排序」按鈕）目前用
+// `Promise.all([updateQueueOrder × N])` 餵這個 endpoint。Phase 6.4 實測：本
+// endpoint 仍是舊的「for-loop 逐筆 `r.orderIndex ±= 1; save()`」—— 把記錄
+// 「往前移」時，中間記錄 orderIndex +1 會撞 partial unique index → E11000 → 409。
+// Change A 的 Task 4.4 只修了批量 `reorderQueue`，這條漏掉。
+//
+// 修法：比照 `reorderQueue`（D10）改成「兩階段 offset bulkWrite」：
+//   1. 先算出整個 active 列表移動後的目標排列
+//   2. 第一階段把要動的記錄全部推到「臨時值 = 最終位序 + OFFSET」（離開 1..N 區間）
+//   3. 第二階段把它們從臨時值壓回最終 1..N
+// 全程不會出現「兩筆暫時同 orderIndex」的中間態，partial unique index 不撞。
+//
+// 為什麼不直接 deprecate / 移除：前端 `handleReorderQueue`（不是拖曳，是另一個
+// 「重新排序」按鈕）目前仍在用此 endpoint，移除會直接砍掉前端功能。
 exports.updateQueueOrder = async (req, res) => {
   try {
     const { queueId, newOrder } = req.body;
-    
+
     if (!queueId || newOrder === undefined || newOrder === null) {
       return res.status(400).json({ success: false, message: '請求缺少必要參數：queueId 或 newOrder' });
     }
@@ -313,7 +329,7 @@ exports.updateQueueOrder = async (req, res) => {
     if (!recordToUpdate) {
       return res.status(404).json({ success: false, message: '找不到該候位記錄' });
     }
-    
+
     const currentOrder = recordToUpdate.orderIndex || 0;
     if (currentOrder === newOrder) {
       return res.status(200).json({ success: true, message: '順序未變更', data: { record: recordToUpdate } });
@@ -321,54 +337,67 @@ exports.updateQueueOrder = async (req, res) => {
 
     // 只計算 waiting/processing 的記錄總數（排除 completed/cancelled）
     const activeStatuses = ['waiting', 'processing'];
-    const totalRecords = await WaitingRecord.countDocuments({ status: { $in: activeStatuses } });
+
+    // 取得目前 active 全部列表（含次鍵 _id 保證 deterministic 排序，D7）
+    const activeRecords = await WaitingRecord.find({ status: { $in: activeStatuses } })
+      .sort({ orderIndex: 1, _id: 1 });
+
+    const totalRecords = activeRecords.length;
     if (newOrder > totalRecords) {
       return res.status(400).json({ success: false, message: `新順序 ${newOrder} 超出了候位總數 ${totalRecords}` });
     }
-    
+
     // 取得目前 isOpen 狀態（決定是否同步 queueNumber）
     const settings = await SystemSetting.getSettings();
     const isOpen = settings.isQueueOpen;
 
-    // updateMany 也只影響 waiting/processing 的記錄（不動 completed/cancelled）
-    if (currentOrder < newOrder) {
-      // 往後移：中間的記錄 orderIndex -1
-      const middleRecords = await WaitingRecord.find({
-        status: { $in: activeStatuses },
-        orderIndex: { $gt: currentOrder, $lte: newOrder },
-        _id: { $ne: queueId }
-      });
-      for (const r of middleRecords) {
-        r.orderIndex -= 1;
-        if (!isOpen) r.queueNumber = r.orderIndex;
-        await r.save();
-      }
-    } else {
-      // 往前移：中間的記錄 orderIndex +1
-      const middleRecords = await WaitingRecord.find({
-        status: { $in: activeStatuses },
-        orderIndex: { $gte: newOrder, $lt: currentOrder },
-        _id: { $ne: queueId }
-      });
-      for (const r of middleRecords) {
-        r.orderIndex += 1;
-        if (!isOpen) r.queueNumber = r.orderIndex;
-        await r.save();
-      }
+    // 算「移動後的目標排列」：把 recordToUpdate 從目前位置抽出、插到 newOrder 位置（1-based）
+    const ids = activeRecords.map(r => String(r._id));
+    const fromIdx = ids.indexOf(String(queueId));
+    if (fromIdx === -1) {
+      // 不該發生 —— recordToUpdate 是 active 但不在 active 列表，視為列表已變動
+      return res.status(409).json({ success: false, message: '候位列表已變動，請重新整理後再排序' });
     }
-    
-    recordToUpdate.orderIndex = newOrder;
-    // isOpen=false 時同步 queueNumber = 新 orderIndex
-    if (!isOpen) recordToUpdate.queueNumber = newOrder;
-    await recordToUpdate.save();
-    
-    // 只回傳 waiting/processing 的記錄（不包含 completed/cancelled）
+    const [moved] = ids.splice(fromIdx, 1);
+    ids.splice(newOrder - 1, 0, moved);
+
+    // === D10：兩階段 offset 批量寫入（避開中間態撞 partial unique index）===
+    const OFFSET = 1000000;
+
+    // 第一階段：把全部 active 記錄推到臨時值（彼此唯一、遠離 1..N）
+    const phase1Ops = ids.map((id, index) => ({
+      updateOne: {
+        filter: { _id: id },
+        update: { $set: { orderIndex: (index + 1) + OFFSET } }
+      }
+    }));
+    await WaitingRecord.bulkWrite(phase1Ops, { ordered: false });
+
+    // 第二階段：壓回最終 1..N（並同步 queueNumber）
+    const phase2Ops = ids.map((id, index) => {
+      const newOrderIndex = index + 1;
+      const set = { orderIndex: newOrderIndex };
+      if (!isOpen) set.queueNumber = newOrderIndex;
+      return {
+        updateOne: {
+          filter: { _id: id },
+          update: { $set: set }
+        }
+      };
+    });
+    await WaitingRecord.bulkWrite(phase2Ops, { ordered: false });
+
+    // 安全網：確保無空洞/重複
+    await ensureOrderIndexConsistency();
+
+    // 重新讀取目標記錄與全部 active（壓回後的最終值）
+    const refreshedRecord = await WaitingRecord.findById(queueId);
     const updatedRecords = await WaitingRecord.find({ status: { $in: activeStatuses } }).sort({ orderIndex: 1 });
-    
+
     res.status(200).json({
       success: true,
       message: '候位順序更新成功',
-      data: { record: recordToUpdate, allRecords: updatedRecords }
+      data: { record: refreshedRecord || recordToUpdate, allRecords: updatedRecords }
     });
   } catch (error) {
     // D9 / Task 4.6：撞號回友善訊息，非撞號才走 500。

@@ -377,7 +377,12 @@ const cancelQueueByCustomer = catchAsync(async (req, res) => {
     }
 
     // 更新狀態為已取消
+    // === Phase 6.4 後續修補（design.md D13）：客戶端取消也須設 orderIndex = null ===
+    // 與 admin 端 updateQueueStatus 對齊。D13 要求「取消時把 orderIndex 設為 null」，
+    // 杜絕髒舊值在日後恢復報名時被帶回。客戶端取消路徑原本漏設（Phase 6.4 實測發現）。
+    // cancelled 不在 partial unique index 約束範圍，orderIndex=null 不影響 index。
     record.status = 'cancelled';
+    record.orderIndex = null;
     await record.save();
 
     res.status(200).json({

@@ -136,9 +136,28 @@ const systemSettingSchema = new mongoose.Schema({
 });
 
 // 取得或創建默認系統設定的靜態方法
+//
+// === Phase 6.4 Hotfix（2026-05-23）：偵測缺失欄位必須繞過 Mongoose default ===
+// 根因：Schema 對 `issuedCount` / `orderIndexCounter` 宣告了 `default: 0`，
+// Mongoose 透過 `findOne()` 讀文件時會在記憶體裡套用 default —— 結果
+// `settings.issuedCount === undefined` **永遠**為 false，自動補欄位的
+// `$set` migration 永遠不會觸發 → DB 文件實際缺欄位，但 code 路徑誤以為已有。
+// 引發兩個阻斷症狀：
+//   1) 報名閘門 `findOneAndUpdate({issuedCount:{$lt:max}})`，`$lt` 對「缺失欄位」
+//      不匹配 → 每筆報名都被擋成「今日候位已滿」（issuedCount 缺失）。
+//   2) `allocateOrderIndex()` `$inc orderIndexCounter 1` 對缺失欄位視為從 0 起跳
+//      → 首批發號從 1 開始，連續撞既有 active 記錄 orderIndex 直到爬過 active 範圍。
+//
+// 修法：偵測時改用底層 collection driver（`SystemSetting.collection.findOne()`）
+// 直接看 DB 文件的真實內容（繞過 Mongoose default 套用）；補欄位也走底層
+// `collection.updateOne` 確保即使 Mongoose 邏輯日後變動也能正確 $set。
+//
+// ⚠️ 注意：解法不能改用「拿掉 schema 的 default: 0」——那會改變 schema 語意
+// （新文件不再有預設值、其他 code 路徑可能撞 undefined），且不保證未來不再有
+// 同類「default 遮蔽偵測」的 bug。要從根上解決「偵測 vs default」的衝突。
 systemSettingSchema.statics.getSettings = async function() {
   let settings = await this.findOne();
-  
+
   if (!settings) {
     settings = await this.create({
       nextSessionDate: new Date(),
@@ -152,10 +171,17 @@ systemSettingSchema.statics.getSettings = async function() {
       lastCompletedTime: null
     });
   } else {
+    // === 用底層 collection 查 DB 文件的「真實」內容，繞過 Mongoose default ===
+    // 對於有 `default` 宣告的欄位（如 issuedCount / orderIndexCounter），
+    // 必須用此 raw 物件偵測「DB 文件是否實際缺欄位」，不能用 `settings.xxx`。
+    // 對於沒有 default 宣告的欄位（如 lastCompletedTime / eventBanner 等），
+    // 用 `settings.xxx` 偵測仍正確（Mongoose 不會憑空套 default）。
+    const rawSettings = await this.collection.findOne({ _id: settings._id });
+
     // 檢查並初始化新欄位（適用於雲端部署自動更新）
     let needsUpdate = false;
     const updateFields = {};
-    
+
     if (settings.totalCustomerCount === undefined) {
       // 計算當前總客戶數（包含活躍狀態的客戶）
       const WaitingRecord = require('./waiting-record.model');
@@ -166,8 +192,10 @@ systemSettingSchema.statics.getSettings = async function() {
       needsUpdate = true;
       logger.info(`初始化 totalCustomerCount: ${totalCount}`);
     }
-    
-    if (settings.issuedCount === undefined) {
+
+    // D8 / Phase 6.4 hotfix：`issuedCount` 有 schema default: 0，必須用 raw DB 文件
+    // 偵測「文件裡實際是不是真的有這欄位」，否則 default 會永遠掩蓋缺失。
+    if (rawSettings && (rawSettings.issuedCount === undefined || rawSettings.issuedCount === null)) {
       // D8/2.6：以「目前 active + cancelled 記錄數」初始化已發名額基準
       // （cancelled 仍佔名額，故一併計入；completed 為已辦完、本期不再佔位故不計）
       const WaitingRecord = require('./waiting-record.model');
@@ -176,10 +204,11 @@ systemSettingSchema.statics.getSettings = async function() {
       });
       updateFields.issuedCount = issued;
       needsUpdate = true;
-      logger.info(`初始化 issuedCount: ${issued}`);
+      logger.info(`初始化 issuedCount: ${issued}（偵測 DB 文件實際缺欄位）`);
     }
 
-    if (settings.orderIndexCounter === undefined) {
+    // D3 / Phase 6.4 hotfix：同款 default: 0 遮蔽問題，一律走 raw DB 文件偵測。
+    if (rawSettings && (rawSettings.orderIndexCounter === undefined || rawSettings.orderIndexCounter === null)) {
       // Phase 3 / D3：初始化 orderIndex 原子發號計數器。
       // 基準必須 >= 目前所有 active 記錄的最大 orderIndex，
       // 否則第一批新發號值會與既有記錄撞號。
@@ -191,7 +220,7 @@ systemSettingSchema.statics.getSettings = async function() {
       );
       updateFields.orderIndexCounter = (maxRecord && maxRecord.orderIndex) ? maxRecord.orderIndex : 0;
       needsUpdate = true;
-      logger.info(`初始化 orderIndexCounter: ${updateFields.orderIndexCounter}`);
+      logger.info(`初始化 orderIndexCounter: ${updateFields.orderIndexCounter}（偵測 DB 文件實際缺欄位）`);
     }
 
     if (settings.lastCompletedTime === undefined) {
@@ -271,7 +300,10 @@ systemSettingSchema.statics.getSettings = async function() {
     }
     
     if (needsUpdate) {
-      await this.updateOne({}, { $set: updateFields });
+      // Phase 6.4 hotfix：補欄位也走底層 collection.updateOne，確保 $set 真實寫進
+      // DB 文件（不受 Mongoose schema/middleware 干擾），讓「補欄位」與「偵測欄位」
+      // 用同一條 raw driver 路徑保持一致。
+      await this.collection.updateOne({ _id: settings._id }, { $set: updateFields });
       settings = await this.findOne(); // 重新獲取更新後的設定
       logger.debug('系統設定已自動更新新欄位');
     }

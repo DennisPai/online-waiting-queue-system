@@ -135,6 +135,27 @@ describe('Queue Controller — 取消候位（問題 1 / D1）', () => {
       expect(save).toHaveBeenCalled();
     });
 
+    // === Phase 6.4 後續修補（design.md D13）：客戶端取消也須設 orderIndex = null ===
+    // 與 admin 端 updateQueueStatus 對齊。原本只有 admin 路徑有設 null，
+    // 客戶端取消漏設 → 留下髒舊值會在日後恢復報名時被帶回。
+    test('成功取消時應把 orderIndex 設為 null（D13）', async () => {
+      const save = jest.fn().mockResolvedValue(true);
+      const record = {
+        _id: 'rec1', name: '張三', phone: '0912345678',
+        status: 'waiting', orderIndex: 53, save
+      };
+      WaitingRecord.findById.mockResolvedValue(record);
+      const req = mockReq({ id: 'rec1', name: '張三', phone: '0912345678' });
+      const res = mockRes();
+
+      await runHandler(queueController.cancelQueueByCustomer, req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(record.status).toBe('cancelled');
+      expect(record.orderIndex).toBeNull();
+      expect(save).toHaveBeenCalled();
+    });
+
     // D1：姓名/電話含前後空白應被 trim 後比對 —— 仍視為相符。
     test('姓名/電話含前後空白經 trim 後相符應成功取消', async () => {
       const save = jest.fn().mockResolvedValue(true);

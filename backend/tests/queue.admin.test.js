@@ -509,4 +509,154 @@ describe('Queue Admin Controller', () => {
       expect(res.json.mock.calls[0][0].message).toContain('排序衝突');
     });
   });
+
+  // === Phase 6.4 後續修補（D10 同款）：updateQueueOrder 單筆移動也須兩階段 ===
+  // 前端 handleReorderQueue 按鈕仍用此 endpoint，Phase 6.4 實測舊版用
+  // for-loop 逐筆 save() 「往前移」中間記錄 +1 會撞 partial unique index → 409。
+  // 改成兩階段 offset bulkWrite，與 reorderQueue 同演算法。
+  describe('updateQueueOrder（Phase 6.4 後續修補：兩階段 offset 寫入）', () => {
+    // mock 「find({status...}).sort({orderIndex,_id})」回傳給定 active 記錄
+    const mockActiveSortedFind = (records) => {
+      WaitingRecord.find.mockImplementation(() => ({
+        sort: jest.fn().mockResolvedValue(records)
+      }));
+    };
+
+    test('缺 queueId 應回 400', async () => {
+      const req = mockReq({ newOrder: 3 });
+      const res = mockRes();
+
+      await queueAdminController.updateQueueOrder(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    test('newOrder 非正整數應回 400', async () => {
+      const req = mockReq({ queueId: 'a', newOrder: 0 });
+      const res = mockRes();
+
+      await queueAdminController.updateQueueOrder(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    test('找不到 queueId 對應記錄應回 404', async () => {
+      WaitingRecord.findById.mockResolvedValue(null);
+      const req = mockReq({ queueId: 'nope', newOrder: 1 });
+      const res = mockRes();
+
+      await queueAdminController.updateQueueOrder(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    test('currentOrder === newOrder 應直接 return 200「順序未變更」（不動 DB）', async () => {
+      WaitingRecord.findById.mockResolvedValue({ _id: 'a', orderIndex: 3 });
+      const req = mockReq({ queueId: 'a', newOrder: 3 });
+      const res = mockRes();
+
+      await queueAdminController.updateQueueOrder(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json.mock.calls[0][0].message).toContain('未變更');
+      expect(WaitingRecord.bulkWrite).not.toHaveBeenCalled();
+    });
+
+    test('newOrder 超過 active 記錄總數應回 400', async () => {
+      WaitingRecord.findById.mockResolvedValue({ _id: 'a', orderIndex: 1 });
+      mockActiveSortedFind([{ _id: 'a' }, { _id: 'b' }, { _id: 'c' }]);
+      const req = mockReq({ queueId: 'a', newOrder: 99 });
+      const res = mockRes();
+
+      await queueAdminController.updateQueueOrder(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    test('合法移動應做兩階段 bulkWrite（D10）：第一階段大偏移、第二階段壓回 1..N', async () => {
+      // active 記錄 a,b,c（orderIndex 1,2,3）；把 a（orderIndex=1）移到 newOrder=3
+      WaitingRecord.findById.mockResolvedValue({ _id: 'a', orderIndex: 1 });
+      // 第一個 find().sort 給 active 列表；第二個 find().sort 給最終回傳的列表
+      let callIdx = 0;
+      WaitingRecord.find.mockImplementation(() => ({
+        sort: jest.fn().mockImplementation(() => {
+          callIdx += 1;
+          if (callIdx === 1) return Promise.resolve([{ _id: 'a' }, { _id: 'b' }, { _id: 'c' }]);
+          return Promise.resolve([
+            { _id: 'b', orderIndex: 1 },
+            { _id: 'c', orderIndex: 2 },
+            { _id: 'a', orderIndex: 3 }
+          ]);
+        })
+      }));
+      SystemSetting.getSettings.mockResolvedValue({ isQueueOpen: true });
+      WaitingRecord.bulkWrite.mockResolvedValue({ ok: 1 });
+
+      const req = mockReq({ queueId: 'a', newOrder: 3 });
+      const res = mockRes();
+
+      await queueAdminController.updateQueueOrder(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      // 兩階段 = bulkWrite 被呼叫兩次
+      expect(WaitingRecord.bulkWrite).toHaveBeenCalledTimes(2);
+      // 第一階段：臨時值帶大偏移（> 1000000）、彼此唯一
+      const phase1 = WaitingRecord.bulkWrite.mock.calls[0][0];
+      const phase1Indices = phase1.map(op => op.updateOne.update.$set.orderIndex);
+      expect(phase1Indices.every(v => v > 1000000)).toBe(true);
+      expect(new Set(phase1Indices).size).toBe(phase1Indices.length); // 彼此唯一
+      // 第二階段：壓回最終 1..N（移動後排列：b=1, c=2, a=3）
+      const phase2 = WaitingRecord.bulkWrite.mock.calls[1][0];
+      const phase2Map = {};
+      for (const op of phase2) {
+        phase2Map[String(op.updateOne.filter._id)] = op.updateOne.update.$set.orderIndex;
+      }
+      expect(phase2Map.b).toBe(1);
+      expect(phase2Map.c).toBe(2);
+      expect(phase2Map.a).toBe(3);
+    });
+
+    test('isOpen=false 時第二階段應同步寫 queueNumber = orderIndex', async () => {
+      WaitingRecord.findById.mockResolvedValue({ _id: 'a', orderIndex: 1 });
+      let callIdx = 0;
+      WaitingRecord.find.mockImplementation(() => ({
+        sort: jest.fn().mockImplementation(() => {
+          callIdx += 1;
+          if (callIdx === 1) return Promise.resolve([{ _id: 'a' }, { _id: 'b' }]);
+          return Promise.resolve([{ _id: 'b' }, { _id: 'a' }]);
+        })
+      }));
+      SystemSetting.getSettings.mockResolvedValue({ isQueueOpen: false });
+      WaitingRecord.bulkWrite.mockResolvedValue({ ok: 1 });
+
+      const req = mockReq({ queueId: 'a', newOrder: 2 });
+      const res = mockRes();
+
+      await queueAdminController.updateQueueOrder(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      const phase2 = WaitingRecord.bulkWrite.mock.calls[1][0];
+      // isOpen=false → 第二階段每筆 $set 必含 queueNumber
+      for (const op of phase2) {
+        expect(op.updateOne.update.$set).toHaveProperty('queueNumber');
+        expect(op.updateOne.update.$set.queueNumber).toBe(op.updateOne.update.$set.orderIndex);
+      }
+    });
+
+    test('撞號（E11000）應回 409 友善訊息（D9 / handleAdminError）', async () => {
+      WaitingRecord.findById.mockResolvedValue({ _id: 'a', orderIndex: 1 });
+      mockActiveSortedFind([{ _id: 'a' }, { _id: 'b' }]);
+      SystemSetting.getSettings.mockResolvedValue({ isQueueOpen: true });
+      const err = new Error('dup'); err.code = 11000;
+      WaitingRecord.bulkWrite.mockRejectedValue(err);
+
+      const req = mockReq({ queueId: 'a', newOrder: 2 });
+      const res = mockRes();
+
+      await queueAdminController.updateQueueOrder(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json.mock.calls[0][0].message).toContain('排序衝突');
+    });
+  });
 });
