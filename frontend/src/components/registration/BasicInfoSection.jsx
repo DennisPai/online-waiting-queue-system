@@ -111,7 +111,8 @@ const BasicInfoSection = ({
           出生日期
         </Typography>
         <BirthdayPicker
-          calendarType={formData.calendarType || 'gregorian'}
+          // Change C / 階段 5 sub-agent 審閱 NICE-TO-HAVE：fallback 改 'lunar' 對齊 D2 全系統 lunar-only
+          calendarType={formData.calendarType || 'lunar'}
           year={formData.birthYear || ''}
           month={formData.birthMonth || ''}
           day={formData.birthDay || ''}

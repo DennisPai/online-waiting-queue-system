@@ -20,7 +20,10 @@ const initialFormData = {
   birthYear: '',
   birthMonth: '',
   birthDay: '',
-  calendarType: 'gregorian',
+  // Change C / 階段 2.6（擴大範圍補修）：useRegistrationForm default 改 lunar
+  // 全系統生日只填農曆；BirthdayPicker 已 default lunarOnly=true 強制鎖農曆，
+  // 但 state 仍保留 calendarType 欄位（不刪），讓既存讀取邏輯與 BasicInfoSection 顯示模式不破壞
+  calendarType: 'lunar',
   lunarIsLeapMonth: false,
   addresses: [{ address: '', addressType: 'home' }],
   familyMembers: [],
@@ -310,7 +313,8 @@ export const useRegistrationForm = (embedded = false) => {
             birthYear: '',
             birthMonth: '',
             birthDay: '',
-            calendarType: 'gregorian',
+            // Change C / 階段 2.6（擴大範圍補修）：家人 default 改 lunar，跟主客戶一致
+            calendarType: 'lunar',
             lunarIsLeapMonth: false,
             address: '',
             addressType: 'home'
@@ -426,32 +430,21 @@ export const useRegistrationForm = (embedded = false) => {
         remarks: formData.remarks || ''
       };
 
-      // 處理出生日期 - BirthdayPicker 直接回傳西元年，不需要民國/西元轉換
-      if (formData.calendarType === 'gregorian') {
-        submissionData.gregorianBirthYear = parseInt(formData.birthYear);
-        submissionData.gregorianBirthMonth = parseInt(formData.birthMonth);
-        submissionData.gregorianBirthDay = parseInt(formData.birthDay);
-      } else {
-        submissionData.lunarBirthYear = parseInt(formData.birthYear);
-        submissionData.lunarBirthMonth = parseInt(formData.birthMonth);
-        submissionData.lunarBirthDay = parseInt(formData.birthDay);
-        submissionData.lunarIsLeapMonth = formData.lunarIsLeapMonth || false;
-      }
+      // Change C / 階段 2.6（擴大範圍補修）：提交分支簡化 — 移除 gregorian 分支，只走 lunar
+      // 全系統生日只填農曆，BirthdayPicker default lunarOnly=true 已強制鎖農曆
+      submissionData.lunarBirthYear = parseInt(formData.birthYear);
+      submissionData.lunarBirthMonth = parseInt(formData.birthMonth);
+      submissionData.lunarBirthDay = parseInt(formData.birthDay);
+      submissionData.lunarIsLeapMonth = formData.lunarIsLeapMonth || false;
 
-      // 處理家人的出生日期（BirthdayPicker 直接回傳西元年）
+      // Change C / 階段 2.6：家人提交也只走 lunar
       submissionData.familyMembers = submissionData.familyMembers.map(member => {
         const processedMember = { ...member };
 
-        if (member.calendarType === 'gregorian') {
-          processedMember.gregorianBirthYear = parseInt(member.birthYear);
-          processedMember.gregorianBirthMonth = parseInt(member.birthMonth);
-          processedMember.gregorianBirthDay = parseInt(member.birthDay);
-        } else {
-          processedMember.lunarBirthYear = parseInt(member.birthYear);
-          processedMember.lunarBirthMonth = parseInt(member.birthMonth);
-          processedMember.lunarBirthDay = parseInt(member.birthDay);
-          processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
-        }
+        processedMember.lunarBirthYear = parseInt(member.birthYear);
+        processedMember.lunarBirthMonth = parseInt(member.birthMonth);
+        processedMember.lunarBirthDay = parseInt(member.birthDay);
+        processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
 
         // 移除臨時欄位
         delete processedMember.birthYear;

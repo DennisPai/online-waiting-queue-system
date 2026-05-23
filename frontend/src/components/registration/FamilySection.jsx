@@ -116,20 +116,23 @@ const FamilySection = ({
                   </FormControl>
                 </Grid>
 
-                {/* 出生日期（BirthdayPicker） */}
+                {/* 出生日期（BirthdayPicker）
+                    Change C / 階段 2.2：不傳 lunarOnly 即 default true 自動 lunar-only
+                    移除 calendarType prop 傳入（因 BirthdayPicker 內部會強制 'lunar'）
+                    onChange 回呼永遠帶 calendarType='lunar'（家人段永遠 lunar） */}
                 <Grid item xs={12}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     出生日期
                   </Typography>
                   <BirthdayPicker
-                    calendarType={member.calendarType || 'gregorian'}
                     year={member.birthYear || ''}
                     month={member.birthMonth || ''}
                     day={member.birthDay || ''}
                     isLeapMonth={member.lunarIsLeapMonth || false}
-                    onChange={({ year, month, day, isLeapMonth, calendarType }) => {
+                    onChange={({ year, month, day, isLeapMonth }) => {
+                      // Change C / 階段 2.2：永遠 lunar，calendarType 不再從 onChange 解構（內部恆為 'lunar'）
                       onFamilyMemberChange(index, {
-                        calendarType,
+                        calendarType: 'lunar',
                         birthYear: year,
                         birthMonth: month,
                         birthDay: day,

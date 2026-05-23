@@ -22,6 +22,7 @@ import {
 import {
   AccessTime as AccessTimeIcon,
   CheckCircle as CheckCircleIcon,
+  // Change C / 階段 3.4：CancelIcon 保留 — `case 'cancelled'` 狀態 chip 仍要顯示已取消 icon
   Cancel as CancelIcon,
   HourglassEmpty as HourglassEmptyIcon,
   FormatListNumbered as FormatListNumberedIcon,
@@ -37,8 +38,9 @@ import {
 } from '../redux/slices/queueSlice';
 import { showAlert } from '../redux/slices/uiSlice';
 import socketService from '../services/socketService';
-import { API_ENDPOINTS } from '../config/api';
-import { 
+// Change C / 階段 3.2-3.6：移除取消預約 UI + 死碼 handleCancelQueue/confirmCancelQueue/confirmDialog
+// API_ENDPOINTS import 一併移除（confirmCancelQueue 是唯一 caller）
+import {
   formatMinguoDate
 } from '../utils/calendarConverter';
 
@@ -56,14 +58,8 @@ const StatusPage = () => {
     open: false,
     record: null
   });
-  
-  // 確認對話框狀態
-  const [confirmDialog, setConfirmDialog] = useState({
-    open: false,
-    title: '',
-    message: '',
-    onConfirm: null
-  });
+
+  // Change C / 階段 3.5：移除 confirmDialog state（唯一 caller 是已被移除的取消預約流程）
 
   // 獲取系統設定以獲取每位客戶預估處理時間
   useEffect(() => {
@@ -115,59 +111,9 @@ const StatusPage = () => {
     });
   };
 
-  // 取消預約
-  const handleCancelQueue = (record) => {
-    setConfirmDialog({
-      open: true,
-      title: '確認取消預約',
-      message: `確定要取消編號 ${record.queueNumber} 的預約嗎？此操作無法復原。`,
-      onConfirm: () => confirmCancelQueue(record)
-    });
-  };
-
-  const confirmCancelQueue = async (record) => {
-    try {
-      const response = await fetch(`${API_ENDPOINTS.QUEUE}/cancel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // D1：用記錄 _id 定位（唯一、永不漂移），不再用會漂移的 queueNumber
-          id: record._id,
-          name: record.name,
-          phone: record.phone
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        dispatch(showAlert({
-          message: '預約取消成功',
-          severity: 'success'
-        }));
-        setDetailsDialog({ open: false, record: null, mode: 'view' });
-        // 重新查詢狀態以更新顯示
-        if (searchName || searchPhone) {
-          dispatch(searchQueueByNameAndPhone({ 
-            name: searchName.trim() || undefined, 
-            phone: searchPhone.trim() || undefined 
-          }));
-        }
-      } else {
-        dispatch(showAlert({
-          message: data.message || '取消預約失敗',
-          severity: 'error'
-        }));
-      }
-    } catch (error) {
-      dispatch(showAlert({
-        message: '取消預約時發生錯誤',
-        severity: 'error'
-      }));
-    }
-    setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
-  };
-
+  // Change C / 階段 3.2-3.3：移除 handleCancelQueue + confirmCancelQueue
+  // 取消候位接口（POST /queue/cancel）仍保留供 admin 路徑使用（Change A `_id`+身分驗證）
+  // 客戶要取消候位現在需透過後台管理員人工處理（D5+D6 決策）
 
   // 格式化諮詢主題顯示
   const formatConsultationTopics = (topics, otherDetails = '') => {
@@ -745,45 +691,14 @@ const StatusPage = () => {
           )}
         </DialogContent>
         <DialogActions>
-          {['waiting', 'processing'].includes(detailsDialog.record?.status) && (
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={() => handleCancelQueue(detailsDialog.record)}
-            >
-              取消預約
-            </Button>
-          )}
+          {/* Change C / 階段 3.1：移除「取消預約」按鈕（D5 決策：客戶取消需透過後台管理員處理） */}
           <Button onClick={() => setDetailsDialog({ open: false, record: null })}>
             關閉
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* 確認對話框 */}
-      <Dialog
-        open={confirmDialog.open}
-        onClose={() => setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })}
-      >
-        <DialogTitle>{confirmDialog.title}</DialogTitle>
-        <DialogContent>
-          <Typography>{confirmDialog.message}</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })}
-          >
-            取消
-          </Button>
-          <Button 
-            variant="contained" 
-            color="error"
-            onClick={confirmDialog.onConfirm}
-          >
-            確認
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Change C / 階段 3.6：移除 ConfirmDialog render（唯一 caller 是已移除的 handleCancelQueue） */}
     </Container>
   );
 };

@@ -31,6 +31,8 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+// Change C / 階段 2.3：主客戶段改用共用 BirthdayPicker 元件統一 lunar-only UI
+import BirthdayPicker from './shared/BirthdayPicker';
 import { registerQueue, resetRegistration, getQueueStatus, getMaxOrderIndex } from '../redux/slices/queueSlice';
 import { showAlert } from '../redux/slices/uiSlice';
 import {
@@ -42,6 +44,7 @@ import {
 } from '../utils/calendarConverter';
 
 // 表單初始值
+// Change C / 階段 2.3：default calendarType 改為 'lunar'（全系統 lunar-only，對應 D2 決策）
 const initialFormData = {
   email: '',
   name: '',
@@ -50,7 +53,7 @@ const initialFormData = {
   birthYear: '',
   birthMonth: '',
   birthDay: '',
-  calendarType: 'gregorian',
+  calendarType: 'lunar',
   lunarIsLeapMonth: false,
   addresses: [{ address: '', addressType: 'home' }],
   familyMembers: [],
@@ -420,6 +423,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
   };
 
   // 新增家人
+  // Change C / 階段 2.3：default calendarType 改為 'lunar'（全系統 lunar-only）
   const addFamilyMember = () => {
     setFormData({
       ...formData,
@@ -429,7 +433,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
         birthYear: '',
         birthMonth: '',
         birthDay: '',
-        calendarType: 'gregorian',
+        calendarType: 'lunar',
         lunarIsLeapMonth: false,
         address: '',
         addressType: 'home'
@@ -480,39 +484,28 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
         }));
         
         // 如果沒有出生日期，設置預設值
+        // Change C / 階段 2.3：default calendarType 改 'lunar'（全系統 lunar-only）
         if (!submitData.birthYear) {
           submitData.birthYear = '80'; // 民國80年
           submitData.birthMonth = '1';
           submitData.birthDay = '1';
-          submitData.calendarType = 'gregorian';
+          submitData.calendarType = 'lunar';
         }
       }
       
-      // 轉換日期欄位格式以符合後端期望
-      if (submitData.calendarType === 'gregorian') {
-        // 處理國曆日期 - 轉換民國年為西元年
-        const { minguoYear } = autoConvertToMinguo(parseInt(submitData.birthYear));
-        submitData.gregorianBirthYear = convertMinguoForStorage(minguoYear);
-        submitData.gregorianBirthMonth = parseInt(submitData.birthMonth);
-        submitData.gregorianBirthDay = parseInt(submitData.birthDay);
-        
-        // 如果有轉換的農曆日期，一併加入
-        if (submitData.convertedLunarYear) {
-          const { minguoYear: lunarMinguoYear } = autoConvertToMinguo(submitData.convertedLunarYear);
-          submitData.lunarBirthYear = convertMinguoForStorage(lunarMinguoYear);
-          submitData.lunarBirthMonth = submitData.convertedLunarMonth;
-          submitData.lunarBirthDay = submitData.convertedLunarDay;
-          submitData.lunarIsLeapMonth = submitData.convertedLunarIsLeapMonth || false;
-        }
-      } else if (submitData.calendarType === 'lunar') {
-        // 處理農曆日期 - 轉換民國年為西元年
+      // Change C / 階段 2.3：簡化提交流程，全系統 lunar-only 只走 lunar 路徑
+      // 對應 D2 決策：default calendarType='lunar'，不再有 gregorian 分支
+      // 後端 autoFillDates 會自動把 lunarBirth* 轉成 gregorianBirth* 寫進 DB（calendarConverter line 134-138）
+      // 仍帶 convertedGregorian*（autoConvertDate 算出來的前端 hint，後端會以自己的 autoFillDates 為準）
+      if (submitData.birthYear) {
+        // 主客戶：lunar 路徑 — 轉換民國年為西元年（autoConvertToMinguo round-trip 安全）
         const { minguoYear } = autoConvertToMinguo(parseInt(submitData.birthYear));
         submitData.lunarBirthYear = convertMinguoForStorage(minguoYear);
         submitData.lunarBirthMonth = parseInt(submitData.birthMonth);
         submitData.lunarBirthDay = parseInt(submitData.birthDay);
         submitData.lunarIsLeapMonth = submitData.lunarIsLeapMonth || false;
-        
-        // 如果有轉換的國曆日期，一併加入
+
+        // 前端 autoConvertDate 算出的國曆 hint，一併送（後端會 verify/覆寫）
         if (submitData.convertedGregorianYear) {
           const { minguoYear: gregorianMinguoYear } = autoConvertToMinguo(submitData.convertedGregorianYear);
           submitData.gregorianBirthYear = convertMinguoForStorage(gregorianMinguoYear);
@@ -520,36 +513,22 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
           submitData.gregorianBirthDay = submitData.convertedGregorianDay;
         }
       }
-      
+
       // 處理家人數據的日期欄位
+      // Change C / 階段 2.3：家人也只走 lunar 路徑
       if (submitData.familyMembers && submitData.familyMembers.length > 0) {
         submitData.familyMembers = submitData.familyMembers.map(member => {
           const processedMember = { ...member };
-          
-          if (member.calendarType === 'gregorian') {
-            // 處理國曆日期 - 轉換民國年為西元年
-            const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear));
-            processedMember.gregorianBirthYear = convertMinguoForStorage(minguoYear);
-            processedMember.gregorianBirthMonth = parseInt(member.birthMonth);
-            processedMember.gregorianBirthDay = parseInt(member.birthDay);
-            
-            // 如果有轉換的農曆日期，一併加入
-            if (member.convertedLunarYear) {
-              const { minguoYear: lunarMinguoYear } = autoConvertToMinguo(member.convertedLunarYear);
-              processedMember.lunarBirthYear = convertMinguoForStorage(lunarMinguoYear);
-              processedMember.lunarBirthMonth = member.convertedLunarMonth;
-              processedMember.lunarBirthDay = member.convertedLunarDay;
-              processedMember.lunarIsLeapMonth = member.convertedLunarIsLeapMonth || false;
-            }
-          } else if (member.calendarType === 'lunar') {
-            // 處理農曆日期 - 轉換民國年為西元年
+
+          if (member.birthYear) {
+            // 家人：lunar 路徑
             const { minguoYear } = autoConvertToMinguo(parseInt(member.birthYear));
             processedMember.lunarBirthYear = convertMinguoForStorage(minguoYear);
             processedMember.lunarBirthMonth = parseInt(member.birthMonth);
             processedMember.lunarBirthDay = parseInt(member.birthDay);
             processedMember.lunarIsLeapMonth = member.lunarIsLeapMonth || false;
-            
-            // 如果有轉換的國曆日期，一併加入
+
+            // 前端 hint：國曆轉換結果
             if (member.convertedGregorianYear) {
               const { minguoYear: gregorianMinguoYear } = autoConvertToMinguo(member.convertedGregorianYear);
               processedMember.gregorianBirthYear = convertMinguoForStorage(gregorianMinguoYear);
@@ -557,7 +536,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
               processedMember.gregorianBirthDay = member.convertedGregorianDay;
             }
           }
-          
+
           // 清理不需要的欄位
           delete processedMember.birthYear;
           delete processedMember.birthMonth;
@@ -570,7 +549,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
           delete processedMember.convertedGregorianYear;
           delete processedMember.convertedGregorianMonth;
           delete processedMember.convertedGregorianDay;
-          
+
           return processedMember;
         });
       }
@@ -741,98 +720,74 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
           </FormControl>
         </Grid>
 
-        {/* 出生日期 */}
+        {/* 出生日期
+            Change C / 階段 2.3：改用共用 BirthdayPicker 元件（default lunarOnly=true）
+            - 移除「國曆/農曆」切換 RadioGroup（D1 決策：BirthdayPicker 內隱藏）
+            - 移除三個 TextField（年/月/日）改用 BirthdayPicker 內年月日下拉
+            - 移除「閏月」獨立 Checkbox（BirthdayPicker 內部含閏月勾選框）
+            - 對應 D2 決策：default calendarType='lunar' 已在 initialFormData 改好
+            - 對應 D3 決策：主客戶段也用 BirthdayPicker 共用元件 */}
         {!isSimplifiedMode && (
           <>
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main', mt: 2 }}>
-                出生日期
+                農曆出生日期
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                請填寫農曆生日（系統會自動換算國曆並計算生肖）
               </Typography>
             </Grid>
 
             <Grid item xs={12}>
-              <FormControl component="fieldset">
-                <FormLabel component="legend">曆法類型</FormLabel>
-                <RadioGroup
-                  row
-                  name="calendarType"
-                  value={formData.calendarType}
-                  onChange={handleChange}
-                >
-                  <FormControlLabel value="gregorian" control={<Radio />} label="國曆" />
-                  <FormControlLabel value="lunar" control={<Radio />} label="農曆" />
-                </RadioGroup>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} sm={4}>
-              <TextField
-                required
-                fullWidth
-                id="birthYear"
-                name="birthYear"
-                label={formData.calendarType === 'gregorian' ? '出生年 (民國或西元)' : '農曆出生年'}
-                value={formData.birthYear}
-                onChange={handleChange}
-                error={Boolean(formErrors.birthYear)}
-                helperText={formErrors.birthYear}
+              <BirthdayPicker
+                year={formData.birthYear || ''}
+                month={formData.birthMonth || ''}
+                day={formData.birthDay || ''}
+                isLeapMonth={formData.lunarIsLeapMonth || false}
+                onChange={({ year, month, day, isLeapMonth }) => {
+                  // Change C / 階段 2.3：永遠 lunar，calendarType 不從 onChange 解構（BirthdayPicker 內部恆為 'lunar'）
+                  // 批次 setState 觸發 autoConvertDate 補上 convertedGregorian*（給後端提交用）
+                  let newFormData = {
+                    ...formData,
+                    birthYear: year,
+                    birthMonth: month,
+                    birthDay: day,
+                    lunarIsLeapMonth: isLeapMonth,
+                    calendarType: 'lunar'
+                  };
+                  // 清掉舊轉換結果（讓 autoConvertDate 重算）
+                  delete newFormData.convertedLunarYear;
+                  delete newFormData.convertedLunarMonth;
+                  delete newFormData.convertedLunarDay;
+                  delete newFormData.convertedLunarIsLeapMonth;
+                  delete newFormData.convertedGregorianYear;
+                  delete newFormData.convertedGregorianMonth;
+                  delete newFormData.convertedGregorianDay;
+                  newFormData = autoConvertDate(newFormData);
+                  setFormData(newFormData);
+                  // 清除錯誤
+                  const newErrors = { ...formErrors };
+                  delete newErrors.birthYear;
+                  delete newErrors.birthMonth;
+                  delete newErrors.birthDay;
+                  setFormErrors(newErrors);
+                }}
+                errors={{
+                  year: formErrors.birthYear,
+                  month: formErrors.birthMonth,
+                  day: formErrors.birthDay
+                }}
               />
             </Grid>
 
-            <Grid item xs={12} sm={4}>
-              <TextField
-                required
-                fullWidth
-                id="birthMonth"
-                name="birthMonth"
-                label="出生月"
-                type="number"
-                inputProps={{ min: 1, max: 12 }}
-                value={formData.birthMonth}
-                onChange={handleChange}
-                error={Boolean(formErrors.birthMonth)}
-                helperText={formErrors.birthMonth}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={4}>
-              <TextField
-                required
-                fullWidth
-                id="birthDay"
-                name="birthDay"
-                label="出生日"
-                type="number"
-                inputProps={{ min: 1, max: 31 }}
-                value={formData.birthDay}
-                onChange={handleChange}
-                error={Boolean(formErrors.birthDay)}
-                helperText={formErrors.birthDay}
-              />
-            </Grid>
-
-            {formData.calendarType === 'lunar' && (
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={formData.lunarIsLeapMonth}
-                      onChange={(e) => setFormData({ ...formData, lunarIsLeapMonth: e.target.checked })}
-                      name="lunarIsLeapMonth"
-                    />
-                  }
-                  label="閏月"
-                />
-              </Grid>
-            )}
-
-            {/* 生肖顯示 */}
+            {/* 生肖顯示
+                Change C / 階段 2.3：lunar-only 下 birthYear 已是農曆年（西元），直接拿來算生肖 */}
             {(() => {
-              const lunarYear = formData.calendarType === 'gregorian' 
-                ? formData.convertedLunarYear 
-                : (formData.birthYear ? convertMinguoForStorage(autoConvertToMinguo(parseInt(formData.birthYear)).minguoYear) : null);
+              const lunarYear = formData.birthYear
+                ? convertMinguoForStorage(autoConvertToMinguo(parseInt(formData.birthYear)).minguoYear)
+                : null;
               const zodiac = lunarYear ? calculateZodiac(lunarYear) : null;
-              
+
               return zodiac && (
                 <Grid item xs={12}>
                   <TextField
@@ -981,72 +936,54 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
                         </FormControl>
                       </Grid>
 
-                      {/* 生日曆法選擇 */}
+                      {/* 家人出生日期
+                          Change C / 階段 2.3：移除曆法切換 + 三個 TextField + 閏月 Checkbox
+                          改用共用 BirthdayPicker（default lunarOnly=true）
+                          對應 D1+D2+D3 決策 */}
                       <Grid item xs={12}>
-                        <FormControl component="fieldset">
-                          <FormLabel component="legend">生日曆法</FormLabel>
-                          <RadioGroup
-                            row
-                            value={member.calendarType || 'gregorian'}
-                            onChange={(e) => handleFamilyMemberChange(index, 'calendarType', e.target.value)}
-                          >
-                            <FormControlLabel value="gregorian" control={<Radio size="small" />} label="國曆（西元/民國）" />
-                            <FormControlLabel value="lunar" control={<Radio size="small" />} label="農曆" />
-                          </RadioGroup>
-                        </FormControl>
-                      </Grid>
-
-                      {/* 出生年月日 */}
-                      <Grid item xs={4}>
-                        <TextField
-                          fullWidth
-                          label={`出生年 (${(member.calendarType || 'gregorian') === 'gregorian' ? '西元' : '民國'})`}
-                          type="number"
-                          value={member.birthYear}
-                          onChange={(e) => handleFamilyMemberChange(index, 'birthYear', e.target.value)}
-                          error={Boolean(formErrors[`familyMembers.${index}.birthYear`])}
-                          helperText={formErrors[`familyMembers.${index}.birthYear`]}
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          農曆出生日期
+                        </Typography>
+                        <BirthdayPicker
+                          year={member.birthYear || ''}
+                          month={member.birthMonth || ''}
+                          day={member.birthDay || ''}
+                          isLeapMonth={member.lunarIsLeapMonth || false}
+                          onChange={({ year, month, day, isLeapMonth }) => {
+                            // Change C / 階段 2.3：永遠 lunar，批次更新 family member 多欄位
+                            const newFamilyMembers = [...formData.familyMembers];
+                            newFamilyMembers[index] = {
+                              ...newFamilyMembers[index],
+                              birthYear: year,
+                              birthMonth: month,
+                              birthDay: day,
+                              lunarIsLeapMonth: isLeapMonth,
+                              calendarType: 'lunar'
+                            };
+                            // 清舊轉換值讓 autoConvertFamilyMemberDate 重算
+                            delete newFamilyMembers[index].convertedLunarYear;
+                            delete newFamilyMembers[index].convertedLunarMonth;
+                            delete newFamilyMembers[index].convertedLunarDay;
+                            delete newFamilyMembers[index].convertedLunarIsLeapMonth;
+                            delete newFamilyMembers[index].convertedGregorianYear;
+                            delete newFamilyMembers[index].convertedGregorianMonth;
+                            delete newFamilyMembers[index].convertedGregorianDay;
+                            newFamilyMembers[index] = autoConvertFamilyMemberDate(newFamilyMembers[index]);
+                            setFormData({ ...formData, familyMembers: newFamilyMembers });
+                            // 清除錯誤
+                            const newErrors = { ...formErrors };
+                            delete newErrors[`familyMembers.${index}.birthYear`];
+                            delete newErrors[`familyMembers.${index}.birthMonth`];
+                            delete newErrors[`familyMembers.${index}.birthDay`];
+                            setFormErrors(newErrors);
+                          }}
+                          errors={{
+                            year: formErrors[`familyMembers.${index}.birthYear`],
+                            month: formErrors[`familyMembers.${index}.birthMonth`],
+                            day: formErrors[`familyMembers.${index}.birthDay`]
+                          }}
                         />
                       </Grid>
-                      <Grid item xs={4}>
-                        <TextField
-                          fullWidth
-                          label="出生月"
-                          type="number"
-                          inputProps={{ min: 1, max: 12 }}
-                          value={member.birthMonth}
-                          onChange={(e) => handleFamilyMemberChange(index, 'birthMonth', e.target.value)}
-                          error={Boolean(formErrors[`familyMembers.${index}.birthMonth`])}
-                          helperText={formErrors[`familyMembers.${index}.birthMonth`]}
-                        />
-                      </Grid>
-                      <Grid item xs={4}>
-                        <TextField
-                          fullWidth
-                          label="出生日"
-                          type="number"
-                          inputProps={{ min: 1, max: 31 }}
-                          value={member.birthDay}
-                          onChange={(e) => handleFamilyMemberChange(index, 'birthDay', e.target.value)}
-                          error={Boolean(formErrors[`familyMembers.${index}.birthDay`])}
-                          helperText={formErrors[`familyMembers.${index}.birthDay`]}
-                        />
-                      </Grid>
-
-                      {/* 農曆閏月選項 */}
-                      {(member.calendarType || 'gregorian') === 'lunar' && (
-                        <Grid item xs={12}>
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                checked={member.lunarIsLeapMonth || false}
-                                onChange={(e) => handleFamilyMemberChange(index, 'lunarIsLeapMonth', e.target.checked)}
-                              />
-                            }
-                            label="閏月"
-                          />
-                        </Grid>
-                      )}
 
                       {/* 地址同上核取方框 */}
                       <Grid item xs={12}>

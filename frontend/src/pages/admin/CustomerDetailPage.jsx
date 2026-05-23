@@ -78,22 +78,15 @@ const CustomerDetailPage = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const initEditData = useCallback((cust) => {
-    // 決定初始曆法：優先以 gregorian 有值為準
-    const hasGregorian = cust.gregorianBirthYear || cust.gregorianBirthMonth || cust.gregorianBirthDay;
-    const hasLunar = cust.lunarBirthYear || cust.lunarBirthMonth || cust.lunarBirthDay;
-    let birthCalendarType = 'gregorian';
-    let birthYear = '', birthMonth = '', birthDay = '';
-    if (hasGregorian) {
-      birthCalendarType = 'gregorian';
-      birthYear = cust.gregorianBirthYear || '';
-      birthMonth = cust.gregorianBirthMonth || '';
-      birthDay = cust.gregorianBirthDay || '';
-    } else if (hasLunar) {
-      birthCalendarType = 'lunar';
-      birthYear = cust.lunarBirthYear || '';
-      birthMonth = cust.lunarBirthMonth || '';
-      birthDay = cust.lunarBirthDay || '';
-    }
+    // Change C / 階段 5 sub-agent 審閱 BLOCKER 級資料污染修正：
+    // 原邏輯讀既有 gregorian-only 客戶會 set birthCalendarType='gregorian' + birthYear=gregorianBirthYear，
+    // UI 雖被 lunarOnly 強制顯示 lunar，但 handleSave line 148 直接把 editData.birthYear 寫進 lunarBirthYear
+    // → 國曆值被當農曆寫回 DB → 資料污染。
+    // 修法：永遠 birthCalendarType='lunar'，讀取時優先取 lunarBirth*，若無則設空（讓管理員重填農曆）。
+    const birthCalendarType = 'lunar';
+    const birthYear = cust.lunarBirthYear || '';
+    const birthMonth = cust.lunarBirthMonth || '';
+    const birthDay = cust.lunarBirthDay || '';
 
     setEditData({
       name: cust.name || '',
@@ -142,18 +135,12 @@ const CustomerDetailPage = () => {
         addresses: editData.addresses
       };
 
-      // 生日：轉換為 gregorian/lunar 欄位傳送
+      // Change C / 階段 2.6（擴大範圍補修）：提交分支簡化 — 移除 gregorian 分支，只走 lunar
       if (editData.birthYear && editData.birthMonth && editData.birthDay) {
-        if (editData.birthCalendarType === 'gregorian') {
-          data.gregorianBirthYear = parseInt(editData.birthYear);
-          data.gregorianBirthMonth = parseInt(editData.birthMonth);
-          data.gregorianBirthDay = parseInt(editData.birthDay);
-        } else {
-          data.lunarBirthYear = parseInt(editData.birthYear);
-          data.lunarBirthMonth = parseInt(editData.birthMonth);
-          data.lunarBirthDay = parseInt(editData.birthDay);
-          data.lunarIsLeapMonth = editData.lunarIsLeapMonth || false;
-        }
+        data.lunarBirthYear = parseInt(editData.birthYear);
+        data.lunarBirthMonth = parseInt(editData.birthMonth);
+        data.lunarBirthDay = parseInt(editData.birthDay);
+        data.lunarIsLeapMonth = editData.lunarIsLeapMonth || false;
       }
 
       const updated = await updateCustomer(token, id, data);

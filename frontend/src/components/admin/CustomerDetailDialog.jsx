@@ -58,9 +58,11 @@ const CustomerDetailDialog = ({
   onCompleteFromDialog,
   onDeleteCustomer
 }) => {
-  // 出生日期曆法切換（本地 state，預設國曆）
-  const [birthCalendarType, setBirthCalendarType] = useState('gregorian');
-  // 家人出生日期曆法切換
+  // Change C / 階段 2.4：後台 lunar-only（v2 反饋更新）
+  // birthCalendarType / familyBirthCalendarTypes 改成永遠 'lunar'（minimum 改動，state 留著但寫死）
+  // BirthdayPicker 不傳 lunarOnly 即 default true 自動隱藏切換、強制 lunar
+  // onChange callback 內的 calendarType==='gregorian' 分支保留作不破壞（lunarOnly 下永遠走 lunar 分支）
+  const [birthCalendarType, setBirthCalendarType] = useState('lunar');
   const [familyBirthCalendarTypes, setFamilyBirthCalendarTypes] = useState({});
   const formatConsultationTopics = (topics, otherDetails = '') => {
     if (!topics || topics.length === 0) return '無';

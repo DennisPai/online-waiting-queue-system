@@ -26,7 +26,9 @@ const CustomerCreatePage = () => {
     gender: '',
     tags: '',
     notes: '',
-    birthCalendarType: 'gregorian',
+    // Change C / 階段 2.6（擴大範圍補修）：CustomerCreatePage default 改 lunar
+    // BirthdayPicker default lunarOnly=true 會強制鎖農曆，傳給它的 calendarType 永遠是 'lunar'
+    birthCalendarType: 'lunar',
     birthYear: '',
     birthMonth: '',
     birthDay: '',
@@ -56,16 +58,11 @@ const CustomerCreatePage = () => {
         addresses: formData.addresses.filter(a => a.address?.trim())
       };
       if (formData.birthYear && formData.birthMonth && formData.birthDay) {
-        if (formData.birthCalendarType === 'gregorian') {
-          data.gregorianBirthYear = parseInt(formData.birthYear);
-          data.gregorianBirthMonth = parseInt(formData.birthMonth);
-          data.gregorianBirthDay = parseInt(formData.birthDay);
-        } else {
-          data.lunarBirthYear = parseInt(formData.birthYear);
-          data.lunarBirthMonth = parseInt(formData.birthMonth);
-          data.lunarBirthDay = parseInt(formData.birthDay);
-          data.lunarIsLeapMonth = formData.lunarIsLeapMonth || false;
-        }
+        // Change C / 階段 2.6（擴大範圍補修）：提交分支簡化 — 移除 gregorian 分支，只走 lunar
+        data.lunarBirthYear = parseInt(formData.birthYear);
+        data.lunarBirthMonth = parseInt(formData.birthMonth);
+        data.lunarBirthDay = parseInt(formData.birthDay);
+        data.lunarIsLeapMonth = formData.lunarIsLeapMonth || false;
       }
       const created = await createCustomer(token, data);
       const newId = created?._id || created?.id;

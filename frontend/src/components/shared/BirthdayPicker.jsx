@@ -5,7 +5,8 @@
  * Props:
  *   year, month, day        — 目前選取值（西元年）
  *   isLeapMonth             — 是否閏月（農曆時用）
- *   calendarType            — 'gregorian' | 'lunar'
+ *   calendarType            — 'gregorian' | 'lunar'（lunarOnly=true 時會被內部強制覆蓋成 'lunar'）
+ *   lunarOnly               — boolean，default true（全系統 lunar-only）。true 時隱藏切換按鈕、強制 calendarType='lunar'
  *   onChange({ year, month, day, isLeapMonth, calendarType }) — 有任何值改變時呼叫
  *   disabled                — boolean
  *   size                    — 'small' | 'medium'（傳給 Select）
@@ -39,33 +40,43 @@ const BirthdayPicker = ({
   day = '',
   isLeapMonth = false,
   calendarType = 'gregorian',
+  // Change C / 階段 2.1：lunarOnly default true 對應全系統 lunar-only
+  // 隱藏「國曆/農曆」切換、強制內部 effective calendarType='lunar'
+  // 顯式傳 lunarOnly={false} 時行為 100% 不變（雙模式邏輯保留作未來特殊需求彈性）
+  lunarOnly = true,
   onChange,
   disabled = false,
   size = 'small',
   errors = {}
 }) => {
+  // Change C / 階段 2.1：lunarOnly=true 時內部 effective calendarType 永遠為 'lunar'
+  // 不論外部 props 傳什麼 calendarType 都被覆蓋
+  const effectiveCalendarType = lunarOnly ? 'lunar' : calendarType;
+
   // 年份選項（民國 1~115）
   const yearOptions = useMemo(() => getBirthYearOptions(), []);
   // 月份選項（1~12）
   const monthOptions = useMemo(() => getMonthOptions(), []);
-  // 日期選項（依年月動態）
+  // 日期選項（依年月動態，effective 曆法）
   const dayOptions = useMemo(
-    () => getDayOptions(year || null, month || null, calendarType, isLeapMonth),
-    [year, month, calendarType, isLeapMonth]
+    () => getDayOptions(year || null, month || null, effectiveCalendarType, isLeapMonth),
+    [year, month, effectiveCalendarType, isLeapMonth]
   );
 
   // 是否有閏月可選
   const leapMonthAvailable = useMemo(() => {
-    if (calendarType !== 'lunar' || !year || !month) return false;
+    if (effectiveCalendarType !== 'lunar' || !year || !month) return false;
     return hasLeapMonth(year, month);
-  }, [calendarType, year, month]);
+  }, [effectiveCalendarType, year, month]);
 
   const emit = (patch) => {
-    onChange && onChange({ year, month, day, isLeapMonth, calendarType, ...patch });
+    // Change C / 階段 2.1：lunarOnly=true 時 onChange 永遠帶 calendarType: 'lunar'
+    onChange && onChange({ year, month, day, isLeapMonth, calendarType: effectiveCalendarType, ...patch });
   };
 
   const handleCalendarChange = (_, newType) => {
     if (!newType) return; // 不允許取消選取
+    if (lunarOnly) return; // Change C：lunarOnly 模式不允許切換（雖然按鈕已隱藏，多一層防呆）
     // 切換曆法時清除日期（避免不合法值殘留）
     onChange && onChange({ year: '', month: '', day: '', isLeapMonth: false, calendarType: newType });
   };
@@ -77,18 +88,20 @@ const BirthdayPicker = ({
 
   return (
     <Box>
-      {/* 國曆 / 農曆 切換 */}
-      <ToggleButtonGroup
-        value={calendarType}
-        exclusive
-        onChange={handleCalendarChange}
-        size="small"
-        disabled={disabled}
-        sx={{ mb: 1.5 }}
-      >
-        <ToggleButton value="gregorian">國曆</ToggleButton>
-        <ToggleButton value="lunar">農曆</ToggleButton>
-      </ToggleButtonGroup>
+      {/* 國曆 / 農曆 切換（Change C / 階段 2.1：lunarOnly=true 時隱藏，保留 lunarOnly=false 雙模式） */}
+      {!lunarOnly && (
+        <ToggleButtonGroup
+          value={effectiveCalendarType}
+          exclusive
+          onChange={handleCalendarChange}
+          size="small"
+          disabled={disabled}
+          sx={{ mb: 1.5 }}
+        >
+          <ToggleButton value="gregorian">國曆</ToggleButton>
+          <ToggleButton value="lunar">農曆</ToggleButton>
+        </ToggleButtonGroup>
+      )}
 
       {/* 年月日 + 閏月 */}
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -128,8 +141,8 @@ const BirthdayPicker = ({
           {errors.day && <FormHelperText>{errors.day}</FormHelperText>}
         </FormControl>
 
-        {/* 閏月 checkbox（農曆時才顯示） */}
-        {calendarType === 'lunar' && (
+        {/* 閏月 checkbox（農曆時才顯示；lunarOnly=true 時恆顯示） */}
+        {effectiveCalendarType === 'lunar' && (
           <FormControlLabel
             control={
               <Checkbox
