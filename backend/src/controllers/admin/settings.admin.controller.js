@@ -334,3 +334,89 @@ exports.recalcCounters = async (req, res) => {
     res.status(500).json({ success: false, message: '伺服器內部錯誤', error: process.env.NODE_ENV === 'development' ? error.message : {} });
   }
 };
+
+// Change B / Phase 7.6：開發/驗證用 — 從 snapshot JSON 還原 waiting_records
+//
+// 用途：Phase 7.6 end-session 是破壞性操作會清空 active queue，需要還原機制。
+// snapshot 由 Phase 7.6.F1 前置動作以 raw collection.find({}) export 成 JSON。
+// restore 用 raw collection.insertMany 重新 insert（繞過 mongoose middleware /
+// 重新分配 _id，確保 100% 還原原始狀態）。
+//
+// ⚠️ 限制：只能用在「DB 已被清空」的環境（end-session 後）。若 collection 仍有
+// 文件且帶相同 _id，insertMany 會撞 duplicate key（這是 safety feature 防誤觸發）。
+// 不在 production 環境啟用（admin 認證 + dev intent 明確）。
+//
+// 用法：
+//   POST /admin/dev/restore-waiting-records?mode=dry-run （只看 snapshot 摘要）
+//   POST /admin/dev/restore-waiting-records?mode=execute body={records:[...raw documents]}
+exports.restoreWaitingRecords = async (req, res) => {
+  try {
+    const mode = req.query.mode === 'execute' ? 'execute' : 'dry-run';
+    const records = req.body?.records;
+
+    if (!Array.isArray(records)) {
+      return res.status(400).json({
+        success: false,
+        message: 'body.records 必須是 array of raw waiting_record documents（含 _id）'
+      });
+    }
+
+    const summary = {
+      mode,
+      snapshotCount: records.length,
+      activeBefore: await WaitingRecord.countDocuments({ status: { $in: ['waiting', 'processing'] } }),
+      cancelledBefore: await WaitingRecord.countDocuments({ status: 'cancelled' }),
+      statusDistribution: records.reduce((acc, r) => {
+        acc[r.status || 'unknown'] = (acc[r.status || 'unknown'] || 0) + 1;
+        return acc;
+      }, {})
+    };
+
+    if (mode === 'dry-run') {
+      return res.status(200).json({
+        success: true,
+        message: 'dry-run — 未寫入；mode=execute 才會 insert',
+        data: summary
+      });
+    }
+
+    // execute：raw insertMany 還原（_id 等 ObjectId 字串要轉回 ObjectId 才能 insert）
+    const mongoose = require('mongoose');
+    const docsToInsert = records.map(r => {
+      const cloned = { ...r };
+      if (cloned._id && typeof cloned._id === 'string') {
+        cloned._id = new mongoose.Types.ObjectId(cloned._id);
+      }
+      if (cloned.completedAt && typeof cloned.completedAt === 'string') {
+        cloned.completedAt = new Date(cloned.completedAt);
+      }
+      if (cloned.createdAt && typeof cloned.createdAt === 'string') {
+        cloned.createdAt = new Date(cloned.createdAt);
+      }
+      if (cloned.updatedAt && typeof cloned.updatedAt === 'string') {
+        cloned.updatedAt = new Date(cloned.updatedAt);
+      }
+      return cloned;
+    });
+
+    const result = await WaitingRecord.collection.insertMany(docsToInsert, { ordered: false });
+    logger.info(`restoreWaitingRecords by ${req.user?.id || 'unknown'}: insert ${result.insertedCount} records`);
+
+    summary.insertedCount = result.insertedCount;
+    summary.activeAfter = await WaitingRecord.countDocuments({ status: { $in: ['waiting', 'processing'] } });
+    summary.cancelledAfter = await WaitingRecord.countDocuments({ status: 'cancelled' });
+
+    res.status(200).json({
+      success: true,
+      message: `已還原 ${result.insertedCount} 筆 waiting_records`,
+      data: summary
+    });
+  } catch (error) {
+    logger.error('restoreWaitingRecords 錯誤:', error);
+    res.status(500).json({
+      success: false,
+      message: '還原失敗',
+      error: error.message
+    });
+  }
+};

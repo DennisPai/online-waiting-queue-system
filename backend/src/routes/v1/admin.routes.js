@@ -59,6 +59,11 @@ router.post('/settings/reset-completed-time', adminController.resetLastCompleted
 // ?mode=dry-run （只看不改） / ?mode=execute （實際覆寫）
 router.post('/settings/recalc-counters', adminController.recalcCounters);
 
+// Change B / Phase 7.6：開發/驗證用 — 從 snapshot JSON 還原 waiting_records
+// ?mode=dry-run （只看 snapshot 摘要） / ?mode=execute （raw insertMany）
+// body: { records: [...raw waiting_record documents] }
+router.post('/dev/restore-waiting-records', adminController.restoreWaitingRecords);
+
 // 新增：活動報名區塊設定
 router.get('/settings/event-banner', adminController.getEventBanner);
 router.put('/settings/event-banner', [
