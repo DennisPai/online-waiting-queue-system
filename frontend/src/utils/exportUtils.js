@@ -367,8 +367,10 @@ const getAddressForMember = (member, customer) => {
   if (customer.addresses && customer.addresses.length > 0) {
     return customer.addresses[0].address;
   }
-  
-  return '臨時地址';
+
+  // Change B / Phase 5：原 fallback 寫死 '臨時地址' 字串會在 Excel/PDF 匯出顯示
+  // 「臨時地址」誤導使用者，跟 Change B 精神不一致；改 '' 對齊 schema default
+  return '';
 };
 
 /**

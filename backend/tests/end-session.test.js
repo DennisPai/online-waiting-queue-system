@@ -261,6 +261,80 @@ describe('結束本期 API', () => {
     expect(typeof clearAllQueue).toBe('function');
   });
 
+  // === Change B / Task 4.1.2：歸檔時 VisitRecord.familyMembers 13 欄位完整保留 ===
+  // 驗證 end-session controller 把 WaitingRecord.familyMembers 寫進 VisitRecord 時
+  // 不丟欄位（Phase 2.3 修正：原本只挑 { name, zodiac } 兩欄丟掉 11 欄）。
+  test('Change B 4.1.2：歸檔時 VisitRecord.familyMembers 完整保留 13 欄位（含 address）', async () => {
+    WaitingRecord.countDocuments
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(0);
+    // 一筆主客戶 + 一位家人「全 13 欄位都有」
+    const fullFamilyMember = {
+      name: '家人完整',
+      gender: 'female',
+      gregorianBirthYear: 80,
+      gregorianBirthMonth: 6,
+      gregorianBirthDay: 20,
+      lunarBirthYear: 80,
+      lunarBirthMonth: 5,
+      lunarBirthDay: 18,
+      lunarIsLeapMonth: false,
+      virtualAge: 42,
+      zodiac: '雞',
+      address: '家人完整地址1',
+      addressType: 'home'
+    };
+    WaitingRecord.find.mockResolvedValue([{
+      _id: 'r1', name: '主客', phone: '0912', status: 'waiting', queueNumber: 5,
+      zodiac: '龍', gender: 'male',
+      addresses: [{ address: '台北市', addressType: 'home' }],
+      familyMembers: [fullFamilyMember],
+      consultationTopics: ['body'], remarks: ''
+    }]);
+    Customer.findOne.mockResolvedValue(null);
+    let cnt = 0;
+    Customer.create.mockImplementation(() => Promise.resolve(makeCustDoc(`c${cnt++}`)));
+    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
+
+    await endSession(req, res);
+
+    // 找出主客戶（不是家人）那次 VisitRecord.create — 帶 consultationTopics 的那筆
+    const mainVisitCall = VisitRecord.create.mock.calls.find(
+      call => call[0] && Array.isArray(call[0].consultationTopics) && call[0].consultationTopics.length > 0
+    );
+    expect(mainVisitCall).toBeDefined();
+    const visitPayload = mainVisitCall[0];
+
+    // familyMembers 必須有 1 位、且 13 欄位全在（不丟）
+    expect(visitPayload.familyMembers).toHaveLength(1);
+    const archivedFm = visitPayload.familyMembers[0];
+
+    // 逐欄位驗（13 欄位）
+    expect(archivedFm.name).toBe('家人完整');
+    expect(archivedFm.gender).toBe('female');
+    expect(archivedFm.gregorianBirthYear).toBe(80);
+    expect(archivedFm.gregorianBirthMonth).toBe(6);
+    expect(archivedFm.gregorianBirthDay).toBe(20);
+    expect(archivedFm.lunarBirthYear).toBe(80);
+    expect(archivedFm.lunarBirthMonth).toBe(5);
+    expect(archivedFm.lunarBirthDay).toBe(18);
+    expect(archivedFm.lunarIsLeapMonth).toBe(false);
+    expect(archivedFm.virtualAge).toBe(42);
+    expect(archivedFm.zodiac).toBe('雞');
+    expect(archivedFm.address).toBe('家人完整地址1');
+    expect(archivedFm.addressType).toBe('home');
+
+    // 防回歸：確保 Phase 2.3 修正前的「只挑兩欄」bug 不會復發
+    // — 也就是 keys 至少要 13 個（含 address）
+    const keys = Object.keys(archivedFm);
+    expect(keys).toEqual(expect.arrayContaining([
+      'name', 'gender',
+      'gregorianBirthYear', 'gregorianBirthMonth', 'gregorianBirthDay',
+      'lunarBirthYear', 'lunarBirthMonth', 'lunarBirthDay', 'lunarIsLeapMonth',
+      'virtualAge', 'zodiac', 'address', 'addressType'
+    ]));
+  });
+
   test('歸檔失敗時不刪除候位資料', async () => {
     WaitingRecord.countDocuments
       .mockResolvedValueOnce(1)

@@ -201,4 +201,77 @@ describe('QueueService.registerQueue — 問題 2/3/4 修正邏輯', () => {
     // 驗證在閘門前 → 不應佔名額
     expect(SystemSetting.findOneAndUpdate).not.toHaveBeenCalled();
   });
+
+  // === Change B / Task 4.1.1：家人 address 端到端寫入驗證 ===
+  // 驗證點：registerQueue 接收前端送來的家人物件（純量 address）後，
+  // QueueService.processFamilyMembers + queueRepository.create 傳給
+  // mongoose 的 payload，familyMembers[0].address 是否真的帶到。
+  // 用 queueRepository.create.mock.calls[0][0] 看 payload。
+
+  test('Change B 4.1.1(a)：報名時帶完整家人含 address → create payload 完整保留 address', async () => {
+    SystemSetting.getSettings.mockResolvedValue({ simplifiedMode: true, maxOrderIndex: 100, isQueueOpen: false, minutesPerCustomer: 13, nextSessionDate: new Date('2026-06-01T00:00:00Z') });
+    SystemSetting.findOneAndUpdate.mockResolvedValue({ issuedCount: 1, maxOrderIndex: 100 });
+    queueRepository.create.mockResolvedValue(createdRecord());
+
+    const data = {
+      name: '王大頭',
+      phone: '0912345678',
+      gender: 'male',
+      addresses: [{ address: '台北市', addressType: 'home' }],
+      consultationTopics: ['body'],
+      familyMembers: [{
+        name: '王小弟',
+        gender: 'male',
+        address: '家人地址1',
+        addressType: 'home',
+        gregorianBirthYear: 90,
+        gregorianBirthMonth: 6,
+        gregorianBirthDay: 15
+      }]
+    };
+
+    await queueService.registerQueue(data);
+
+    // create 收到的 payload 必須完整保留家人 address
+    const payload = queueRepository.create.mock.calls[0][0];
+    expect(payload.familyMembers).toHaveLength(1);
+    expect(payload.familyMembers[0]).toMatchObject({
+      name: '王小弟',
+      gender: 'male',
+      address: '家人地址1',
+      addressType: 'home'
+    });
+    // 確認不是 fallback 「臨時地址」或 undefined
+    expect(payload.familyMembers[0].address).toBe('家人地址1');
+    expect(payload.familyMembers[0].address).not.toBe('臨時地址');
+  });
+
+  test('Change B 4.1.1(b)：報名時帶家人不填 address → create payload address === \'\' （不是 \'臨時地址\'）', async () => {
+    SystemSetting.getSettings.mockResolvedValue({ simplifiedMode: true, maxOrderIndex: 100, isQueueOpen: false, minutesPerCustomer: 13, nextSessionDate: new Date('2026-06-01T00:00:00Z') });
+    SystemSetting.findOneAndUpdate.mockResolvedValue({ issuedCount: 1, maxOrderIndex: 100 });
+    queueRepository.create.mockResolvedValue(createdRecord());
+
+    const data = {
+      name: '王大頭',
+      phone: '0912345678',
+      gender: 'male',
+      addresses: [{ address: '台北市', addressType: 'home' }],
+      consultationTopics: ['body'],
+      familyMembers: [{
+        name: '王沒地址',
+        gender: 'female'
+        // 故意不帶 address / addressType
+      }]
+    };
+
+    await queueService.registerQueue(data);
+
+    const payload = queueRepository.create.mock.calls[0][0];
+    expect(payload.familyMembers).toHaveLength(1);
+    // Change B Phase 3：QueueService.processFamilyMembers 把缺 address 的家人補 ''
+    // 不是補 '臨時地址'。schema default 也已改 ''。
+    expect(payload.familyMembers[0].address).toBe('');
+    expect(payload.familyMembers[0].address).not.toBe('臨時地址');
+    expect(payload.familyMembers[0].addressType).toBe('home'); // default
+  });
 });

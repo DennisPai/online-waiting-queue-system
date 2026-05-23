@@ -1,10 +1,15 @@
 const mongoose = require('mongoose');
 
 // 地址子結構
+// Change B / Phase 3：default 改 '' 不再用 '臨時地址' 預設提示字串
+// 原本 '臨時地址' 字串會讓「未填地址」的記錄在 DB 顯示成「臨時地址」，
+// 前端編輯時看到欄位有「臨時地址」會誤判「已填」、不去輸入真實地址。
+// 改 '' 後欄位為空白，前端 UI 改用 placeholder 提示。歷史已存的 '臨時地址' 字串
+// 保留不動（design.md D3 — audit trail），不做 migration 批改。
 const addressSchema = new mongoose.Schema({
   address: {
     type: String,
-    default: '臨時地址'
+    default: ''
   },
   addressType: {
     type: String,
@@ -73,9 +78,10 @@ const familyMemberSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // Change B / Phase 3：family member address default 改 '' 對齊主客戶 addressSchema
   address: {
     type: String,
-    default: '臨時地址'
+    default: ''
   },
   addressType: {
     type: String,

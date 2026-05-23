@@ -489,7 +489,9 @@ class QueueService {
       gregorianBirthMonth: 1,
       gregorianBirthDay: 1,
       phone: data.phone || '0900000000',
-      addresses: data.addresses || [{ address: '臨時地址', addressType: 'home' }]
+      // Change B / Phase 3：簡化模式 default 跟 schema default 對齊改 ''
+      // 避免在 DB 寫入「臨時地址」字串誤導 admin（schema default 已改 ''）
+      addresses: data.addresses || [{ address: '', addressType: 'home' }]
     };
 
     Object.entries(defaults).forEach(([key, value]) => {
@@ -508,7 +510,8 @@ class QueueService {
         return {
           ...member,
           gender: member.gender || 'male',
-          address: member.address || '臨時地址',
+          // Change B / Phase 3：跟 schema default '' 對齊，不寫入「臨時地址」字串
+          address: member.address || '',
           addressType: member.addressType || 'home',
           gregorianBirthYear: member.gregorianBirthYear || 80,
           gregorianBirthMonth: member.gregorianBirthMonth || 1,

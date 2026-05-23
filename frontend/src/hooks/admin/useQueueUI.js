@@ -138,6 +138,9 @@ export const useQueueUI = () => {
           familyMembers: [
             ...currentFamilyMembers,
             {
+              // Change B / Phase 1：家人地址用「純量 address」對齊 waiting-record familyMember 子 schema
+              // 原本是陣列 `addresses: [{...}]`，與 schema 不符 → 被 Mongoose strict mode 靜默丟棄
+              // → 後台新增的家人地址永遠存不進 DB。改純量後 schema 接得到。
               name: '',
               gender: 'male',
               gregorianBirthYear: '',
@@ -147,7 +150,8 @@ export const useQueueUI = () => {
               lunarBirthMonth: '',
               lunarBirthDay: '',
               lunarIsLeapMonth: false,
-              addresses: [{ address: '', addressType: 'home' }]
+              address: '',
+              addressType: 'home'
             }
           ]
         };

@@ -142,6 +142,9 @@ exports.endSession = async (req, res) => {
       processedCustomerIds.push(customer._id);
 
       // 2. 建立主客戶 VisitRecord
+      // Change B / Phase 2.3：原本歸檔時手動只挑 { name, zodiac } 兩欄位，導致家人
+      // 9 個欄位（含 address）在歸檔到 VisitRecord 時被丟掉。改成完整欄位 mapping，
+      // 對齊 visit-record familyMemberSubSchema（跟 waiting-record familyMemberSchema 100% 同步）。
       await getVisitRecord().create({
         customerId: customer._id,
         sessionDate,
@@ -151,7 +154,18 @@ exports.endSession = async (req, res) => {
         queueNumber: record.queueNumber,
         familyMembers: (record.familyMembers || []).map(fm => ({
           name: fm.name,
-          zodiac: fm.zodiac || null
+          gender: fm.gender,
+          gregorianBirthYear: fm.gregorianBirthYear,
+          gregorianBirthMonth: fm.gregorianBirthMonth,
+          gregorianBirthDay: fm.gregorianBirthDay,
+          lunarBirthYear: fm.lunarBirthYear,
+          lunarBirthMonth: fm.lunarBirthMonth,
+          lunarBirthDay: fm.lunarBirthDay,
+          lunarIsLeapMonth: fm.lunarIsLeapMonth,
+          virtualAge: fm.virtualAge,
+          zodiac: fm.zodiac,
+          address: fm.address,
+          addressType: fm.addressType
         })),
         sourceQueueId: record._id
       });

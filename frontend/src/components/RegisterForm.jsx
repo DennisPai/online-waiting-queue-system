@@ -462,7 +462,8 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
           submitData.phone = '0000000000';
         }
         if (!submitData.addresses || submitData.addresses.length === 0) {
-          submitData.addresses = [{ address: '臨時地址', addressType: 'home' }];
+          // Change B / Phase 3：跟 schema default '' 對齊，不送「臨時地址」字串
+          submitData.addresses = [{ address: '', addressType: 'home' }];
         }
         if (!submitData.consultationTopics || submitData.consultationTopics.length === 0) {
           submitData.consultationTopics = ['other'];
@@ -472,9 +473,9 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
           }
         }
         
-        // 確保地址陣列中的每個地址都有內容
+        // Change B / Phase 3：地址 fallback 改 '' 不寫入「臨時地址」字串
         submitData.addresses = submitData.addresses.map(addr => ({
-          address: addr.address || '臨時地址',
+          address: addr.address || '',
           addressType: addr.addressType || 'home'
         }));
         

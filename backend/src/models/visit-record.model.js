@@ -1,5 +1,30 @@
 const mongoose = require('mongoose');
 
+// Change B / Phase 2.2：familyMember 子 schema 用 explicit `new Schema({...}, { _id: false })`
+// 寫法跟 `waiting-record.model.js` familyMemberSchema 100% 對齊（同欄位 / 同 default / 同
+// enum / 同 _id: false）。為什麼不抽共用子 schema：design.md D2 — 避免跨 model 耦合，
+// 維護痛點靠 Phase 4.2 schema sync test + Phase 5 自我 review 防漂移。
+// 既有 archived 資料殘留的子文件 _id 不影響 read path（前端不讀 familyMember._id）。
+const familyMemberSubSchema = new mongoose.Schema({
+  name: { type: String, trim: true },
+  gender: { type: String, enum: ['male', 'female', 'other'] },
+  // 國曆出生日期
+  gregorianBirthYear: { type: Number, default: null },
+  gregorianBirthMonth: { type: Number, default: null, min: 1, max: 12 },
+  gregorianBirthDay: { type: Number, default: null, min: 1, max: 31 },
+  // 農曆出生日期
+  lunarBirthYear: { type: Number, default: null },
+  lunarBirthMonth: { type: Number, default: null, min: 1, max: 12 },
+  lunarBirthDay: { type: Number, default: null, min: 1, max: 31 },
+  lunarIsLeapMonth: { type: Boolean, default: false },
+  // 虛歲 / 生肖
+  virtualAge: { type: Number, default: null },
+  zodiac: { type: String, default: null },
+  // 地址（純量；Change B Phase 3 default 改 ''）
+  address: { type: String, default: '' },
+  addressType: { type: String, enum: ['home', 'work', 'hospital', 'other'], default: 'home' }
+}, { _id: false });
+
 const visitRecordSchema = new mongoose.Schema({
   customerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -21,10 +46,8 @@ const visitRecordSchema = new mongoose.Schema({
     default: ''
   },
   queueNumber: Number,
-  familyMembers: [{
-    name: String,
-    zodiac: String
-  }],
+  // 用上方 explicit `familyMemberSubSchema`（_id: false + 完整欄位對齊 waiting-record）
+  familyMembers: [familyMemberSubSchema],
   sourceQueueId: {
     type: mongoose.Schema.Types.ObjectId,
     default: null
