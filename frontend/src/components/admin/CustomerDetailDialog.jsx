@@ -63,7 +63,8 @@ const CustomerDetailDialog = ({
   // BirthdayPicker 不傳 lunarOnly 即 default true 自動隱藏切換、強制 lunar
   // onChange callback 內的 calendarType==='gregorian' 分支保留作不破壞（lunarOnly 下永遠走 lunar 分支）
   const [birthCalendarType, setBirthCalendarType] = useState('lunar');
-  const [familyBirthCalendarTypes, setFamilyBirthCalendarTypes] = useState({});
+  // Follow-up UI fix（懷特 5/23）：家人 BirthdayPicker 改成永遠 lunar 對齊主客戶
+  // 不再需要 familyBirthCalendarTypes state（之前 default 'gregorian' 是 bug 來源）
   const formatConsultationTopics = (topics, otherDetails = '') => {
     if (!topics || topics.length === 0) return '無';
     
