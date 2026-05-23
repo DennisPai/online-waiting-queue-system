@@ -26,8 +26,9 @@ export const formatCustomerDataForExport = (customers) => {
       '農曆出生月': customer.lunarBirthMonth || '',
       '農曆出生日': customer.lunarBirthDay || '',
       '農曆是否閏月': customer.lunarIsLeapMonth ? '是' : '否',
-      '農曆完整日期': customer.lunarBirthYear && customer.lunarBirthMonth && customer.lunarBirthDay 
-        ? `民國${customer.lunarBirthYear - 1911}年${customer.lunarBirthMonth}月${customer.lunarBirthDay}日${customer.lunarIsLeapMonth ? ' (閏月)' : ''}`
+      // Follow-up UI fix（懷特 5/23）：DB lunarBirthYear B1A 後已是民國年、不再 -1911
+      '農曆完整日期': customer.lunarBirthYear && customer.lunarBirthMonth && customer.lunarBirthDay
+        ? `民國${customer.lunarBirthYear}年${customer.lunarBirthMonth}月${customer.lunarBirthDay}日${customer.lunarIsLeapMonth ? ' (閏月)' : ''}`
         : '',
       '虛歲': customer.virtualAge ? `${customer.virtualAge} 歲` : '',
       '諮詢主題': Array.isArray(customer.consultationTopics) 
@@ -118,8 +119,9 @@ export const formatCustomerDataForExport = (customers) => {
           '家人農曆出生月': member.lunarBirthMonth || '',
           '家人農曆出生日': member.lunarBirthDay || '',
           '家人農曆是否閏月': member.lunarIsLeapMonth ? '是' : '否',
-          '家人農曆完整日期': member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay 
-            ? `民國${member.lunarBirthYear - 1911}年${member.lunarBirthMonth}月${member.lunarBirthDay}日${member.lunarIsLeapMonth ? ' (閏月)' : ''}`
+          // Follow-up UI fix（懷特 5/23）：DB lunarBirthYear B1A 後已是民國年、不再 -1911
+          '家人農曆完整日期': member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay
+            ? `民國${member.lunarBirthYear}年${member.lunarBirthMonth}月${member.lunarBirthDay}日${member.lunarIsLeapMonth ? ' (閏月)' : ''}`
             : '',
           '家人虛歲': member.virtualAge ? `${member.virtualAge} 歲` : '',
           '家人地址': member.address || '',
@@ -350,7 +352,8 @@ const formatLunarDateForTemplate = (person) => {
     return ''; // 無農曆資料則留空
   }
   
-  const minguo = person.lunarBirthYear - 1911;
+  // Follow-up UI fix（懷特 5/23）：DB lunarBirthYear B1A 後已是民國年、不再 -1911
+  const minguo = person.lunarBirthYear;
   return `民國${minguo}年${person.lunarBirthMonth}月${person.lunarBirthDay}日`;
 };
 

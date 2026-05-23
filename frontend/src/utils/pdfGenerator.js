@@ -197,7 +197,8 @@ const formatConsultationTopics = (topics, otherDetails) => {
 
 const formatLunarDate = (customer) => {
   if (!customer.lunarBirthYear) return '';
-  const minguo = customer.lunarBirthYear - 1911;
+  // Follow-up UI fix（懷特 5/23 反饋）：DB lunarBirthYear B1A 後已是民國年、不需再 -1911
+  const minguo = customer.lunarBirthYear;
   return `民國${minguo}年${customer.lunarBirthMonth || ''}月${customer.lunarBirthDay || ''}日`;
 };
 

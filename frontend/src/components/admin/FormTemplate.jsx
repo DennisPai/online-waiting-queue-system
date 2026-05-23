@@ -28,7 +28,9 @@ const formatTopics = (topics, otherDetails) => {
 
 const formatLunarDate = (row) => {
   if (!row.lunarBirthYear) return '';
-  const minguo = row.lunarBirthYear - 1911;
+  // Follow-up UI fix（懷特 5/23 反饋）：DB lunarBirthYear B1A 後已是民國年、不需再 -1911
+  // 原 `row.lunarBirthYear - 1911` = 85-1911=-1826 廢值
+  const minguo = row.lunarBirthYear;
   const leap = row.lunarIsLeapMonth ? '閏' : '';
   return `民國${minguo}年${leap}${row.lunarBirthMonth || ''}月${row.lunarBirthDay || ''}日`;
 };

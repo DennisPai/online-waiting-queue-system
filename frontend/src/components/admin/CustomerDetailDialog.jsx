@@ -36,7 +36,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
-import { formatMinguoDate, minguoToGregorian } from '../../utils/calendarConverter';
+import { formatMinguoDate, formatMinguoLunarDate, minguoToGregorian } from '../../utils/calendarConverter';
 
 const CustomerDetailDialog = ({
   open,
@@ -127,8 +127,10 @@ const CustomerDetailDialog = ({
       }
       
       // 農曆出生日期
+      // Follow-up UI fix（懷特 5/23 反饋）：DB lunarBirthYear 已是民國年（B1A 後）
+      // 改用 formatMinguoLunarDate（不做 -1911）；formatMinguoDate 用會算成 -1826 廢值
       if (member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay) {
-        const lunarDate = formatMinguoDate(
+        const lunarDate = formatMinguoLunarDate(
           member.lunarBirthYear,
           member.lunarBirthMonth,
           member.lunarBirthDay
@@ -136,7 +138,7 @@ const CustomerDetailDialog = ({
         const leapText = member.lunarIsLeapMonth ? '閏' : '';
         birthInfos.push(`農曆：${lunarDate}${leapText ? ` (${leapText}月)` : ''}`);
       }
-      
+
       const birthInfo = birthInfos.length > 0 ? birthInfos.join(' / ') : '出生日期未設定';
       
       // 添加虛歲顯示
@@ -179,8 +181,9 @@ const CustomerDetailDialog = ({
     }
     
     // 農曆出生日期
+    // Follow-up UI fix（懷特 5/23 反饋）：同上、改用 formatMinguoLunarDate
     if (record.lunarBirthYear && record.lunarBirthMonth && record.lunarBirthDay) {
-      const lunarDate = formatMinguoDate(
+      const lunarDate = formatMinguoLunarDate(
         record.lunarBirthYear,
         record.lunarBirthMonth,
         record.lunarBirthDay

@@ -188,6 +188,23 @@ export function formatMinguoDate(gregorianYear, month, day) {
 }
 
 /**
+ * 格式化「已是民國年」的農曆日期顯示
+ * @param {number} minguoYear - 已是民國年（B1A 後 DB lunarBirthYear 直接存民國年，不用再 -1911）
+ * @param {number} month - 月
+ * @param {number} day - 日
+ * @returns {string} - 格式化字串，例如："民國85年12月12日"
+ *
+ * Follow-up patch UI fix（懷特 5/23 反饋）：
+ * 原本各處顯示農曆日期沿用 formatMinguoDate（假設輸入西元年、會做 -1911）
+ * 但 B1A 之後 DB lunarBirthYear 是民國年（85）、丟進去算「85-1911=-1826」=「民國-1826年」
+ * 加此 fn 讓所有「DB 讀回的民國年」直接 format 不二次轉換。
+ */
+export function formatMinguoLunarDate(minguoYear, month, day) {
+  if (!minguoYear || !month || !day) return '';
+  return `民國${minguoYear}年${month}月${day}日`;
+}
+
+/**
  * 計算生肖（基於農曆年）
  * @param {number} lunarBirthYear - 農曆出生年（西元年）
  * @returns {string|null} - 生肖（如：「鼠」、「牛」、「虎」等）
