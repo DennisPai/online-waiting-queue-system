@@ -41,7 +41,8 @@ import socketService from '../services/socketService';
 // Change C / 階段 3.2-3.6：移除取消預約 UI + 死碼 handleCancelQueue/confirmCancelQueue/confirmDialog
 // API_ENDPOINTS import 一併移除（confirmCancelQueue 是唯一 caller）
 import {
-  formatMinguoDate
+  formatMinguoDate,
+  formatMinguoLunarDate
 } from '../utils/calendarConverter';
 
 const StatusPage = () => {
@@ -500,7 +501,7 @@ const StatusPage = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <InfoIcon sx={{ mr: 1 }} />
-              編號 {detailsDialog.record?.queueNumber} 詳細資料
+              {showQueueNumber ? `編號 ${detailsDialog.record?.queueNumber} 詳細資料` : '詳細資料'}
             </Box>
             <Button
               onClick={() => setDetailsDialog({ open: false, record: null, mode: 'view' })}
@@ -572,7 +573,7 @@ const StatusPage = () => {
                       )}
                       {hasLunar && (
                         <Typography variant="body1" sx={{ mb: 1 }}>
-                          農曆出生日期：{formatMinguoDate(record.lunarBirthYear, record.lunarBirthMonth, record.lunarBirthDay)}{record.lunarIsLeapMonth ? ' (閏月)' : ''}
+                          農曆出生日期：{formatMinguoLunarDate(record.lunarBirthYear, record.lunarBirthMonth, record.lunarBirthDay)}{record.lunarIsLeapMonth ? ' (閏月)' : ''}
                         </Typography>
                       )}
                     </>
@@ -659,13 +660,12 @@ const StatusPage = () => {
                           性別：{member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : '未設定'}
                         </Typography>
                         <Typography variant="body2">
-                          生日：{(() => {
-                            // 顯示國曆或農曆出生日期（使用民國年）
-                            if (member.gregorianBirthYear && member.gregorianBirthMonth && member.gregorianBirthDay) {
-                              return `${formatMinguoDate(member.gregorianBirthYear, member.gregorianBirthMonth, member.gregorianBirthDay)} (國曆)`;
-                            } else if (member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay) {
+                          農曆生日：{(() => {
+                            // Change C v3 lunar-only：只顯示農曆生日（跟主客戶一致）
+                            // 用 formatMinguoLunarDate（不做 -1911），避免「民國-1826」廢值
+                            if (member.lunarBirthYear && member.lunarBirthMonth && member.lunarBirthDay) {
                               const leapText = member.lunarIsLeapMonth ? ' 閏月' : '';
-                              return `${formatMinguoDate(member.lunarBirthYear, member.lunarBirthMonth, member.lunarBirthDay)} (農曆${leapText})`;
+                              return `${formatMinguoLunarDate(member.lunarBirthYear, member.lunarBirthMonth, member.lunarBirthDay)}${leapText}`;
                             } else {
                               return '出生日期未設定';
                             }
