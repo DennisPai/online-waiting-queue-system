@@ -21,6 +21,7 @@ import CustomerListPage from './pages/admin/CustomerListPage';
 import CustomerDetailPage from './pages/admin/CustomerDetailPage';
 import CustomerCreatePage from './pages/admin/CustomerCreatePage';
 import SystemPage from './pages/admin/SystemPage';
+import DuplicateReviewPage from './pages/admin/DuplicateReviewPage';
 
 // 匯入元件
 import { ProtectedRoute, ConditionalRegistrationRoute } from './components/common';
@@ -94,6 +95,7 @@ function App() {
             <Route path="customers/new" element={<CustomerCreatePage />} />
             <Route path="customers/:id" element={<CustomerDetailPage />} />
             <Route path="system" element={<SystemPage />} />
+            <Route path="customers/duplicate-review" element={<DuplicateReviewPage />} />
           </Route>
           
           {/* 錯誤路由 */}

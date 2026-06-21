@@ -5,15 +5,36 @@
 Base URL: `/api/v1`  
 認證：`Authorization: Bearer <token>`（管理端）
 
-所有回應格式：
+所有 `/api/v1/*` 回應格式（信封）：
 ```json
 {
   "success": true | false,
-  "code": "OK | VALIDATION_ERROR | UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | INTERNAL_ERROR",
+  "code": "OK | VALIDATION_ERROR | UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | INTERNAL_ERROR | DUPLICATE_FIELD | INVALID_ID | INVALID_TOKEN | EXPIRED_TOKEN | BACKUP_FAILED | CONFIRM_REQUIRED | INVALID_DATE | INVALID_SNAPSHOT | NOT_SUPPORTED | UNKNOWN_COLLECTION",
   "message": "描述",
   "data": { ... }
 }
 ```
+
+> **`code` 列舉（固定集合）**：除常見的 `OK / VALIDATION_ERROR / UNAUTHORIZED / FORBIDDEN / NOT_FOUND / CONFLICT / INTERNAL_ERROR` 外，下列 10 個專屬 code 也在實際使用中，整合者的 error 分支應一併涵蓋：
+> | code | 何時 emit | 來源 |
+> |------|-----------|------|
+> | `BACKUP_FAILED` | Google Drive 備份失敗 | `POST /admin/backup/gdrive` |
+> | `CONFIRM_REQUIRED` | 缺二次確認 token（如還原備份需 `confirmToken: "CONFIRM_RESTORE"`） | `POST /admin/backups/:id/restore` |
+> | `INVALID_DATE` | 日期格式無效 | `PUT /admin/settings/scheduled-open-time` |
+> | `INVALID_SNAPSHOT` | 備份資料不完整、無法恢復 | `POST /admin/backups/:id/restore` |
+> | `NOT_SUPPORTED` | 該操作不支援（如 end-session 批次備份不支援自動還原） | `POST /admin/backups/:id/restore` |
+> | `UNKNOWN_COLLECTION` | 不在還原白名單的 collection | `POST /admin/backups/:id/restore` |
+> | `DUPLICATE_FIELD` | MongoDB 唯一鍵重複（E11000） | 全域錯誤處理（任何寫入衝突） |
+> | `INVALID_ID` | 無效 ObjectId（CastError） | 全域錯誤處理（任何 `:id` 路由） |
+> | `INVALID_TOKEN` | JWT 無效 | 全域錯誤處理（需登入端點） |
+> | `EXPIRED_TOKEN` | JWT 過期 | 全域錯誤處理（需登入端點） |
+
+> **信封例外（不走 `{ success, code, message, data }` 信封、回原始 shape）** — 信封僅套用在 `/api/v1/*`，下列三個 app 層基礎探針端點回原始物件、無 `success/code` 欄位：
+> | 端點 | 回應 shape | 說明 |
+> |------|-----------|------|
+> | `GET /health` | `{ status, uptime, startTime, timestamp, service, db: { queue: { name, status }, customer: { name, status } }, lastBackup }` | 健康檢查（恆回 `200`、`status: "ok"`、含雙 DB 連線狀態與最近備份） |
+> | `GET /ready` | `{ ready, mongoState, ts }` | 就緒檢查（連線就緒回 `200`、否則 `503`；`mongoState` 為 mongoose readyState） |
+> | `GET /` | `{ message, version, environment }` | API 根路徑探針 |
 
 ---
 
@@ -55,7 +76,7 @@ Base URL: `/api/v1`
 
 ### POST `/queue/register`
 公開候位登記。
-- **Body:** `{ name, phone, email?, gender?, gregorianBirthYear?, ... , addresses?, familyMembers?, consultationTopics?, otherDetails?, remarks? }`
+- **Body:** `{ name, phone?, email?, gender?, gregorianBirthYear?, ... , addresses?, familyMembers?, consultationTopics?, otherDetails?, remarks? }`（簡化模式僅 `name` 必填；`phone` 選填，若填須符合電話格式）
 - **回傳:** `{ queueNumber, orderIndex, waitingCount, estimatedWaitTime, zodiac?, ... }`
 - **說明:**
   - 前台報名家人上限：**3 人**；管理員（帶 JWT）上限：**5 人**；超過回傳 400
@@ -185,6 +206,30 @@ Base URL: `/api/v1`
 - **動作:** 刪除所有 Household → 清除所有客戶的 householdId → 按真實地址重新歸組（跳過「臨時地址」，同地址 ≥ 2 人才建立）
 - **回傳:** `{ deletedHouseholds, newHouseholds, assignedCustomers, skippedTempAddress }`
 
+### 人工複核重複客戶（customer-review.controller）
+
+#### GET `/admin/customers/duplicates`
+查詢所有待複核的疑似重複客戶（`needsReview: true`），每筆附上 `possibleDuplicateOf` 指向的疑似對象基本資料。
+- **Body:** 無
+- **回傳:** `{ customers: [ { ...customerFields, possibleDuplicateOf: [ { customerId, score, reason, customerData: { _id, name, phone, totalVisits, gregorianBirthYear, gregorianBirthMonth, gregorianBirthDay, lunarBirthYear, lunarBirthMonth, lunarBirthDay } | null } ] } ] }`
+- **權限:** 需登入
+
+#### POST `/admin/customers/:id/merge`
+確認兩筆為同一人 → 合併：來源（`:id`）的 VisitRecord 轉移至目標（`targetId`），totalVisits 累加，若目標無 householdId 而來源有則繼承；先 `saveSnapshotOrThrow` 備份來源後再刪除來源，最後清除目標的 `needsReview`。
+- **Body:** `{ targetId }` — 保留目標客戶的 ObjectId
+- **防呆:** `:id` 與 `targetId` 不可相同；兩者都必須存在，否則回 400；備份失敗回 500（不刪除資料）
+- **回傳:** `{ merged: true, targetId }`
+- **400:** 缺 `targetId` ｜ `:id === targetId` ｜ 無效 ObjectId ｜ 任一客戶不存在
+- **權限:** 需登入
+
+#### POST `/admin/customers/:id/dismiss-duplicate`
+確認兩筆為不同人 → 清除 `:id` 客戶的 `needsReview` 旗標與 `possibleDuplicateOf`。
+- **Body:** 無
+- **回傳:** `{ dismissed: true }`
+- **400:** 無效 ObjectId
+- **404:** 查無此客戶
+- **權限:** 需登入
+
 #### DELETE `/admin/queue/clear-all`
 ⚠️ **已棄用（Deprecated）** — 請改用 `POST /admin/queue/end-session`。  
 緊急清空所有候位資料（不歸檔）。回應 header 含 `X-Deprecated: Use POST /admin/queue/end-session instead`。
@@ -232,6 +277,57 @@ Base URL: `/api/v1`
 
 #### POST `/admin/settings/reset-completed-time`
 重設上一位辦完時間（自動查找最後已完成客戶）。
+
+#### POST `/admin/settings/recalc-counters`
+強制重算 `issuedCount` + `orderIndexCounter`（Phase 6.4 hotfix；計數器與實際候位記錄不一致時用）。
+- **Query:** `mode=dry-run`（預設，只計算不寫入）｜`mode=execute`（raw 覆寫 SystemSetting）
+- **計算:** `issuedCount` = 目前 `waiting/processing/cancelled` 記錄數（cancelled 仍佔名額）；`orderIndexCounter` = active 記錄最大 `orderIndex`（無則 0）
+- **回傳:** `{ mode, before: { issuedCount, orderIndexCounter, hasIssuedCount, hasOrderIndexCounter }, computed: { issuedCount, orderIndexCounter }, after? }`（`after` 僅 execute 模式）
+- **404:** 尚無 SystemSetting 文件
+- **權限:** 需登入
+
+### 備份與維運（backup.admin.controller / 開發維運）
+
+#### GET `/admin/backups`
+列出操作前快照備份（snapshot）清單。
+- **Query:** `page`（預設 1）、`limit`（預設 20）、`operation`（可選，依操作類型篩選）、`collection`（可選，依 collection 篩選）
+- **回傳:** `{ snapshots: [...], pagination: { total, page, limit, pages } }`
+- **權限:** 需登入
+
+#### POST `/admin/backups/:id/restore`
+從指定 snapshot 還原單筆資料（raw driver `replaceOne` + upsert）。
+- **Body:** `{ confirmToken }` — 必須為 `"CONFIRM_RESTORE"`（二次確認）
+- **回傳:** `{ snapshotId, collection, documentId, debug }`
+- **400:** 缺 `confirmToken`（`CONFIRM_REQUIRED`）｜end-session 批次備份不支援自動還原（`NOT_SUPPORTED`）｜備份資料不完整（`INVALID_SNAPSHOT`）｜collection 不在白名單 `waitingrecords / customer_profiles / customer_visits / customer_households`（`UNKNOWN_COLLECTION`）
+- **404:** 查無此備份記錄
+- **權限:** 需登入
+
+#### POST `/admin/backup/gdrive`
+手動觸發 Google Drive 全量備份。
+- **Body:** 無
+- **回傳:** `{ ...result }`（含是否 dry-run；`GDRIVE_BACKUP_ENABLED=false` 時為 dry-run、不實際上傳）
+- **500:** 備份失敗（`BACKUP_FAILED`）
+- **權限:** 需登入
+
+#### GET `/admin/backup/logs`
+取得最近的 Google Drive 備份日誌（最多 20 筆）。
+- **回傳:** `{ logs: [...] }`
+- **權限:** 需登入
+
+#### POST `/admin/dev/restore-waiting-records`
+開發/驗證用 — 從 snapshot JSON 還原 `waiting_records`（raw `insertMany`）。⚠️ 只能用在 DB 已被清空的環境（end-session 後）；若 collection 仍有相同 `_id` 文件，`insertMany` 會撞 duplicate key（safety feature）。
+- **Query:** `mode=dry-run`（預設，只看 snapshot 摘要）｜`mode=execute`（實際 insert）
+- **Body:** `{ records: [...] }` — array of raw waiting_record documents（含 `_id`）；execute 模式必填
+- **回傳:** `{ mode, snapshotCount, activeBefore, cancelledBefore, statusDistribution, insertedCount?, activeAfter?, cancelledAfter? }`（後三項僅 execute 模式）
+- **400:** `body.records` 不是陣列
+- **權限:** 需登入
+
+#### POST `/admin/migrate`
+雙 DB 模式下把 customer collections 從 queue DB 遷移到 customer DB（`customer_profiles / customer_visits / customer_households`）。
+- **Query:** `mode=dry-run`（只比對來源/目標筆數）｜`mode=execute`（`insertMany` 複製，`ordered: false`、撞 duplicate key 自動跳過）— **必填**
+- **回傳:** `{ mode, source, target, collections: { <name>: { sourceCount, targetCount? , copied?, skipped? } } }`
+- **400:** 單一 DB 模式（`QUEUE_DB_NAME === CUSTOMER_DB_NAME`）不需遷移｜`mode` 不是 `dry-run`/`execute`
+- **權限:** 需登入
 
 ### 排程設定（schedule.admin.controller）
 
@@ -367,10 +463,11 @@ Base URL: `/api/v1`
 ```json
 {
   "success": false,
-  "code": "VALIDATION_ERROR | UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | INTERNAL_ERROR",
+  "code": "VALIDATION_ERROR | UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | INTERNAL_ERROR | DUPLICATE_FIELD | INVALID_ID | INVALID_TOKEN | EXPIRED_TOKEN | BACKUP_FAILED | CONFIRM_REQUIRED | INVALID_DATE | INVALID_SNAPSHOT | NOT_SUPPORTED | UNKNOWN_COLLECTION",
   "message": "錯誤描述"
 }
 ```
+> 完整 `code` 列舉與各專屬 code 的觸發時機見本文件開頭「`code` 列舉（固定集合）」表。
 
 HTTP 狀態碼：
 - `200` 成功

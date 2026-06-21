@@ -52,11 +52,14 @@ app.use(cors({
 app.use(helmet());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
+// Zeabur 反向代理後需信任單層 proxy，express-rate-limit 才能正確取得 client IP
+app.set('trust proxy', 1);
+
 // 速率限制（登入與登記）
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 const registerLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
-app.use('/api/auth', authLimiter);
-app.use('/api/queue/register', registerLimiter);
+app.use('/api/v1/auth', authLimiter);
+app.use('/api/v1/queue/register', registerLimiter);
 
 // 記錄服務啟動時間
 const APP_START_TIME = new Date();
@@ -73,7 +76,11 @@ app.get('/health', async (req, res) => {
     let lastBackup = null;
     try {
       const { getLastBackupLog } = require('./services/gdrive-backup.service');
-      lastBackup = await getLastBackupLog();
+      // 逾時保護：DB 中斷時這個查詢不可拖垮 health 端點（最多等 2s 否則回 null）
+      lastBackup = await Promise.race([
+        getLastBackupLog(),
+        new Promise((resolve) => setTimeout(() => resolve(null), 2000)),
+      ]);
     } catch { /* gdrive service 可能未初始化 */ }
 
     return res.status(200).json({
@@ -152,9 +159,44 @@ const mongoDbName = process.env.MONGO_DB_NAME || QUEUE_DB;
 logger.info('嘗試連接到MongoDB:', mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'));
 logger.info('目標 DB 名稱:', mongoDbName);
 
-// MongoDB 斷線/重連 log（模組 H）
-mongoose.connection.on('disconnected', () => { logger.error('MongoDB 斷線'); });
-mongoose.connection.on('reconnected', () => { logger.info('MongoDB 重連成功'); });
+// MongoDB 連線選項（fail-fast，避免斷線時查詢無限 hang）
+const mongoConnectOptions = {
+  dbName: mongoDbName,
+  serverSelectionTimeoutMS: 5000,  // 選不到可用 server 5s 內失敗（預設 30s）
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 10000,
+  heartbeatFrequencyMS: 10000,
+};
+
+// DB 連上後的初始化：首次完整初始化；重連時只重新綁定連線、一次性業務初始化跳過
+let oneTimeInitDone = false;
+async function onDbReady() {
+  try {
+    initDbConnections(); // 每次連上都確保雙 DB 連線與 model 綁定正確（冪等）
+    if (!oneTimeInitDone) {
+      oneTimeInitDone = true;
+      logger.info('開始執行數據初始化...');
+      const initResult = await initializeData();
+      logger.info('數據初始化結果:', initResult ? '成功' : '失敗');
+      logger.info('啟動排程系統...');
+      await schedulePublicRegistrationOpening();
+      const { startGDriveBackupScheduler } = require('./services/gdrive-backup.service');
+      startGDriveBackupScheduler();
+      logger.info('DB 相關一次性初始化完成');
+    } else {
+      logger.info('MongoDB 重連，已重新綁定連線（一次性初始化跳過）');
+    }
+  } catch (e) {
+    oneTimeInitDone = false; // 失敗允許下次連線重試
+    logger.error('DB 初始化失敗，將於下次連線重試:', e);
+  }
+}
+
+// MongoDB 連線事件（模組 H 強化：斷線自動重連 + 重連後重綁）
+mongoose.connection.on('connected', () => { logger.info('MongoDB 已連線'); onDbReady(); });
+mongoose.connection.on('disconnected', () => { logger.error('MongoDB 斷線，driver 將自動重連'); });
+mongoose.connection.on('reconnected', () => { logger.info('MongoDB 重連成功'); onDbReady(); });
+mongoose.connection.on('error', (err) => { logger.error('MongoDB 連線錯誤:', err.message); });
 
 // 未捕獲的錯誤寫入 log_entries（模組 H）
 process.on('unhandledRejection', (reason) => {
@@ -178,53 +220,28 @@ process.on('uncaughtException', (err) => {
   } catch (e) { /* ignore */ }
 });
 
-mongoose.connect(mongoUri, { dbName: mongoDbName })
-  .then(async () => {
-    logger.info('成功連接到MongoDB');
+// 非阻塞連線 + 自動重試（初次連不上也持續重試，不讓 server 死掉）
+async function connectWithRetry(attempt = 1) {
+  try {
+    await mongoose.connect(mongoUri, mongoConnectOptions);
+    // 連線成功由 'connected' 事件觸發 onDbReady()（含 initDbConnections + 一次性初始化）
+  } catch (err) {
+    const delay = Math.min(30000, 1000 * 2 ** (attempt - 1)); // 1s,2s,4s...上限 30s
+    logger.error(`無法連接到MongoDB (attempt ${attempt})，${delay}ms 後重試: ${err.message}`);
+    setTimeout(() => connectWithRetry(attempt + 1), delay);
+  }
+}
 
-    // 初始化雙 DB 連線（候位 DB + 客戶 DB）
-    // 必須在 mongoose.connect() 成功後、initializeData() 之前呼叫
-    initDbConnections();
+// server 先啟動監聽（與 DB 連線解耦）：即使 DB 未就緒，/health /ready 仍可達、不會整個 502
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, '0.0.0.0', () => {
+  logger.info(`伺服器運行在連接埠 ${PORT}`);
+  logger.info(`CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:3100'}`);
+  logger.info(`Socket CORS Origin: ${process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3100'}`);
+});
 
-    // === Phase 3 額外任務（design.md D3 / Phase 1 G7）===
-    // 已移除「開機就主動 dropIndex queueNumber 唯一索引」的常駐邏輯。
-    // 移除原因：
-    //   1. queueNumber 早已是普通（非唯一）索引，這段開機 drop 已無實際作用，
-    //      只是每次重啟跑一次 getIndexes()/dropIndex() 的死碼。
-    //   2. 「開機常駐 dropIndex」與 Phase 3 新加的 orderIndex partial unique
-    //      index（orderIndex_active_unique）思路相衝突 —— 標準防線就不該由
-    //      開機流程主動拆。保留這類「自動 drop index」邏輯是地雷：日後一旦
-    //      被擴充 / 誤改，可能把 Phase 3 的撞號最後防線在啟動時拆掉。
-    //   3. 與 Phase 1 Task 1.5（移除 updateQueueData catch 的自動 dropIndex）
-    //      同一原則 —— 系統內不再保留任何「自動 drop index」路徑。
-    // 若日後真的需要一次性移除某個舊索引，改用手動腳本
-    // （utils/removeUniqueIndex.js 仍可手動執行，但不再掛在開機流程）。
-
-    // 初始化數據
-    logger.info('開始執行數據初始化...');
-    const initResult = await initializeData();
-    logger.info('數據初始化結果:', initResult ? '成功' : '失敗');
-    
-    // 啟動排程系統（在資料庫連接成功後）
-    logger.info('啟動排程系統...');
-    await schedulePublicRegistrationOpening();
-
-    // 啟動 Google Drive 備份排程（模組 C-2）
-    const { startGDriveBackupScheduler } = require('./services/gdrive-backup.service');
-    startGDriveBackupScheduler();
-    
-    // 啟動伺服器
-    const PORT = process.env.PORT || 8080;
-    server.listen(PORT, '0.0.0.0', () => {
-      logger.info(`伺服器運行在連接埠 ${PORT}`);
-      logger.info(`CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:3100'}`);
-      logger.info(`Socket CORS Origin: ${process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3100'}`);
-    });
-  })
-  .catch(err => {
-    logger.error('無法連接到MongoDB:', err);
-    process.exit(1);
-  });
+// 啟動 DB 連線（非阻塞；連線成功/斷線重連皆由 connection 事件處理）
+connectWithRetry();
 
 // 優雅關閉處理
 process.on('SIGTERM', () => {

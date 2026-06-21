@@ -143,6 +143,19 @@
   - **簡化編輯界面**: 後台客戶資料編輯移除曆法選擇，國曆農曆欄位可獨立編輯
   - **資料驗證優化**: 後端API驗證更新為新的欄位結構，確保資料完整性
 
+### 進階管理功能
+
+以下為已上線的進階管理功能（後台與後端 API 完整支援）：
+
+- **結束本期（end-session）**：每次辦事結束後執行一次的歸檔流程。系統會將當期候位記錄歸檔進「永久客戶資料庫」（自動累計 totalVisits / firstVisitDate / lastVisitDate），同步建立來訪記錄，再清空當期候位列表並重設叫號狀態。採「先寫後刪」安全順序（歸檔/備份成功才清空），不使用 MongoDB transaction（單節點環境曾因 transaction abort 不回滾導致資料遺失）。
+- **客戶永久資料庫（customers）**：跨期累積的永久客戶檔案，與當期候位記錄分離儲存。提供完整 CRUD 與來訪記錄管理 API（共 9 個端點：列表 / 查詢 / 新增 / 更新 / 刪除 / 來訪記錄查詢、新增、更新、刪除）。客戶比對以「姓名 + 農曆出生年月日」進行，農曆年缺漏時退而只比對姓名。
+- **家庭分組（Household）**：同地址的客戶（≥2 人）自動歸入同一家庭分組，方便整組辦事與管理。提供「家庭分組重建」API 可在資料異動後重新分組。
+- **PDF 問事單匯出**：後台可將客戶資料匯出為 A4 橫式問事單 PDF（採 html2canvas 截圖方案處理中文呈現）。
+- **定時開放（scheduled-open）**：可設定排程時間自動開放公開候位登記，搭配排程服務（scheduler.service）在指定時間自動切換 `publicRegistrationEnabled`，無需人工於報名日開門。
+- **活動公告橫幅（event-banner）**：管理員可設定首頁顯示的活動公告橫幅內容，向所有訪客即時公告辦事資訊。
+- **Google Drive 備份**：可將資料備份上傳至 Google Drive（OAuth2 Refresh Token 方式），支援排程自動備份與備份日誌查詢。另有操作前快照備份（snapshot）機制，於高風險操作前 fire-and-forget 留存還原點。
+- **操作日誌（logs）**：記錄所有 API 操作，後台可查詢操作日誌，便於稽核與問題追蹤。
+
 ## 技術架構
 
 ### 前端
@@ -181,7 +194,7 @@
 - **前端網址**: https://online-waiting-queue-system.zeabur.app
 - **後端API**: https://online-waiting-queue-system-backend.zeabur.app
 - **管理後台**: https://online-waiting-queue-system.zeabur.app/admin/login
-- **預設管理員帳號**: admin / admin123
+- **預設管理員帳號**: admin / `<ADMIN_PASSWORD>`（由後端 `ADMIN_PASSWORD` 環境變數設定）
 
 ### 🛠 本地開發
 
@@ -193,7 +206,7 @@
 - 避免重複踩坑，加速開發效率
 
 #### 前置需求
-- Node.js (v16+)
+- Node.js (v20+)
 - npm 或 yarn
 - MongoDB
 - Docker 與 Docker Compose
@@ -220,7 +233,7 @@ node init-admin.js
 
 3. 訪問應用
    - 前端: http://localhost:3100
-   - 後端API: http://localhost:8080/api
+   - 後端API: http://localhost:8080/api/v1
    - 管理後台: http://localhost:3100/admin/login
 
 ### Docker部署
@@ -354,7 +367,7 @@ mongodb://admin:password@localhost:27017/queue_system?authSource=admin
 
 - URL: http://localhost:3100/admin/login
 - 帳號: admin
-- 密碼: admin123
+- 密碼: `<ADMIN_PASSWORD>`（由後端 `ADMIN_PASSWORD` 環境變數設定）
 
 > **重要**：首次登入後請立即修改預設密碼！
 
@@ -412,15 +425,21 @@ mongodb://admin:password@localhost:27017/queue_system?authSource=admin
 online-waiting-queue-system/
 ├── backend/                          # 後端API伺服器
 │   ├── src/                          # 源代碼
-│   │   ├── config/                   # 配置文件
+│   │   ├── config/                   # 配置文件（db.js 雙資料庫連線 / env.js 環境變數）
 │   │   ├── controllers/              # 控制器
-│   │   ├── models/                   # 資料模型
-│   │   ├── routes/                   # API路由
-│   │   ├── services/                 # 業務邏輯
-│   │   ├── utils/                    # 工具函數
+│   │   │   ├── admin/                # 管理端控制器子目錄（queue/end-session/settings/event/schedule/household/backup/log）
+│   │   │   ├── auth.controller.js    # 登入/登出/改密碼
+│   │   │   ├── customer.controller.js# 永久客戶 CRUD + 來訪記錄
+│   │   │   └── queue.controller.js   # 公開候位 API（報名/查詢/狀態）
+│   │   ├── models/                   # 資料模型（waiting-record / customer / visit-record / household / system-setting / user / log-entry / backup-snapshot）
+│   │   ├── repositories/             # 資料存取層（QueueRepository）
+│   │   ├── validators/               # 輸入驗證（queueValidators）
+│   │   ├── routes/                   # API路由（routes/v1 統一 /api/v1 前綴）
+│   │   ├── services/                 # 業務邏輯（QueueService / socket / scheduler / gdrive-backup）
+│   │   ├── utils/                    # 工具函數（calendarConverter / snapshot / middleware）
 │   │   └── app.js                    # 應用入口
 │   ├── .env.example                  # 環境變數範例 (Zeabur部署用)
-│   ├── Dockerfile                    # Docker配置
+│   ├── Dockerfile                    # Docker配置（node:20-alpine）
 │   ├── init-admin.js                 # 管理員初始化腳本
 │   ├── update-existing-customers.js  # 虛歲批量更新腳本
 │   └── package.json                  # 後端依賴
@@ -429,9 +448,13 @@ online-waiting-queue-system/
 │   ├── public/                       # 靜態文件
 │   ├── src/                          # 源代碼
 │   │   ├── components/               # 共用元件
+│   │   │   ├── registration/         # 報名表單區塊（BasicInfo/Address/Family/Consultation/Success）
+│   │   │   ├── admin/                # 管理端元件（QueueTable/CustomerDetailDialog/ExcelPreviewTable/FormTemplate）
+│   │   │   └── common/               # 通用元件（ConfirmDialog/DataTable/FormField/ProtectedRoute）
 │   │   ├── contexts/                 # React Context
 │   │   ├── pages/                    # 頁面元件
 │   │   │   └── admin/                # 管理員頁面
+│   │   ├── hooks/                    # 自訂 hooks（hooks/admin: useQueueData/useQueueActions/...）
 │   │   ├── redux/                    # Redux狀態管理
 │   │   │   └── slices/               # Redux切片
 │   │   ├── services/                 # API服務
@@ -444,12 +467,10 @@ online-waiting-queue-system/
 ├── .gitignore                        # Git忽略檔案
 ├── docker-compose.yml                # Docker Compose配置
 ├── DEPLOYMENT.md                     # 部署指南
-├── AI_DEVELOPMENT_GUIDE.md           # AI開發指南
-├── 線上候位系統開發文檔.md               # 完整開發文檔
 ├── docs/
-│   ├── DEVELOPMENT_LOG.md            # 開發日誌（問題解決方案、技術決策記錄）
+│   ├── API.md                        # API 規格文檔（活文件，API 變動時必須同步更新）
 │   ├── PRD.md                        # 產品需求文檔
-│   ├── API_SPEC.md                   # API規格文檔
+│   ├── DEVELOPMENT_LOG.md            # 開發日誌（問題解決方案、技術決策記錄）
 │   └── TODO.md                       # 開發任務清單
 └── README.md                         # 專案說明
 ```
@@ -529,8 +550,8 @@ online-waiting-queue-system/
    - 系統自動調整順序，維持連續的作業流程
 
 5. **雙API系統架構**
-   - **公開API**：`/api/queue/ordered-numbers` - 用於首頁顯示，無需認證
-   - **管理員API**：`/api/admin/queue/ordered-numbers` - 用於後台管理，需要認證
+   - **公開API**：`/api/v1/queue/ordered-numbers` - 用於首頁顯示，無需認證
+   - **管理員API**：`/api/v1/admin/queue/ordered-numbers` - 用於後台管理，需要認證
    - 前端根據認證狀態自動選擇適當的API端點
    - 解決了首頁訪問管理員API導致的認證問題
 
@@ -826,18 +847,13 @@ processedData.familyMembers = familyData.familyMembers;
 )}
 ```
 
-### 🧪 測試轉換工具功能
+### 🧪 測試
 
-系統提供了測試腳本來驗證日期轉換功能：
+後端使用 Jest 進行單元與整合測試：
 
 ```bash
 cd backend
-node final-test.js
-```
-
-成功輸出示例：
-```
-✅ 所有測試通過！轉換工具工作正常
+npm test
 ```
 
 ### 🔄 批量更新既有客戶虛歲
@@ -878,7 +894,7 @@ node update-existing-customers.js
 - **網域配置**: 自動HTTPS證書
 
 #### 📋 部署要求
-- Node.js 16+
+- Node.js 20+
 - MongoDB 5.0+
 - 環境變數正確配置
 - 詳細部署指南: [`DEPLOYMENT.md`](./DEPLOYMENT.md)
@@ -886,12 +902,13 @@ node update-existing-customers.js
 ## 文檔說明
 
 ### 活文件（持續維護）
+- [`AGENTS.md`](./AGENTS.md) — 架構／資料模型／工程慣例（接手必讀，agent 入口）
 - [`docs/API.md`](./docs/API.md) — API 規格文檔（**API 變動時必須同步更新**）
 - [`docs/PRD.md`](./docs/PRD.md) — 產品需求文件（大功能擴充時更新）
-- [`docs/TODO.md`](./docs/TODO.md) — 待辦追蹤
+- 待辦／變更追蹤統一走 `openspec/changes/`（OpenSpec）；技術債 backlog 見 `AGENTS.md`
 
-### 一次性文件（開發完成後歸檔，不再維護）
-- [`docs/specs/`](./docs/specs/) — 各功能的 Tech Spec（設計文件，事後查考用）
+### 歷史文件（已歸檔，不再維護）
+- [`docs/archive/`](./docs/archive/) — 已完成功能的 Tech Spec、舊 TODO（事後查考用）
 
 ## 授權協議
 MIT 

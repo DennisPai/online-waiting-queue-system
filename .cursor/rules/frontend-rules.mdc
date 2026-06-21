@@ -2,26 +2,8 @@
 alwaysApply: true
 ---
 
-# Frontend 開發規範（僅重點補充，搭配全域 `engineering-rules.mdc`）
+# 已遷移至 AGENTS.md（單一事實來源）
 
-## API 存取
-- `API_VERSION` 固定為 `v1`，統一使用 `frontend/src/config/api.js` 提供的 `API_ENDPOINTS`
-- `services/*` 一律回傳 `response.data.data || response.data`（統一處理 v1 回應格式）
-- Redux slice 只解一次，禁止 `.data.data` 雙層解包
+前端慣例（v1 service 單層解包、Redux、hooks 架構、Socket、UI/UX）已整併進專案根目錄的 [`AGENTS.md`](../../AGENTS.md)。
 
-## 狀態管理
-- Redux Toolkit：所有 asyncThunk 以 `services/*` 回傳的 `data` 為準則，services 層已處理 v1 格式
-- Error 處理：以 `error.response?.data?.message` 為主，必要時回退為字串
-
-## Hooks 架構
-- 管理面板使用 `useQueueManagementRefactored`（組合多個子 hooks）
-- 子 hooks 分離職責：useQueueData（數據）、useQueueActions（操作）、useQueueUI（UI狀態）、useQueueValidation（驗證）
-- 避免巨型 hook，優先模組化拆分
-
-## UI/UX
-- 管理端「變更密碼」改為自主操作，不強制首次登入彈窗。
-- 大型頁面拆為元件與 hooks；表單驗證抽離 schema（yup/zod 皆可）。
-
-## Socket
-- `socketService` 僅負責事件橋接與通知；不要在服務內寫業務邏輯。
-
+> 為避免內容重複漂移，僅保留此轉址。**一律以 [`AGENTS.md`](../../AGENTS.md) 為準。**

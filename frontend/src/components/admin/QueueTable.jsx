@@ -344,7 +344,7 @@ const QueueTable = ({
                                     <>
                                       <Checkbox
                                         checked={row.status === 'completed'}
-                                        onChange={(event) => onCompletionChange(event, row._id, event.target.checked)}
+                                        onChange={(event) => onCompletionChange(row._id, event.target.checked)}
                                         color="success"
                                         size="small"
                                         sx={{ mr: 1 }}

@@ -82,7 +82,7 @@ exports.register = async (req, res) => {
       username,
       password,
       email,
-      role: role || 'staff'
+      role: (role === 'admin' || role === 'staff') ? role : 'staff'
     });
 
     res.status(201).json({

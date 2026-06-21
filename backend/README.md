@@ -49,26 +49,33 @@ MONGODB_URI=mongodb://localhost:27017/queue_system
 
 ## API 端點
 
-### 健康檢查
+> **完整端點清單以 [`docs/API.md`](../docs/API.md) 為單一事實來源**（涵蓋全部 `/api/v1/*` 路由與回應信封格式）。以下僅列常用端點供快速參考，新增/修改端點時請同步更新 `docs/API.md`。
+>
+> 所有業務 API 統一掛載於 `/api/v1` 前綴下，回應採信封格式 `{ success, code, message, data }`。
+
+### 基礎探針（不走 `/api/v1` 信封）
 - `GET /health` - 服務健康狀態檢查
+- `GET /ready` - 就緒檢查（含 Mongo 連線狀態）
 - `GET /` - 基本服務資訊
 
 ### 認證 API
-- `POST /api/auth/login` - 用戶登入
-- `GET /api/auth/me` - 獲取當前用戶資訊
-- `POST /api/auth/register` - 註冊新用戶（管理員限定）
+- `POST /api/v1/auth/login` - 用戶登入
+- `GET /api/v1/auth/me` - 獲取當前用戶資訊
+- `POST /api/v1/auth/register` - 註冊新用戶
 
-### 候位 API
-- `GET /api/queue/status` - 獲取候位狀態
-- `POST /api/queue/register` - 登記候位
-- `GET /api/queue/status/:number` - 獲取特定號碼狀態
-- `GET /api/queue/search` - 查詢候位號碼
+### 候位 API（公開）
+- `GET /api/v1/queue/status` - 獲取候位狀態
+- `POST /api/v1/queue/register` - 登記候位
+- `GET /api/v1/queue/number/:number` - 獲取特定號碼狀態
+- `GET /api/v1/queue/search` - 查詢候位號碼
 
 ### 管理員 API
-- `GET /api/admin/queue/list` - 獲取候位列表
-- `PUT /api/admin/queue/next` - 呼叫下一位
-- `PUT /api/admin/queue/:id/status` - 更新候位狀態
-- `PUT /api/admin/settings/*` - 系統設定
+- `GET /api/v1/admin/queue/list` - 獲取候位列表
+- `PUT /api/v1/admin/queue/next` - 呼叫下一位
+- `PUT /api/v1/admin/queue/:id/status` - 更新候位狀態
+- `PUT /api/v1/admin/settings/*` - 系統設定
+- `POST /api/v1/admin/queue/end-session` - 結束本期（歸檔→客戶資料庫→清空）
+- `/api/v1/customers/*` - 永久客戶資料庫 CRUD 與來訪記錄
 
 ## Socket.io 事件
 
@@ -83,7 +90,7 @@ MONGODB_URI=mongodb://localhost:27017/queue_system
 ## 部署配置
 
 ### Docker 配置
-- 基於 Node.js 16 Alpine 映像
+- 基於 Node.js 20 Alpine 映像（`node:20-alpine`）
 - 生產環境優化的依賴安裝
 - 自動暴露 8080 連接埠
 
@@ -130,11 +137,23 @@ MONGODB_URI=mongodb://localhost:27017/queue_system
 curl https://your-backend-service.zeabur.app/health
 ```
 
-預期回應：
+預期回應（`/health` 強化版，含雙資料庫連線狀態與最近備份資訊）：
 ```json
 {
-  "status": "healthy",
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "service": "queue-system-backend"
+  "status": "ok",
+  "uptime": 12345,
+  "startTime": "2026-06-20T00:00:00.000Z",
+  "timestamp": "2026-06-20T00:00:00.000Z",
+  "service": "queue-system-backend",
+  "db": {
+    "queue": { "name": "queue", "status": "connected" },
+    "customer": { "name": "customer", "status": "connected" }
+  },
+  "lastBackup": {
+    "timestamp": "2026-06-20T18:00:00.000Z",
+    "status": "success",
+    "dryRun": false
+  }
 }
-``` 
+```
+> 資料庫中斷時 `db.*.status` 會回 `disconnected`、`lastBackup` 可能為 `null`；`/health` 仍回 HTTP 200 以避免拖垮探針。 

@@ -4,7 +4,7 @@ const SystemSetting = require('../../models/system-setting.model');
 const getCustomer = () => require("../../models/customer.model");
 const { autoFillDates, autoFillFamilyMembersDates, addZodiac, addVirtualAge } = require('../../utils/calendarConverter');
 const { ensureOrderIndexConsistency, allocateOrderIndex } = require('../../utils/orderIndex');
-const { saveSnapshot } = require('../../utils/snapshot');
+const { saveSnapshot, saveSnapshotOrThrow } = require('../../utils/snapshot');
 
 // === Phase 4 / Task 4.6（design.md D9）：admin controller 撞號錯誤分流 ===
 // admin controller 的每個 try/catch 原本一律回 HTTP 500「伺服器內部錯誤」。
@@ -566,16 +566,38 @@ exports.deleteCustomer = async (req, res) => {
 // 清除所有候位資料
 exports.clearAllQueue = async (req, res) => {
   try {
-    const totalCustomers = await WaitingRecord.countDocuments();
+    // 先取出清空前全部記錄，作為快照 beforeData（先寫後刪鐵律）
+    const allRecords = await WaitingRecord.find({}).lean();
+    const totalCustomers = allRecords.length;
     logger.info(`管理員清除所有候位資料，共 ${totalCustomers} 筆記錄`);
-    
+
+    // clear-all 是主動 destructive 且無後續歸檔作第二備份，
+    // 快照必須 await，且失敗時中止刪除（不可在無備份下 deleteMany）
+    try {
+      await saveSnapshotOrThrow({
+        operation: 'clear-all-queue',
+        collection: 'waitingrecords',
+        documentId: null,
+        beforeData: allRecords,
+        operatorId: req.user?.id,
+        metadata: { count: totalCustomers }
+      });
+    } catch (snapshotErr) {
+      logger.error('清除所有候位資料：快照寫入失敗，中止刪除:', snapshotErr);
+      return res.status(500).json({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        message: '快照備份失敗，為保護資料安全已中止清除操作，請稍後再試'
+      });
+    }
+
     await WaitingRecord.deleteMany({});
-    
+
     const settings = await SystemSetting.getSettings();
     settings.currentQueueNumber = 0;
     if (settings.maxOrderIndex <= 0) settings.maxOrderIndex = 100;
     await settings.save();
-    
+
     res.status(200).json({
       success: true,
       message: `已成功清除所有候位資料，共刪除 ${totalCustomers} 筆記錄`,

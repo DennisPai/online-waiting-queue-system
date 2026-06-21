@@ -65,7 +65,21 @@ const customerSchema = new mongoose.Schema({
   totalVisits: {
     type: Number,
     default: 0
-  }
+  },
+  // P0-9：加權模糊比對 — 人工複核旗標與疑似重複指標
+  needsReview: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  possibleDuplicateOf: [{
+    customerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Customer'
+    },
+    score: Number,
+    reason: String
+  }]
 }, {
   timestamps: true,
   collection: 'customer_profiles'

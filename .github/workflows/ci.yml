@@ -1,0 +1,48 @@
+# CI gate — WS4 / tasks.md 4.5
+#
+# 在 push / PR 時跑 backend 的測試與 lint，把「文檔同步」「信封 code 登記」「死連結」
+# 等規則從人治換成機制（design D2）。純文檔/測試/CI 變更不影響 Zeabur 部署（部署由
+# Zeabur 自身的 GitHub 整合觸發，與本 workflow 無關）。
+#
+# 涵蓋測試（皆在 backend/tests/）：
+#   - 既有 jest 單元測試
+#   - contract/route-api-contract.test.js  （route ↔ docs/API.md 契約，4.1）
+#   - contract/dead-links.test.js          （活躍文檔死連結，4.2）
+#   - contract/code-registry.test.js       （信封 code 登記白名單，4.3）
+#   - known-issues.test.js                 （已知 bug skip 案例，4.6；不影響 pass/fail）
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  backend:
+    name: Backend test + lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests (含 contract / 死連結 / code 登記)
+        run: npm test
+
+      - name: Lint
+        run: npm run lint

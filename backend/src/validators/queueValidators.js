@@ -16,8 +16,8 @@ const validateRegisterQueue = [
     .withMessage('姓名長度必須在1-50字符之間'),
     
   body('phone')
-    .notEmpty()
-    .withMessage('電話號碼不能為空')
+    // 簡化模式只需姓名、phone 選填（與前台登記一致）；若有填才驗格式
+    .optional({ checkFalsy: true })
     .matches(/^[0-9+\-\s()]+$/)
     .withMessage('電話號碼格式不正確'),
     

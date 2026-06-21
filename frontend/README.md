@@ -8,7 +8,10 @@
 
 ```
 REACT_APP_API_URL=https://your-backend-service.zeabur.app
+PORT=80
 ```
+
+> `PORT=80` 為**必填**（詳見下方「PORT 設定」）；未設定會導致前端 502 錯誤。
 
 ### 設定步驟
 
@@ -35,9 +38,11 @@ REACT_APP_API_URL=https://your-backend-service.zeabur.app
 
 ### PORT 設定
 
-- **Zeabur 自動檢測**：Zeabur 會自動檢測 React 應用並使用適當的 PORT
-- **Nginx 配置**：前端使用 Nginx 在 PORT 80 上提供服務
-- **無需手動設定**：Zeabur 會自動處理 PORT 配置
+- **⚠️ 必須手動設定 `PORT=80`**：前端服務在 Zeabur 上**必須**於環境變數明確設定 `PORT=80`，否則會出現 502 錯誤。
+- **原因**：前端容器內 Nginx 監聽 PORT 80；同一 GitHub 專案同時部署前後端時，Zeabur 預設會分配相同 PORT（與後端 8080 衝突），未明確指定 `PORT=80` 會導致對外無法連通。
+- **Nginx 配置**：前端使用 Nginx 在容器內 PORT 80 上提供靜態檔案服務，Zeabur 對外自動映射 HTTPS（443）。
+
+> 詳見 [`DEPLOYMENT.md`](../DEPLOYMENT.md) 的「前端必要環境變數」與「PORT 配置詳細說明」。
 
 ### 建構配置
 

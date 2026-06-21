@@ -52,4 +52,38 @@ async function saveSnapshot({ operation, collection, documentId, beforeData, ope
   }
 }
 
-module.exports = { saveSnapshot };
+/**
+ * 儲存快照，失敗時直接 throw（用於「不可在無備份下刪除」的 destructive 操作）
+ * 與 saveSnapshot 相同簽名，但不吞錯誤。
+ */
+async function saveSnapshotOrThrow({ operation, collection, documentId, beforeData, operatorId, metadata } = {}) {
+  if (mongoose.connection.readyState !== 1) {
+    throw new Error('[snapshot] DB 未連線，無法寫入快照');
+  }
+  await BackupSnapshot.create({
+    timestamp: new Date(),
+    operation,
+    collection,
+    documentId: documentId ? String(documentId) : null,
+    beforeData,
+    operatorId: operatorId ? String(operatorId) : null,
+    metadata: metadata || null
+  });
+
+  // FIFO：超過上限就刪最舊的
+  const total = await BackupSnapshot.countDocuments();
+  if (total > SNAPSHOT_MAX) {
+    const excess = total - SNAPSHOT_MAX;
+    const oldest = await BackupSnapshot.find({})
+      .sort({ timestamp: 1 })
+      .limit(excess)
+      .select('_id')
+      .lean();
+    const ids = oldest.map(d => d._id);
+    if (ids.length > 0) {
+      await BackupSnapshot.deleteMany({ _id: { $in: ids } });
+    }
+  }
+}
+
+module.exports = { saveSnapshot, saveSnapshotOrThrow };

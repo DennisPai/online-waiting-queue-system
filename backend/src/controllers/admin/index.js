@@ -7,6 +7,7 @@ const endSessionAdmin = require('./end-session.admin.controller');
 const householdAdmin = require('./household.admin.controller');
 const logAdmin = require('./log.admin.controller');
 const backupAdmin = require('./backup.admin.controller');
+const customerReview = require('./customer-review.controller');
 
 module.exports = {
   ...queueAdmin,
@@ -16,5 +17,6 @@ module.exports = {
   ...endSessionAdmin,
   ...householdAdmin,
   ...logAdmin,
-  ...backupAdmin
+  ...backupAdmin,
+  ...customerReview
 };

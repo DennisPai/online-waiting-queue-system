@@ -114,6 +114,7 @@ const AdminDashboardPage = () => {
     handleCloseRegisterDialog,
     handleRegisterSuccess,
     isReordering,
+    isEndingSession,
     queueStatus,
     totalCustomerCountInput,
     lastCompletedTimeInput,
@@ -183,7 +184,7 @@ const AdminDashboardPage = () => {
             startIcon={<DeleteSweepIcon />}
             onClick={() => handleEndSession(queueStatus?.waitingCount)}
             sx={{ mr: 1 }}
-            disabled={isLoading}
+            disabled={isLoading || isEndingSession}
           >
             結束本期
           </Button>

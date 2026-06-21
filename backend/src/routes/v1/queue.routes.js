@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const queueController = require('../../controllers/queue.controller');
-const { protect } = require('../../utils/middleware');
+const { protect, validateRequest } = require('../../utils/middleware');
+const { validateRegisterQueue } = require('../../validators/queueValidators');
 
 // 公共端點（v1）- 統一使用重構版控制器
 router.get('/status', queueController.getQueueStatus);
-router.post('/register', queueController.registerQueue);
+router.post('/register', validateRegisterQueue, validateRequest, queueController.registerQueue);
 router.get('/number/:queueNumber', queueController.getQueueNumberStatus);
 router.get('/search', queueController.searchQueue);
 router.get('/next-waiting', queueController.getNextWaitingNumber);

@@ -124,7 +124,7 @@
 2. 後端服務會自動執行初始化腳本
 3. 預設管理員帳號：
    - 帳號：`admin`
-   - 密碼：`admin123`
+   - 密碼：`<ADMIN_PASSWORD>`（由後端 `ADMIN_PASSWORD` 環境變數設定）
 
 ## 🔧 環境變數設定
 
@@ -234,7 +234,7 @@ PORT=80
 - **網址**：`https://your-frontend-domain.zeabur.app/admin/login`
 - **實際範例**：`https://online-waiting-queue-system.zeabur.app/admin/login`
 - **帳號**：`admin`
-- **密碼**：`admin123`
+- **密碼**：`<ADMIN_PASSWORD>`（由後端 `ADMIN_PASSWORD` 環境變數設定）
 
 ⚠️ **重要**：首次登入後請立即修改預設密碼！
 

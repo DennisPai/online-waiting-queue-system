@@ -27,6 +27,8 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
   // 另用 state 讓 UI 能據此 disable 拖動。
   const reorderingRef = useRef(false);
   const [isReordering, setIsReordering] = useState(false);
+  // P0-7：結束本期進行中鎖（前端防雙擊，配合後端 sessionEnding 原子鎖雙保險）
+  const [isEndingSession, setIsEndingSession] = useState(false);
 
   // 重新排序
   const handleReorderQueue = useCallback(async () => {
@@ -114,6 +116,30 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
       loadQueueList();
     } catch (error) {
       console.error('更新狀態失敗:', error);
+    }
+  }, [dispatch, loadQueueList]);
+
+  // 對話框「標記為已完成」— 只接受 recordId，固定設 completed=true
+  const handleCompleteFromDialog = useCallback(async (recordId) => {
+    try {
+      await dispatch(updateQueueStatus({
+        id: recordId,
+        status: 'completed',
+        completedAt: new Date().toISOString()
+      }));
+
+      dispatch(showAlert({
+        message: '已標記為完成',
+        severity: 'success'
+      }));
+
+      loadQueueList();
+    } catch (error) {
+      console.error('標記完成失敗:', error);
+      dispatch(showAlert({
+        message: '標記完成失敗，請稍後再試',
+        severity: 'error'
+      }));
     }
   }, [dispatch, loadQueueList]);
 
@@ -246,6 +272,7 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
       message: `確定要結束本期嗎？本期 ${waitingCount || 0} 位客戶（不含已取消）的資料將歸檔至永久客戶資料庫。此操作不可撤銷。`,
       onConfirm: async () => {
         handleCloseConfirmDialog();
+        setIsEndingSession(true);
         try {
           const result = await dispatch(endSession()).unwrap();
           dispatch(showAlert({
@@ -255,6 +282,8 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
           loadQueueList();
         } catch (error) {
           dispatch(showAlert({ message: '結束本期失敗', severity: 'error' }));
+        } finally {
+          setIsEndingSession(false);
         }
       }
     });
@@ -291,6 +320,7 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
     handleReorderQueue,
     handleCallNext,
     handleCompletionChange,
+    handleCompleteFromDialog,
     handleCancelCustomer,
     handleRestoreCustomer,
     handleDragEnd,
@@ -298,6 +328,8 @@ export const useQueueActions = ({ localQueueList, setLocalQueueList, loadQueueLi
     handleEndSession,
     handleDeleteCustomer,
     // Task 4.1：拖動排序鎖狀態，供 UI disable 拖動時使用
-    isReordering
+    isReordering,
+    // P0-7：結束本期進行中鎖，供 UI disable 結束本期按鈕防雙擊
+    isEndingSession
   };
 };

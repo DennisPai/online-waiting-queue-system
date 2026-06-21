@@ -6,9 +6,126 @@ const getVisitRecord = () => require("../../models/visit-record.model");
 const getHousehold = () => require("../../models/household.model");
 const { saveSnapshot } = require('../../utils/snapshot');
 
+// P0-9：加權模糊比對門檻常數（方便日後調校）
+const MATCH_HIGH = 50; // >= 此分 → 自動併入
+const MATCH_MID = 20;  // >= 此分且 < MATCH_HIGH → 建新檔 + 標記 needsReview
+
 /**
- * 比對客戶：name + lunarBirthYear/Month/Day
- * 若 lunarBirthYear 為 null，只用 name 比對（家人無完整生日的情況）
+ * Levenshtein 編輯距離（用於 phone typo 容錯）
+ * 標準 DP 實作，O(m*n)，phone 長度 ≤ 20 效能無疑慮
+ */
+function editDistance(a, b) {
+  if (!a || !b) return Infinity;
+  const m = a.length;
+  const n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) => {
+    const row = new Array(n + 1).fill(0);
+    row[0] = i;
+    return row;
+  });
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i - 1] === b[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+  }
+  return dp[m][n];
+}
+
+/**
+ * 對 candidate 客戶算加權分數
+ * 正分項：生日/phone/地址/性別吻合；負分項：關鍵欄位明確相異
+ */
+function scoreCandidate(candidate, data) {
+  const {
+    phone, gender,
+    lunarBirthYear, lunarBirthMonth, lunarBirthDay,
+    gregorianBirthYear, gregorianBirthMonth, gregorianBirthDay,
+    addresses
+  } = data;
+
+  let score = 0;
+
+  // ── 農曆生日 ──
+  const lunarFull = lunarBirthYear != null && lunarBirthMonth != null && lunarBirthDay != null;
+  const candLunarFull = candidate.lunarBirthYear != null && candidate.lunarBirthMonth != null && candidate.lunarBirthDay != null;
+  if (lunarFull && candLunarFull) {
+    if (
+      lunarBirthYear === candidate.lunarBirthYear &&
+      lunarBirthMonth === candidate.lunarBirthMonth &&
+      lunarBirthDay === candidate.lunarBirthDay
+    ) {
+      score += 50; // 農曆年月日全同
+    } else if (lunarBirthYear === candidate.lunarBirthYear) {
+      score += 20; // 年同月/日不同
+    } else {
+      score -= 30; // 兩邊皆完整但完全不同（反證）
+    }
+  } else if (lunarBirthYear != null && candidate.lunarBirthYear != null) {
+    // 有年但月日缺失或部分不同
+    if (lunarBirthYear === candidate.lunarBirthYear) {
+      score += 20;
+    }
+  }
+
+  // ── 國曆生日 ──
+  const gregFull = gregorianBirthYear != null && gregorianBirthMonth != null && gregorianBirthDay != null;
+  const candGregFull = candidate.gregorianBirthYear != null && candidate.gregorianBirthMonth != null && candidate.gregorianBirthDay != null;
+  if (gregFull && candGregFull) {
+    if (
+      gregorianBirthYear === candidate.gregorianBirthYear &&
+      gregorianBirthMonth === candidate.gregorianBirthMonth &&
+      gregorianBirthDay === candidate.gregorianBirthDay
+    ) {
+      score += 40;
+    }
+    // 國曆生日完整且不同不扣分（農曆/國曆可能混填，不可靠作反證）
+  }
+
+  // ── 電話 ──
+  const hasPhone = phone && phone.trim() !== '';
+  const candHasPhone = candidate.phone && candidate.phone.trim() !== '';
+  if (hasPhone && candHasPhone) {
+    const dist = editDistance(phone.trim(), candidate.phone.trim());
+    if (dist === 0) {
+      score += 40; // 完全相同
+    } else if (dist === 1) {
+      score += 25; // 單字 typo
+    } else if (dist === 2) {
+      score += 10;
+    } else if (dist > 3) {
+      score -= 15; // 兩邊皆有 phone 但差異過大（反證）
+    }
+  }
+
+  // ── 地址 ──
+  const incomingAddr = addresses && addresses.length > 0 ? addresses[0]?.address?.trim() : null;
+  const candAddr = candidate.addresses && candidate.addresses.length > 0 ? candidate.addresses[0]?.address?.trim() : null;
+  if (incomingAddr && incomingAddr !== '臨時地址' && candAddr && candAddr !== '臨時地址') {
+    if (incomingAddr === candAddr) {
+      score += 20;
+    }
+  }
+
+  // ── 性別 ──
+  if (gender && gender !== '' && candidate.gender && candidate.gender !== '') {
+    if (gender === candidate.gender) {
+      score += 5;
+    }
+  }
+
+  return score;
+}
+
+/**
+ * 比對客戶：加權模糊比對 + 信心分級
+ * - 高信心（≥ MATCH_HIGH）→ 自動併入既有客戶（totalVisits++、更新欄位）
+ * - 中信心（≥ MATCH_MID < MATCH_HIGH）→ 建新檔 + needsReview + possibleDuplicateOf
+ * - 低信心（< MATCH_MID 或無同名）→ 建新客
  * 注意：不使用 session（Zeabur 單節點不支援 transaction）
  */
 async function findOrCreateCustomer(data, sessionDate) {
@@ -21,37 +138,12 @@ async function findOrCreateCustomer(data, sessionDate) {
 
   const trimmedName = (name || '').trim();
 
-  // 建立比對條件
-  const matchQuery = { name: trimmedName };
-  if (lunarBirthYear != null) {
-    matchQuery.lunarBirthYear = lunarBirthYear;
-    matchQuery.lunarBirthMonth = lunarBirthMonth || null;
-    matchQuery.lunarBirthDay = lunarBirthDay || null;
-  }
+  // Step 1：name 為 gate，撈所有同名候選
+  const candidates = await getCustomer().find({ name: trimmedName });
 
-  let existing = await getCustomer().findOne(matchQuery);
-  let isNew = false;
-
-  if (existing) {
-    // 舊客：更新欄位
-    existing.totalVisits = (existing.totalVisits || 0) + 1;
-    existing.lastVisitDate = sessionDate;
-    if (phone) existing.phone = phone;
-    if (zodiac) existing.zodiac = zodiac;
-    if (addresses && addresses.length > 0) existing.addresses = addresses;
-    if (gender) existing.gender = gender;
-    if (gregorianBirthYear) existing.gregorianBirthYear = gregorianBirthYear;
-    if (gregorianBirthMonth) existing.gregorianBirthMonth = gregorianBirthMonth;
-    if (gregorianBirthDay) existing.gregorianBirthDay = gregorianBirthDay;
-    if (lunarBirthYear) existing.lunarBirthYear = lunarBirthYear;
-    if (lunarBirthMonth) existing.lunarBirthMonth = lunarBirthMonth;
-    if (lunarBirthDay) existing.lunarBirthDay = lunarBirthDay;
-    if (lunarIsLeapMonth !== undefined) existing.lunarIsLeapMonth = lunarIsLeapMonth;
-    await existing.save();
-  } else {
-    // 新客：建立
-    isNew = true;
-    existing = await getCustomer().create({
+  if (candidates.length === 0) {
+    // 無同名 → 確定新客
+    const created = await getCustomer().create({
       name: trimmedName,
       phone: phone || '',
       gender: gender || '',
@@ -68,9 +160,88 @@ async function findOrCreateCustomer(data, sessionDate) {
       firstVisitDate: sessionDate,
       lastVisitDate: sessionDate
     });
+    return { customer: created, isNew: true };
   }
 
-  return { customer: existing, isNew };
+  // Step 2：對每個候選算加權分數，取最高分
+  let bestCandidate = null;
+  let bestScore = -Infinity;
+  for (const candidate of candidates) {
+    const score = scoreCandidate(candidate, data);
+    if (score > bestScore) {
+      bestScore = score;
+      bestCandidate = candidate;
+    }
+  }
+
+  // Step 3：信心分級決策
+  if (bestScore >= MATCH_HIGH) {
+    // 高信心 → 自動併入
+    const existing = bestCandidate;
+    existing.totalVisits = (existing.totalVisits || 0) + 1;
+    existing.lastVisitDate = sessionDate;
+    if (phone) existing.phone = phone;
+    if (zodiac) existing.zodiac = zodiac;
+    if (addresses && addresses.length > 0) existing.addresses = addresses;
+    if (gender) existing.gender = gender;
+    if (gregorianBirthYear) existing.gregorianBirthYear = gregorianBirthYear;
+    if (gregorianBirthMonth) existing.gregorianBirthMonth = gregorianBirthMonth;
+    if (gregorianBirthDay) existing.gregorianBirthDay = gregorianBirthDay;
+    if (lunarBirthYear) existing.lunarBirthYear = lunarBirthYear;
+    if (lunarBirthMonth) existing.lunarBirthMonth = lunarBirthMonth;
+    if (lunarBirthDay) existing.lunarBirthDay = lunarBirthDay;
+    if (lunarIsLeapMonth !== undefined) existing.lunarIsLeapMonth = lunarIsLeapMonth;
+    await existing.save();
+    return { customer: existing, isNew: false };
+  }
+
+  if (bestScore >= MATCH_MID) {
+    // 中信心 → 建新檔 + 標記待複核
+    const created = await getCustomer().create({
+      name: trimmedName,
+      phone: phone || '',
+      gender: gender || '',
+      zodiac: zodiac || null,
+      lunarBirthYear: lunarBirthYear || null,
+      lunarBirthMonth: lunarBirthMonth || null,
+      lunarBirthDay: lunarBirthDay || null,
+      lunarIsLeapMonth: lunarIsLeapMonth || false,
+      gregorianBirthYear: gregorianBirthYear || null,
+      gregorianBirthMonth: gregorianBirthMonth || null,
+      gregorianBirthDay: gregorianBirthDay || null,
+      addresses: addresses || [],
+      totalVisits: 1,
+      firstVisitDate: sessionDate,
+      lastVisitDate: sessionDate,
+      needsReview: true,
+      possibleDuplicateOf: [{
+        customerId: bestCandidate._id,
+        score: bestScore,
+        reason: '同名待複核'
+      }]
+    });
+    return { customer: created, isNew: true };
+  }
+
+  // 低信心 → 建新客（needsReview: false）
+  const created = await getCustomer().create({
+    name: trimmedName,
+    phone: phone || '',
+    gender: gender || '',
+    zodiac: zodiac || null,
+    lunarBirthYear: lunarBirthYear || null,
+    lunarBirthMonth: lunarBirthMonth || null,
+    lunarBirthDay: lunarBirthDay || null,
+    lunarIsLeapMonth: lunarIsLeapMonth || false,
+    gregorianBirthYear: gregorianBirthYear || null,
+    gregorianBirthMonth: gregorianBirthMonth || null,
+    gregorianBirthDay: gregorianBirthDay || null,
+    addresses: addresses || [],
+    totalVisits: 1,
+    firstVisitDate: sessionDate,
+    lastVisitDate: sessionDate
+  });
+  return { customer: created, isNew: true };
 }
 
 /**
@@ -84,6 +255,21 @@ async function findOrCreateCustomer(data, sessionDate) {
  */
 exports.endSession = async (req, res) => {
   try {
+    // P0-7：原子搶鎖 — 防止雙擊/重送造成重複歸檔（totalVisits 翻倍 + 重複 VisitRecord）
+    const lock = await SystemSetting.findOneAndUpdate(
+      { sessionEnding: { $ne: true } },
+      { $set: { sessionEnding: true } },
+      { new: true }
+    );
+    if (!lock) {
+      return res.status(409).json({
+        success: false,
+        code: 'CONFLICT',
+        message: '結束本期進行中，請勿重複操作'
+      });
+    }
+
+    try {
     // 前置檢查：確認有資料可歸檔
     const recordCount = await WaitingRecord.countDocuments({ status: { $ne: 'cancelled' } });
     const cancelledCount = await WaitingRecord.countDocuments({ status: 'cancelled' });
@@ -218,7 +404,9 @@ exports.endSession = async (req, res) => {
       $set: {
         currentQueueNumber: 0,
         totalCustomerCount: 0,
-        lastCompletedTime: new Date()
+        lastCompletedTime: new Date(),
+        issuedCount: 0,
+        orderIndexCounter: 0
       }
     });
 
@@ -237,6 +425,11 @@ exports.endSession = async (req, res) => {
         sessionDate
       }
     });
+
+    } finally {
+      // P0-7：無論成功或拋錯都釋放鎖，讓下一次操作可進入
+      await SystemSetting.findOneAndUpdate({}, { $set: { sessionEnding: false } });
+    }
 
   } catch (error) {
     logger.error('結束本期錯誤:', error);
@@ -259,12 +452,11 @@ async function autoGroupHouseholds(customerIds) {
     .select('_id addresses householdId');
 
   // 按地址分組（取第一個 address 欄位）
+  // P0-8：用 optional chaining 避免 address 缺失拋錯，並排除佔位值 '臨時地址'
   const addressGroups = {};
   for (const cust of customers) {
-    const addr = cust.addresses && cust.addresses.length > 0
-      ? cust.addresses[0].address.trim()
-      : null;
-    if (!addr) continue;
+    const addr = cust.addresses?.[0]?.address?.trim();
+    if (!addr || addr === '臨時地址') continue;
     if (!addressGroups[addr]) addressGroups[addr] = [];
     addressGroups[addr].push(cust);
   }

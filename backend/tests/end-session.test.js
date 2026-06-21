@@ -57,6 +57,16 @@ const makeCustDoc = (id, overrides = {}) => ({
   ...overrides
 });
 
+// 模擬 mongoose Query 的雙重性質：既是 thenable（await find() 直接回陣列，
+// 供 P0-9 findOrCreateCustomer 撈同名候選），又有 .select()（供 autoGroupHouseholds
+// 取地址）。舊 mock 只回 { select } 不可 await，與新 code 的 `await find({name})` 不相容。
+const makeFindMock = ({ candidates = [], selectResult = [] } = {}) => ({
+  select: jest.fn().mockResolvedValue(selectResult),
+  then: (onFulfilled, onRejected) => Promise.resolve(candidates).then(onFulfilled, onRejected),
+  catch: (onRejected) => Promise.resolve(candidates).catch(onRejected),
+  finally: (onFinally) => Promise.resolve(candidates).finally(onFinally),
+});
+
 describe('結束本期 API', () => {
   let req, res;
 
@@ -76,7 +86,7 @@ describe('結束本期 API', () => {
     SystemSetting.findOneAndUpdate.mockResolvedValue({});
     Customer.updateMany.mockResolvedValue({});
     // Customer.find().select() chain → 預設回傳空陣列
-    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
+    Customer.find.mockReturnValue(makeFindMock());
     Household.findOne.mockResolvedValue(null);
     Household.create.mockResolvedValue({ _id: 'hh1', memberIds: [], save: jest.fn() });
     VisitRecord.create.mockResolvedValue({});
@@ -106,7 +116,7 @@ describe('結束本期 API', () => {
     Customer.findOne.mockResolvedValue(null);
     let cnt = 0;
     Customer.create.mockImplementation(() => Promise.resolve(makeCustDoc(`c${cnt++}`)));
-    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
+    Customer.find.mockReturnValue(makeFindMock());
 
     await endSession(req, res);
 
@@ -154,7 +164,8 @@ describe('結束本期 API', () => {
       zodiac: '馬', gender: 'male', addresses: [], familyMembers: [], consultationTopics: [], remarks: ''
     }]);
     Customer.findOne.mockResolvedValue(existing);
-    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
+    // P0-9：同名同農曆生日候選 → 評分 +50 ≥ MATCH_HIGH → 自動併入
+    Customer.find.mockReturnValue(makeFindMock({ candidates: [existing] }));
 
     await endSession(req, res);
 
@@ -175,12 +186,134 @@ describe('結束本期 API', () => {
     }]);
     Customer.findOne.mockResolvedValue(null);
     Customer.create.mockResolvedValue(makeCustDoc('c_new'));
-    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
+    Customer.find.mockReturnValue(makeFindMock());
 
     await endSession(req, res);
 
     expect(Customer.create).toHaveBeenCalled();
     expect(res.json.mock.calls[0][0].data.newCustomers).toBe(1);
+  });
+
+  // ── P0-9 加權模糊比對 + 信心分級（張霶濱真實案例驅動）──
+  test('P0-9 HIGH：同名同生日、電話 typo（差1碼）→ 自動併入、不拆成兩筆', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    WaitingRecord.find.mockResolvedValue([{
+      _id: 'r1', name: '張霶濱', phone: '0912345678', status: 'waiting', queueNumber: 1,
+      lunarBirthYear: 1980, lunarBirthMonth: 5, lunarBirthDay: 5,
+      addresses: [], familyMembers: [], consultationTopics: [], remarks: ''
+    }]);
+    // 既有：同名同農曆生日，電話差一碼（typo）、來過 8 次
+    const existing = makeCustDoc('zhang8', {
+      name: '張霶濱', phone: '0912345679', totalVisits: 8,
+      lunarBirthYear: 1980, lunarBirthMonth: 5, lunarBirthDay: 5
+    });
+    Customer.find.mockReturnValue(makeFindMock({ candidates: [existing] }));
+
+    await endSession(req, res);
+
+    // 農曆生日全同 +50 ≥ MATCH_HIGH → 自動併入，不建新客
+    expect(existing.totalVisits).toBe(9);
+    expect(existing.save).toHaveBeenCalled();
+    expect(Customer.create).not.toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].data.returningCustomers).toBe(1);
+    expect(res.json.mock.calls[0][0].data.newCustomers).toBe(0);
+  });
+
+  test('P0-9 MID：同名 + 電話完全相同但無生日 → 建新檔且標記 needsReview', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    WaitingRecord.find.mockResolvedValue([{
+      _id: 'r1', name: '王五', phone: '0911111111', status: 'waiting', queueNumber: 1,
+      addresses: [], familyMembers: [], consultationTopics: [], remarks: ''
+    }]);
+    const existing = makeCustDoc('wang', { name: '王五', phone: '0911111111', totalVisits: 3 });
+    Customer.find.mockReturnValue(makeFindMock({ candidates: [existing] }));
+    let created = null;
+    Customer.create.mockImplementation((doc) => { created = doc; return Promise.resolve(makeCustDoc('new', doc)); });
+
+    await endSession(req, res);
+
+    // phone 全同 +40，MATCH_MID ≤ 40 < MATCH_HIGH → 建新 + needsReview，不自動併
+    expect(Customer.create).toHaveBeenCalled();
+    expect(created.needsReview).toBe(true);
+    expect(created.possibleDuplicateOf[0].customerId).toBe('wang');
+    expect(existing.save).not.toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].data.newCustomers).toBe(1);
+  });
+
+  test('P0-9 LOW：同名但無其他可區分特徵 → 建新客（不錯併、不標記）', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    WaitingRecord.find.mockResolvedValue([{
+      _id: 'r1', name: '陳一', phone: '', status: 'waiting', queueNumber: 1,
+      addresses: [], familyMembers: [], consultationTopics: [], remarks: ''
+    }]);
+    const existing = makeCustDoc('chen', { name: '陳一', phone: '', totalVisits: 2 });
+    Customer.find.mockReturnValue(makeFindMock({ candidates: [existing] }));
+    let created = null;
+    Customer.create.mockImplementation((doc) => { created = doc; return Promise.resolve(makeCustDoc('new', doc)); });
+
+    await endSession(req, res);
+
+    // name 同但生日/phone 全缺 = 0 分 < MATCH_MID → 建新客（不併入、不標記）
+    expect(Customer.create).toHaveBeenCalled();
+    expect(created.needsReview).toBeFalsy();
+    expect(existing.save).not.toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].data.newCustomers).toBe(1);
+  });
+
+  // ── P0-7 冪等鎖 / P0-6 歸零 / P0-8 臨時地址（validator H-1/H-4 補測）──
+  test('P0-7 冪等：sessionEnding 鎖被佔時回 409 且不重複歸檔', async () => {
+    WaitingRecord.find.mockResolvedValue([{
+      _id: 'r1', name: '甲', status: 'waiting', queueNumber: 1,
+      addresses: [], familyMembers: [], consultationTopics: [], remarks: ''
+    }]);
+    // 第一個 findOneAndUpdate＝搶鎖，回 null 代表鎖已被佔（條件 sessionEnding:{$ne:true} 不滿足）
+    SystemSetting.findOneAndUpdate.mockReset();
+    SystemSetting.findOneAndUpdate.mockResolvedValueOnce(null).mockResolvedValue({});
+
+    await endSession(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    // 搶鎖失敗即返回，不得有任何歸檔副作用
+    expect(Customer.create).not.toHaveBeenCalled();
+    expect(VisitRecord.create).not.toHaveBeenCalled();
+    expect(WaitingRecord.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('P0-6 重設歸零 issuedCount/orderIndexCounter（下期不誤判額滿）', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    WaitingRecord.find.mockResolvedValue([{
+      _id: 'r1', name: '甲', status: 'waiting', queueNumber: 1,
+      addresses: [], familyMembers: [], consultationTopics: [], remarks: ''
+    }]);
+    Customer.create.mockResolvedValue(makeCustDoc('c1'));
+
+    await endSession(req, res);
+
+    const resetCall = SystemSetting.findOneAndUpdate.mock.calls.find(
+      c => c[1] && c[1].$set && Object.prototype.hasOwnProperty.call(c[1].$set, 'issuedCount')
+    );
+    expect(resetCall).toBeDefined();
+    expect(resetCall[1].$set.issuedCount).toBe(0);
+    expect(resetCall[1].$set.orderIndexCounter).toBe(0);
+  });
+
+  test('P0-8 全填臨時地址的不相干客戶不被組成一家', async () => {
+    WaitingRecord.countDocuments.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
+    const custA = makeCustDoc('cA', { addresses: [{ address: '臨時地址' }] });
+    const custB = makeCustDoc('cB', { addresses: [{ address: '臨時地址' }] });
+    WaitingRecord.find.mockResolvedValue([
+      { _id: 'r1', name: '甲', status: 'waiting', queueNumber: 1, addresses: [{ address: '臨時地址' }], familyMembers: [], consultationTopics: [], remarks: '' },
+      { _id: 'r2', name: '乙', status: 'waiting', queueNumber: 2, addresses: [{ address: '臨時地址' }], familyMembers: [], consultationTopics: [], remarks: '' }
+    ]);
+    let cnt = 0;
+    Customer.create.mockImplementation(() => Promise.resolve([custA, custB][cnt++]));
+    Customer.find.mockReturnValue(makeFindMock({ selectResult: [custA, custB] }));
+
+    await endSession(req, res);
+
+    // 都是佔位「臨時地址」→ autoGroupHouseholds 排除 → 不建 Household
+    expect(Household.create).not.toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].data.newHouseholds).toBe(0);
   });
 
   test('4.3 - 主客戶帶 2 位家人 → 3 Customer + 3 VisitRecord', async () => {
@@ -199,7 +332,7 @@ describe('結束本期 API', () => {
     Customer.findOne.mockResolvedValue(null);
     let cnt = 0;
     Customer.create.mockImplementation(() => Promise.resolve(makeCustDoc(`c${cnt++}`)));
-    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
+    Customer.find.mockReturnValue(makeFindMock());
 
     await endSession(req, res);
 
@@ -221,7 +354,7 @@ describe('結束本期 API', () => {
     Customer.findOne.mockResolvedValue(null);
     let cnt = 0;
     Customer.create.mockImplementation(() => Promise.resolve([custA, custB][cnt++]));
-    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([custA, custB]) });
+    Customer.find.mockReturnValue(makeFindMock({ selectResult: [custA, custB] }));
     Household.findOne.mockResolvedValue(null);
     Household.create.mockResolvedValue({ _id: 'hh1', memberIds: [] });
 
@@ -241,7 +374,7 @@ describe('結束本期 API', () => {
     ]);
     Customer.findOne.mockResolvedValue(null);
     Customer.create.mockResolvedValue(custA);
-    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([custA]) });
+    Customer.find.mockReturnValue(makeFindMock({ selectResult: [custA] }));
 
     await endSession(req, res);
 
@@ -294,7 +427,7 @@ describe('結束本期 API', () => {
     Customer.findOne.mockResolvedValue(null);
     let cnt = 0;
     Customer.create.mockImplementation(() => Promise.resolve(makeCustDoc(`c${cnt++}`)));
-    Customer.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
+    Customer.find.mockReturnValue(makeFindMock());
 
     await endSession(req, res);
 

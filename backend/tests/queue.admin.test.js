@@ -17,6 +17,11 @@ jest.mock('../src/utils/calendarConverter', () => ({
 jest.mock('../src/utils/logger', () => ({
   debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn()
 }));
+// P0-10：clearAllQueue 先快照後刪，mock 快照工具避免真實寫 DB
+jest.mock('../src/utils/snapshot', () => ({
+  saveSnapshot: jest.fn().mockResolvedValue({}),
+  saveSnapshotOrThrow: jest.fn().mockResolvedValue({})
+}));
 
 const WaitingRecord = require('../src/models/waiting-record.model');
 const SystemSetting = require('../src/models/system-setting.model');
@@ -419,6 +424,8 @@ describe('Queue Admin Controller', () => {
     test('成功清除所有候位資料', async () => {
       WaitingRecord.countDocuments.mockResolvedValue(15);
       WaitingRecord.deleteMany.mockResolvedValue({ deletedCount: 15 });
+      // P0-10：clearAllQueue 在 deleteMany 前 await find({}).lean() 取快照 beforeData
+      WaitingRecord.find.mockReturnValue({ lean: jest.fn().mockResolvedValue(Array.from({ length: 15 }, (_, i) => ({ _id: `r${i}` }))) });
       const mockSettings = {
         save: jest.fn().mockResolvedValue(true),
         currentQueueNumber: 10,
@@ -433,6 +440,21 @@ describe('Queue Admin Controller', () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(mockSettings.currentQueueNumber).toBe(0);
       expect(res.json.mock.calls[0][0].data.deletedCount).toBe(15);
+    });
+
+    test('快照失敗則中止、不刪除候位（P0-10 先寫後刪保護）', async () => {
+      WaitingRecord.countDocuments.mockResolvedValue(5);
+      WaitingRecord.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([{ _id: 'r1' }]) });
+      const { saveSnapshotOrThrow } = require('../src/utils/snapshot');
+      saveSnapshotOrThrow.mockRejectedValueOnce(new Error('snapshot down'));
+      const req = mockReq();
+      const res = mockRes();
+
+      await queueAdminController.clearAllQueue(req, res);
+
+      // 快照失敗 → 回 500 中止，deleteMany 不可被呼叫
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(WaitingRecord.deleteMany).not.toHaveBeenCalled();
     });
   });
 

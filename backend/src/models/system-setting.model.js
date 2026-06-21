@@ -127,6 +127,11 @@ const systemSettingSchema = new mongoose.Schema({
       default: '#ffffff'
     }
   },
+  // P0-7：結束本期冪等鎖 flag（原子 findOneAndUpdate 搶鎖，finally 釋放）
+  sessionEnding: {
+    type: Boolean,
+    default: false
+  },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

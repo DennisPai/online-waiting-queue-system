@@ -31,7 +31,7 @@
 - 客戶資料編輯（管理員專屬權限，可修改所有客戶資料，家人數量上限 5 人）
 - 叫號（更新 `currentQueueNumber`）
 - 設定（`isQueueOpen`、`nextSessionDate`、`maxOrderIndex`、`minutesPerCustomer`、`simplifiedMode`、`publicRegistrationEnabled`）
-- 變更密碼功能（保留預設 admin/admin123；不強制首次登入）
+- 變更密碼功能（保留預設管理員帳密 `<ADMIN_PASSWORD>`，見部署設定；不強制首次登入）
 - 客戶資料編輯時自動重新計算生肖（若出生日期有變更）
 
 3) 系統/平台
@@ -45,7 +45,7 @@
 - 可維護性：API 規格統一、錯誤碼一致、結構化日誌、單元&整合測試
 
 ## 里程碑
-- M0：建立 PRD/API 規格/Engineering Rules + `.cursor/rules`
+- M0：建立 PRD / API 規格（`docs/API.md`，唯一權威）/ 工程慣例（`AGENTS.md`）
 - M1：後端新增 `/api/v1`（相容）、新增 `change-password`、安全強化
 - M2：前端切到 v1、加入強制改密 UI、服務層統一回傳格式、拆分大檔
 - M3：觀察 1~2 週 → 下線舊端點、清理相容碼；精煉文檔完成

@@ -97,6 +97,11 @@ router.post('/queue/end-session', adminController.endSession);
 // 重建 Household 歸組（修正臨時地址污染後使用）
 router.post('/customers/rebuild-households', adminController.rebuildHouseholds);
 
+// 人工複核重複客戶（P0-9 needsReview 標記）
+router.get('/customers/duplicates', adminController.listDuplicateCandidates);
+router.post('/customers/:id/merge', [body('targetId').notEmpty()], validateRequest, adminController.mergeCustomer);
+router.post('/customers/:id/dismiss-duplicate', adminController.dismissDuplicate);
+
 // API Log 查詢
 router.get('/logs', adminController.getLogs);
 

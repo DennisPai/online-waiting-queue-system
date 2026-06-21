@@ -25,7 +25,8 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   People as PeopleIcon,
-  AdminPanelSettings as SystemIcon
+  AdminPanelSettings as SystemIcon,
+  PersonSearch as PersonSearchIcon
 } from '@mui/icons-material';
 import { hideAlert } from '../../redux/slices/uiSlice';
 import { logout } from '../../redux/slices/authSlice';
@@ -96,6 +97,14 @@ const AdminLayout = () => {
               <PeopleIcon />
             </ListItemIcon>
             <ListItemText primary="客戶資料庫" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton onClick={() => navigateTo('/admin/customers/duplicate-review')}>
+            <ListItemIcon>
+              <PersonSearchIcon />
+            </ListItemIcon>
+            <ListItemText primary="疑似重複客戶" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>

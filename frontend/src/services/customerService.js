@@ -52,3 +52,20 @@ export const deleteCustomer = async (token, id) => {
   const response = await axios.delete(`${API_ENDPOINTS.CUSTOMERS}/${id}`, getAuthConfig(token));
   return response.data;
 };
+
+// 疑似重複客戶複核 API
+
+export const getDuplicateCustomers = async (token) => {
+  const response = await axios.get(`${API_ENDPOINTS.ADMIN}/customers/duplicates`, getAuthConfig(token));
+  return response.data.data || response.data;
+};
+
+export const mergeCustomer = async (token, id, targetId) => {
+  const response = await axios.post(`${API_ENDPOINTS.ADMIN}/customers/${id}/merge`, { targetId }, getAuthConfig(token));
+  return response.data.data || response.data;
+};
+
+export const dismissDuplicate = async (token, id) => {
+  const response = await axios.post(`${API_ENDPOINTS.ADMIN}/customers/${id}/dismiss-duplicate`, {}, getAuthConfig(token));
+  return response.data.data || response.data;
+};
