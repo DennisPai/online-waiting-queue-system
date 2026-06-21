@@ -141,7 +141,7 @@ const RegisterForm = ({ onSuccess, isDialog = false }) => {
       // 完整驗證模式
       // 基本資料驗證
       // 電子郵件現在為非必填，但如果有填寫則需驗證格式
-      if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) errors.email = '請輸入有效的電子郵件';
+      // 信箱不做格式驗證（2026-06-21 懷特要求拿掉信箱驗證）
       
       if (!formData.name) errors.name = '請輸入姓名';
       if (!formData.phone) errors.phone = '請輸入聯絡手機';

@@ -34,10 +34,7 @@ export const useQueueValidation = ({ loadQueueList, handleCloseDialog }) => {
       errors.phone = '電話號碼格式不正確';
     }
 
-    // 電子郵件格式驗證
-    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-      errors.email = '電子郵件格式不正確';
-    }
+    // 信箱不做格式驗證（2026-06-21 懷特要求拿掉信箱驗證）
 
     // 候位號碼驗證
     if (data.queueNumber && (isNaN(data.queueNumber) || data.queueNumber <= 0)) {

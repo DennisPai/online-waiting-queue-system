@@ -338,9 +338,7 @@ export const useRegistrationForm = (embedded = false) => {
     const errors = {};
 
     // 基本資料驗證
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = '請輸入有效的電子郵件';
-    }
+    // 信箱不做格式驗證（2026-06-21 懷特要求拿掉信箱驗證）
     
     if (!formData.name) {
       errors.name = '請輸入姓名';

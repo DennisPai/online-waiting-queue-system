@@ -21,10 +21,9 @@ const validateRegisterQueue = [
     .matches(/^[0-9+\-\s()]+$/)
     .withMessage('電話號碼格式不正確'),
     
+  // 信箱不做格式驗證（選填、隨便填都放行；2026-06-21 懷特要求拿掉信箱驗證）
   body('email')
-    .optional()
-    .isEmail()
-    .withMessage('電子郵件格式不正確'),
+    .optional(),
     
   body('gender')
     .optional()
@@ -52,9 +51,10 @@ const validateRegisterQueue = [
     .withMessage('地址必須是陣列格式'),
     
   body('addresses.*.address')
-    .optional()
-    .notEmpty()
-    .withMessage('地址不能為空'),
+    // 簡化模式登記送空地址（model address 預設 ''、允許空）；有填才驗格式，空字串跳過
+    .optional({ checkFalsy: true })
+    .isString()
+    .withMessage('地址格式不正確'),
     
   body('addresses.*.addressType')
     .optional()
