@@ -128,7 +128,7 @@ const QueueTable = ({
       const ageInfo = member.virtualAge ? ` (虛歲${member.virtualAge}歲)` : '';
       
       // 添加性別顯示
-      const genderText = member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : '';
+      const genderText = member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : member.gender === 'other' ? '待填' : '';
       const genderInfo = genderText ? ` (${genderText})` : '';
       
       return `${member.name}${genderInfo}${ageInfo} - ${birthInfo} - ${member.address || '未填寫地址'} (${formatAddressType(member.addressType)})`;
@@ -145,6 +145,8 @@ const QueueTable = ({
         return '男';
       case 'female':
         return '女';
+      case 'other':
+        return '待填';
       default:
         return gender || '';
     }

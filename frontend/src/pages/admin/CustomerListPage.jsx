@@ -117,7 +117,7 @@ const CustomerListPage = () => {
                     <TableCell>{customer.name}</TableCell>
                     <TableCell>{customer.phone || '-'}</TableCell>
                     <TableCell>
-                      {customer.gender === 'male' ? '男' : customer.gender === 'female' ? '女' : '-'}
+                      {customer.gender === 'male' ? '男' : customer.gender === 'female' ? '女' : customer.gender === 'other' ? '待填' : '-'}
                     </TableCell>
                     <TableCell>
                       {(customer.tags || []).map((tag) => (

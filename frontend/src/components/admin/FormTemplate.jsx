@@ -16,7 +16,7 @@ const TOPIC_MAP = {
   career: '事業', relationship: '婚姻感情', study: '學業',
   blessing: '收驚/加持', other: '其他'
 };
-const GENDER_MAP = { male: '男', female: '女', other: '其他' };
+const GENDER_MAP = { male: '男', female: '女', other: '待填' };
 const ADDR_TYPE_MAP = { home: '住家', work: '工作', hospital: '醫院', other: '其他' };
 
 const formatTopics = (topics, otherDetails) => {

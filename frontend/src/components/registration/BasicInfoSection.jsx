@@ -99,7 +99,8 @@ const BasicInfoSection = ({
           >
             <MenuItem value="male">男</MenuItem>
             <MenuItem value="female">女</MenuItem>
-            <MenuItem value="other">其他</MenuItem>
+            {/* 2026-06-24（WS5 D6）：移除「其他」選項——other 用途已改為系統補的「待填」標記，
+                前台不應讓使用者選到「待填」；前台性別只提供男/女（懷特裁示放棄真正其他性別選項）*/}
           </Select>
           {formErrors.gender && <FormHelperText>{formErrors.gender}</FormHelperText>}
         </FormControl>

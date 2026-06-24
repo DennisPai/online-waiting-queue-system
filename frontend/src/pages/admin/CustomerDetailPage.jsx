@@ -35,7 +35,7 @@ const addressTypeMap = {
   home: '住家', work: '工作', hospital: '醫院', other: '其他'
 };
 
-const genderMap = { male: '男', female: '女', other: '其他' };
+const genderMap = { male: '男', female: '女', other: '待填' };
 
 const formatLunarDate = (year, month, day, isLeap) => {
   if (!year && !month && !day) return null;
@@ -336,7 +336,7 @@ const CustomerDetailPage = () => {
                   <MenuItem value=""><em>未設定</em></MenuItem>
                   <MenuItem value="male">男</MenuItem>
                   <MenuItem value="female">女</MenuItem>
-                  <MenuItem value="other">其他</MenuItem>
+                  <MenuItem value="other">待填</MenuItem>
                 </Select>
               </FormControl>
             ) : (

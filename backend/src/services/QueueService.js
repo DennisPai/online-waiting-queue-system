@@ -463,6 +463,17 @@ class QueueService {
         throw ApiError.badRequest(`請輸入${label}`);
       }
     }
+
+    // 2026-06-24（WS5）：補齊非簡化模式的 model 必填欄位檢查。原本只查 name/phone/農曆，
+    // 漏了 addresses / consultationTopics——非簡化模式不走 applyDefaultValues，缺這些會
+    // 繞過檢查直接撞 model required → 500。改為友善 400。空陣列也要擋（length===0 是 truthy 陷阱）。
+    // gender 另議（簡化模式補「待填」標記，見 WS5.4），故此處暫不納入 gender。
+    if (!Array.isArray(data.addresses) || data.addresses.length === 0) {
+      throw ApiError.badRequest('請至少填寫一個地址');
+    }
+    if (!Array.isArray(data.consultationTopics) || data.consultationTopics.length === 0) {
+      throw ApiError.badRequest('請選擇至少一個諮詢主題');
+    }
   }
 
   /**
@@ -470,6 +481,14 @@ class QueueService {
    */
   processQueueData(data, settings) {
     let processedData = { ...data };
+
+    // 2026-06-24（WS5 / 懷特裁示）：gender 缺漏一律補 'other'（用途改為「待填」標記），
+    // 不分簡化/非簡化模式——標記系統未取得真實性別、待管理員確認。前台 radio 一定送
+    // male/female，只有繞過前端的請求會缺 gender。'other' 在 model enum 內 → 零 schema 變更。
+    // 前端把 gender==='other' 一律顯示「待填」（含客戶庫歸檔後），管理員一眼看出是補值。
+    if (!processedData.gender) {
+      processedData.gender = 'other';
+    }
 
     // 獲取候位號碼
     if (!processedData.queueNumber) {
@@ -511,7 +530,7 @@ class QueueService {
     // 主流程只認 lunarBirth*（民國年），gregorianBirth* 欄位保留在 schema
     // 但不在此處 default 寫入 80/1/1（會誤導下游與 admin 介面）。
     const defaults = {
-      gender: 'male',
+      // gender 已移到 processQueueData 統一補 'other'（待填）、不分模式，這裡不再補 'male'
       phone: data.phone || '0900000000',
       // Change B / Phase 3：簡化模式 default 跟 schema default 對齊改 ''
       // 避免在 DB 寫入「臨時地址」字串誤導 admin（schema default 已改 ''）
@@ -523,6 +542,17 @@ class QueueService {
         data[key] = value;
       }
     });
+
+    // 2026-06-24（WS5）：補上原本漏掉的 consultationTopics（model required + 長度>0）。
+    // applyDefaultValues 原本只補 gender/phone/addresses，漏了 consultationTopics——
+    // 簡化模式繞過前端（直接打 API）只送姓名時，會撞 model required → 500（反向脆弱）。
+    // 缺漏/空陣列補 ['other']，並對齊前端寫入可見的 otherDetails 標示（管理員看得出是補的）。
+    if (!Array.isArray(data.consultationTopics) || data.consultationTopics.length === 0) {
+      data.consultationTopics = ['other'];
+      if (!data.otherDetails) {
+        data.otherDetails = '簡化模式快速登記';
+      }
+    }
   }
 
   /**
@@ -535,7 +565,8 @@ class QueueService {
         // 出生日期都是民國 80 年 1 月 1 日，誤導 admin 與下游邏輯）。
         return {
           ...member,
-          gender: member.gender || 'male',
+          // 2026-06-24（WS5）：家人 gender 缺漏補 'other'（待填），與主客戶一致（前端顯示「待填」）
+          gender: member.gender || 'other',
           // Change B / Phase 3：跟 schema default '' 對齊，不寫入「臨時地址」字串
           address: member.address || '',
           addressType: member.addressType || 'home'

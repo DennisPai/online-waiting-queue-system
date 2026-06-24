@@ -154,7 +154,8 @@ function buildFormHTML(customer) {
   );
   const address = getCustomerAddress(customer);
   const lunarDate = formatLunarDate(customer);
-  const genderText = customer.gender === 'male' ? '男' : '女';
+  // gender==='other' 為系統補的「待填」標記，不可印成「女」誤導實體問事單
+  const genderText = customer.gender === 'male' ? '男' : customer.gender === 'other' ? '待填' : '女';
 
   return `
     <div style="height:100%; display:flex; flex-direction:column; border:2px solid black;">

@@ -345,3 +345,105 @@ describe('QueueService.registerQueue — 問題 2/3/4 修正邏輯', () => {
     expect(payload.familyMembers[0].addressType).toBe('home'); // default
   });
 });
+
+// ── WS5（2026-06-24）：反向脆弱補值兜底——維持簡化模式填假值、根治直接打 API 漏送→500 ──
+describe('QueueService — WS5 反向脆弱補值兜底', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    allocateOrderIndex.mockResolvedValue(1000001);
+    queueRepository.countActiveCustomers.mockResolvedValue(0);
+    queueRepository.findRecordsAhead.mockResolvedValue([]);
+    WaitingRecord.getNextQueueNumber.mockResolvedValue(1);
+    WaitingRecord.findById.mockResolvedValue(createdRecord());
+    SystemSetting.findOneAndUpdate.mockResolvedValue({ issuedCount: 1, maxOrderIndex: 100 });
+    queueRepository.create.mockResolvedValue(createdRecord());
+  });
+
+  const simplifiedSettings = { simplifiedMode: true, maxOrderIndex: 100, isQueueOpen: false, minutesPerCustomer: 13, nextSessionDate: new Date('2026-06-01T00:00:00Z') };
+  const fullSettings = { simplifiedMode: false, maxOrderIndex: 100, isQueueOpen: false, minutesPerCustomer: 13, nextSessionDate: new Date('2026-06-01T00:00:00Z') };
+
+  // 簡化模式：缺 consultationTopics 應被後端補 ['other']，不撞 model required → 500
+  test('簡化模式只送姓名 → 後端補 consultationTopics=[\'other\'] + otherDetails，不噴 500', async () => {
+    SystemSetting.getSettings.mockResolvedValue(simplifiedSettings);
+    await queueService.registerQueue({ name: '王只有名字' }); // 模擬繞過前端、直接打 API 最小輸入
+    const payload = queueRepository.create.mock.calls[0][0];
+    expect(payload.consultationTopics).toEqual(['other']);
+    expect(payload.otherDetails).toBe('簡化模式快速登記');
+  });
+
+  test('簡化模式缺 consultationTopics 仍能成功報名（resolve 而非 reject）', async () => {
+    SystemSetting.getSettings.mockResolvedValue(simplifiedSettings);
+    await expect(queueService.registerQueue({ name: '王只有名字' }))
+      .resolves.toMatchObject({ queueNumber: expect.any(Number) });
+  });
+
+  // 非簡化模式：缺 addresses / consultationTopics 應回友善 400 而非 500、且不走 create
+  test('非簡化模式缺 addresses → 友善 400、不走 create', async () => {
+    SystemSetting.getSettings.mockResolvedValue(fullSettings);
+    await expect(queueService.registerQueue({
+      name: '王', phone: '0912345678', gender: 'male',
+      lunarBirthYear: 80, lunarBirthMonth: 1, lunarBirthDay: 1,
+      consultationTopics: ['body'], // 故意不帶 addresses
+    })).rejects.toMatchObject({ statusCode: 400 });
+    expect(queueRepository.create).not.toHaveBeenCalled();
+  });
+
+  test('非簡化模式缺 consultationTopics → 友善 400', async () => {
+    SystemSetting.getSettings.mockResolvedValue(fullSettings);
+    await expect(queueService.registerQueue({
+      name: '王', phone: '0912345678', gender: 'male',
+      lunarBirthYear: 80, lunarBirthMonth: 1, lunarBirthDay: 1,
+      addresses: [{ address: '台北市', addressType: 'home' }], // 故意不帶 consultationTopics
+    })).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  test('非簡化模式 addresses 為空陣列 → 也要擋（length===0 truthy 陷阱）', async () => {
+    SystemSetting.getSettings.mockResolvedValue(fullSettings);
+    await expect(queueService.registerQueue({
+      name: '王', phone: '0912345678', gender: 'male',
+      lunarBirthYear: 80, lunarBirthMonth: 1, lunarBirthDay: 1,
+      addresses: [], consultationTopics: ['body'],
+    })).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  // 回歸：非簡化模式完整資料仍能成功（確認新檢查沒擋到正常請求）
+  test('回歸：非簡化模式完整資料仍能成功報名', async () => {
+    SystemSetting.getSettings.mockResolvedValue(fullSettings);
+    await expect(queueService.registerQueue({
+      name: '王', phone: '0912345678', gender: 'male',
+      lunarBirthYear: 80, lunarBirthMonth: 1, lunarBirthDay: 1,
+      addresses: [{ address: '台北市', addressType: 'home' }],
+      consultationTopics: ['body'],
+    })).resolves.toMatchObject({ queueNumber: expect.any(Number) });
+  });
+
+  // gender 缺漏一律補 'other'（用途改「待填」標記，懷特裁示）——不分模式、不噴 500
+  test('簡化模式 gender 缺漏 → 補 \'other\'（待填）', async () => {
+    SystemSetting.getSettings.mockResolvedValue(simplifiedSettings);
+    await queueService.registerQueue({ name: '王沒填性別' });
+    expect(queueRepository.create.mock.calls[0][0].gender).toBe('other');
+  });
+
+  test('非簡化模式 gender 缺漏 → 也補 \'other\'（待填）、不噴 500', async () => {
+    SystemSetting.getSettings.mockResolvedValue(fullSettings);
+    await queueService.registerQueue({
+      name: '王', phone: '0912345678',
+      lunarBirthYear: 80, lunarBirthMonth: 1, lunarBirthDay: 1,
+      addresses: [{ address: '台北市', addressType: 'home' }],
+      consultationTopics: ['body'], // 故意不帶 gender
+    });
+    expect(queueRepository.create.mock.calls[0][0].gender).toBe('other');
+  });
+
+  test('有送 gender 則用使用者的值（不被待填覆蓋）', async () => {
+    SystemSetting.getSettings.mockResolvedValue(simplifiedSettings);
+    await queueService.registerQueue({ name: '王', gender: 'female' });
+    expect(queueRepository.create.mock.calls[0][0].gender).toBe('female');
+  });
+
+  test('家人缺 gender → 補 \'other\'（待填）', async () => {
+    SystemSetting.getSettings.mockResolvedValue(simplifiedSettings);
+    await queueService.registerQueue({ name: '王', familyMembers: [{ name: '王家人' }] });
+    expect(queueRepository.create.mock.calls[0][0].familyMembers[0].gender).toBe('other');
+  });
+});

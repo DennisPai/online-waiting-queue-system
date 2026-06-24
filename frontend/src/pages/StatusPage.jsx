@@ -539,7 +539,7 @@ const StatusPage = () => {
               
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">性別</Typography>
-                <Typography variant="body1">{detailsDialog.record.gender === 'male' ? '男' : detailsDialog.record.gender === 'female' ? '女' : '未設定'}</Typography>
+                <Typography variant="body1">{detailsDialog.record.gender === 'male' ? '男' : detailsDialog.record.gender === 'female' ? '女' : detailsDialog.record.gender === 'other' ? '待填' : '未設定'}</Typography>
               </Grid>
 
               {/* 出生資料 */}
@@ -657,7 +657,7 @@ const StatusPage = () => {
                           姓名：{member.name}
                         </Typography>
                         <Typography variant="body2">
-                          性別：{member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : '未設定'}
+                          性別：{member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : member.gender === 'other' ? '待填' : '未設定'}
                         </Typography>
                         <Typography variant="body2">
                           農曆生日：{(() => {

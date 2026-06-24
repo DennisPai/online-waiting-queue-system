@@ -108,7 +108,7 @@ const FamilySection = ({
                     >
                       <MenuItem value="male">男</MenuItem>
                       <MenuItem value="female">女</MenuItem>
-                      <MenuItem value="other">其他</MenuItem>
+                      {/* 2026-06-24（WS5 D6）：移除「其他」——other 用途改為系統「待填」標記，前台不該選到 */}
                     </Select>
                     {formErrors[`familyMembers.${index}.gender`] && (
                       <FormHelperText>{formErrors[`familyMembers.${index}.gender`]}</FormHelperText>

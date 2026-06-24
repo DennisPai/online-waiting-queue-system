@@ -116,7 +116,7 @@ const CustomerCreatePage = () => {
                 <MenuItem value=""><em>未設定</em></MenuItem>
                 <MenuItem value="male">男</MenuItem>
                 <MenuItem value="female">女</MenuItem>
-                <MenuItem value="other">其他</MenuItem>
+                <MenuItem value="other">待填</MenuItem>
               </Select>
             </FormControl>
           </Grid>
