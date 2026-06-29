@@ -29,6 +29,7 @@ const fs = require('fs');
 const path = require('path');
 const { validationResult } = require('express-validator');
 const { validateRegisterQueue } = require('../../src/validators/queueValidators');
+const { validateRequest } = require('../../src/utils/middleware');
 
 const MODEL_PATH = path.resolve(__dirname, '../../src/models/waiting-record.model.js');
 
@@ -94,8 +95,11 @@ const KNOWN_VALIDATOR_LOOSER = {
 // 與「意外嚴格」（bug，如原 gender enum 缺 other）區分：意外嚴格該修並由第 1/2 層擋；刻意嚴格登記在此。
 const KNOWN_VALIDATOR_STRICTER = {
   gregorianBirthYear:
-    'validator isInt({min:1,max:150})；model 對 gregorianBirthYear 無 min/max。1-150 為民國年合理上界 '
-    + '(sanity bound)；register 主流程走 lunar-only、此欄非客戶直送主資料（model 註解：主流程不寫入、由後端從農曆推算），刻意保留。',
+    'validator isInt({min:1,max:當前西元年+1})；model 對 gregorianBirthYear 無 min/max。'
+    + '此欄為國曆（西元）出生年，前端完整模式由農曆推算後「直送」西元年（如 1991）。'
+    + 'sanity bound = 正整數且不在未來，已以前端真實西元年 payload 佐證不會擋掉合法值（見下方行為測試），刻意保留。'
+    + '（2026-06-29 修正：原誤記為「民國年 1-150 sanity bound、且前端不直送此欄」，兩前提皆與現況相反——'
+    + '此欄是西元年、完整模式前端直送——導致 1991 被擋成 400「Request failed」而出貨。）',
 };
 
 // ── COVERED_FIELDS：model 每個 top-level 欄位的「主要對齊意圖」分類（第 3 層 meta 測試的真值）──
@@ -178,7 +182,9 @@ const fixtures = {
     phone: '0912345678',
     email: 'test@example.com',
     gender: 'male',
-    gregorianBirthYear: 80,
+    // 2026-06-29：baseline 改用前端完整模式「實際送出的西元年」（原為 80，≤150 的舊測試破口——
+    // 永遠通過舊 max:150 故從沒抓到西元年被擋的缺陷）。現用 1991，若驗證器再退回民國年尺度即紅燈。
+    gregorianBirthYear: 1991,
     gregorianBirthMonth: 6,
     gregorianBirthDay: 15,
     addresses: [{ address: '台北市信義區', addressType: 'home' }],
@@ -324,11 +330,16 @@ describe('input-validation-integrity: 驗證器↔model 一致性 contract', () 
 
   // ── 刻意嚴格登記：validator 加 model 沒有的 sanity bound 須登記、且確為 model 必填欄位外的合理約束 ──
   describe('刻意嚴格登記：KNOWN_VALIDATOR_STRICTER', () => {
-    test('gregorianBirthYear 登記在案（model 無 min/max、validator 加 1-150 sanity bound）', async () => {
+    test('gregorianBirthYear 西元年 sanity bound 登記在案 + 真實西元年不被誤擋', async () => {
       expect(KNOWN_VALIDATOR_STRICTER.gregorianBirthYear).toBeDefined();
-      // 行為佐證：超出 sanity bound 的值會被 validator 擋（證明這個刻意嚴格確實存在、非空殼登記）
-      const r = await runRegister({ name: '測試', gregorianBirthYear: 9999 });
-      expect(fieldErrors(r.paths, 'gregorianBirthYear').length).toBeGreaterThan(0);
+      // 佐證一（堵 2026-06-29 缺陷）：前端完整模式真實送的西元年（如 1991）必須通過——
+      // 修正前 max:150 會把它擋成 400「Request failed」。這條在「修 bound 前」會紅燈，正是它要抓的漏網。
+      const pass = await runRegister({ name: '測試', gregorianBirthYear: 1991 });
+      expect(fieldErrors(pass.paths, 'gregorianBirthYear')).toEqual([]);
+      // 佐證二：明顯非法（未來年）仍被擋，證明這個刻意嚴格 sanity bound 確實存在、非空殼登記。
+      const futureYear = new Date().getFullYear() + 50;
+      const blocked = await runRegister({ name: '測試', gregorianBirthYear: futureYear });
+      expect(fieldErrors(blocked.paths, 'gregorianBirthYear').length).toBeGreaterThan(0);
     });
   });
 });
@@ -372,5 +383,78 @@ describe('familyMembers 內部欄位驗證對齊 model（WS5）', () => {
   test('家人姓名為空字串 → 被擋', async () => {
     const r = await runRegister({ name: '王', familyMembers: [{ name: '' }] });
     expect(fieldErrors(r.paths, 'familyMembers').length).toBeGreaterThan(0);
+  });
+});
+
+// ── 2026-06-29：完整模式「前端實際送出」的真實 payload 回歸（spec：register 邊角輸入須有測試覆蓋 b）──
+// 補的破口：2026-06-21 與 2026-06-29 兩次事故，測試與實機都只用「最小輸入」或「model 合法人造值」，
+// 從不送前端完整模式真實 payload（含由農曆推算、以西元年形式送出的 gregorianBirthYear + 家人西元生年），
+// 驗證器與前端資料契約的落差因而無從現形。此 describe 用真實西元年 payload 鎖住該契約。
+describe('完整模式前端真實 payload（含西元 gregorianBirthYear + 家人西元生年）通過驗證', () => {
+  test('主客戶西元生年 + 一名家人西元生年 → 整筆通過、不被擋', async () => {
+    const r = await runRegister({
+      name: '王完整',
+      phone: '0912345678',
+      gender: 'male',
+      lunarBirthYear: 80, lunarBirthMonth: 6, lunarBirthDay: 15, lunarIsLeapMonth: false,
+      gregorianBirthYear: 1991, gregorianBirthMonth: 6, gregorianBirthDay: 15,
+      addresses: [{ address: '台北市信義區', addressType: 'home' }],
+      consultationTopics: ['body', 'fate'],
+      familyMembers: [{
+        name: '王家人', gender: 'female',
+        lunarBirthYear: 92, lunarBirthMonth: 3, lunarBirthDay: 8, lunarIsLeapMonth: false,
+        gregorianBirthYear: 2003, gregorianBirthMonth: 3, gregorianBirthDay: 8,
+        address: '台北市信義區', addressType: 'home',
+      }],
+    });
+    expect(r.isEmpty).toBe(true);
+  });
+
+  test('主客戶與家人的 gregorianBirthYear 西元年皆不被擋（對稱）', async () => {
+    const r = await runRegister({
+      name: '王', phone: '0912345678', gender: 'male',
+      gregorianBirthYear: 1991,
+      addresses: [{ address: '台北市', addressType: 'home' }],
+      consultationTopics: ['body'],
+      familyMembers: [{ name: '王家人', gregorianBirthYear: 2003 }],
+    });
+    expect(fieldErrors(r.paths, 'gregorianBirthYear')).toEqual([]);
+    expect(fieldErrors(r.paths, 'familyMembers')).toEqual([]);
+  });
+});
+
+// ── 2026-06-29：validateRequest 驗證失敗回應須附可讀 message（spec：API 驗證失敗回應須附可讀訊息）──
+// 跑完 validator chain 後，呼叫 validateRequest 中介層、以 mock res 攔截 json，斷言回應帶真正原因。
+describe('validateRequest 驗證失敗回應須附可讀 message', () => {
+  async function runMiddleware(body) {
+    const req = { body, params: {}, query: {}, cookies: {}, headers: {} };
+    for (const chain of validateRegisterQueue) await chain.run(req);
+    let status = null;
+    let payload = null;
+    let nextCalled = false;
+    const res = {
+      status(code) { status = code; return this; },
+      json(p) { payload = p; return this; },
+    };
+    validateRequest(req, res, () => { nextCalled = true; });
+    return { status, payload, nextCalled };
+  }
+
+  test('驗證失敗 → 400 且 message 為真正欄位原因（非 "Request failed"）、errors[] 仍在', async () => {
+    const futureYear = new Date().getFullYear() + 50;
+    const { status, payload } = await runMiddleware({ name: '測試', gregorianBirthYear: futureYear });
+    expect(status).toBe(400);
+    expect(payload.success).toBe(false);
+    expect(typeof payload.message).toBe('string');
+    expect(payload.message.length).toBeGreaterThan(0);
+    expect(payload.message).not.toBe('Request failed');
+    expect(Array.isArray(payload.errors)).toBe(true);
+    expect(payload.errors.length).toBeGreaterThan(0);
+  });
+
+  test('驗證通過 → 放行（next 被呼叫、不回 400）', async () => {
+    const { status, nextCalled } = await runMiddleware({ name: '測試', gregorianBirthYear: 1991 });
+    expect(nextCalled).toBe(true);
+    expect(status).toBe(null);
   });
 });

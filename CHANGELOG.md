@@ -10,6 +10,18 @@
 
 ---
 
+## 2026-06-29 — 完整模式登記 bug 修復 + 全站對外訊息中文化
+
+### 修正：完整模式登記候位「Request failed」（validator-recalibrate-and-error-surfacing）
+- 根因：完整模式（簡易模式關閉）前端送「西元」出生年，後端 validator 把 gregorianBirthYear 卡在民國年範圍 1-150 擋下；且驗證失敗回應無 message → 經信封補成通用「Request failed」，使用者看不到真正原因
+- `gregorianBirthYear` 驗證改為西元年合理範圍（家人同欄補對稱規則）
+- `validateRequest` 補可讀 message → 全站 express-validator 端點驗證錯誤皆顯示真正欄位原因，不再黑箱「Request failed」
+
+### 全站對外訊息一致繁體中文化（localize-user-facing-messages）
+- auth / admin 路由 35 條 validator 補繁中 `.withMessage`（消除英文預設「Invalid value」）
+- admin controller 7 條對外 message + `v1-response` fallback + 前端 2 處 Email label 改繁中
+- 新增 `route-validator-message` contract 測試，防英文預設訊息回歸
+
 ## [未發布 / 測試中]
 
 ### 文檔治理（docs-governance）

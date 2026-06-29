@@ -30,7 +30,7 @@ module.exports = (req, res, next) => {
           const out = {
             success: false,
             code: payload.code || (payload.error ? 'INTERNAL_ERROR' : 'ERROR'),
-            message: payload.message || (typeof payload.error === 'string' ? payload.error : 'Request failed')
+            message: payload.message || (typeof payload.error === 'string' ? payload.error : '請求失敗，請稍後再試')
           };
           if (payload.errors) out.errors = payload.errors;
           return originalJson(out);

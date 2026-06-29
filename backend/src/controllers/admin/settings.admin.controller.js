@@ -302,7 +302,7 @@ exports.recalcCounters = async (req, res) => {
     if (mode === 'dry-run') {
       return res.status(200).json({
         success: true,
-        message: 'dry-run — 未寫入；mode=execute 才會覆寫',
+        message: '測試模式（dry-run）— 未寫入；執行模式（execute）才會覆寫',
         data: {
           mode,
           before: beforeSnapshot,
@@ -357,7 +357,7 @@ exports.restoreWaitingRecords = async (req, res) => {
     if (!Array.isArray(records)) {
       return res.status(400).json({
         success: false,
-        message: 'body.records 必須是 array of raw waiting_record documents（含 _id）'
+        message: '請求的 records 必須是待還原的候位記錄陣列（含 _id）'
       });
     }
 
@@ -375,7 +375,7 @@ exports.restoreWaitingRecords = async (req, res) => {
     if (mode === 'dry-run') {
       return res.status(200).json({
         success: true,
-        message: 'dry-run — 未寫入；mode=execute 才會 insert',
+        message: '測試模式（dry-run）— 未寫入；執行模式（execute）才會插入',
         data: summary
       });
     }

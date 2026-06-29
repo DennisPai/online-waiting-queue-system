@@ -324,10 +324,10 @@ exports.updateQueueOrder = async (req, res) => {
     const { queueId, newOrder } = req.body;
 
     if (!queueId || newOrder === undefined || newOrder === null) {
-      return res.status(400).json({ success: false, message: '請求缺少必要參數：queueId 或 newOrder' });
+      return res.status(400).json({ success: false, message: '請求缺少必要參數：候位識別碼 或 新順序' });
     }
     if (typeof newOrder !== 'number' || newOrder < 1) {
-      return res.status(400).json({ success: false, message: 'newOrder必須是正整數' });
+      return res.status(400).json({ success: false, message: '新順序必須是正整數' });
     }
 
     const recordToUpdate = await WaitingRecord.findById(queueId);

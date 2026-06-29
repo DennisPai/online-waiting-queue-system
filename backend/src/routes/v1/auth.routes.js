@@ -8,8 +8,8 @@ const router = express.Router();
 router.post(
   '/login',
   [
-    body('username').notEmpty(),
-    body('password').notEmpty()
+    body('username').notEmpty().withMessage('請輸入帳號'),
+    body('password').notEmpty().withMessage('請輸入密碼')
   ],
   validateRequest,
   authController.login
@@ -22,9 +22,9 @@ router.post(
   protect,
   restrictTo('admin'),
   [
-    body('username').notEmpty().isLength({ min: 3, max: 50 }),
-    body('password').notEmpty().isLength({ min: 6 }),
-    body('email').notEmpty().isEmail()
+    body('username').notEmpty().withMessage('請輸入帳號').isLength({ min: 3, max: 50 }).withMessage('帳號長度需 3-50 字'),
+    body('password').notEmpty().withMessage('請輸入密碼').isLength({ min: 6 }).withMessage('密碼至少 6 字'),
+    body('email').notEmpty().withMessage('請輸入電子信箱').isEmail().withMessage('請輸入有效的電子信箱')
   ],
   validateRequest,
   authController.register
@@ -34,8 +34,8 @@ router.put(
   '/change-password',
   protect,
   [
-    body('oldPassword').notEmpty(),
-    body('newPassword').notEmpty().isLength({ min: 8 })
+    body('oldPassword').notEmpty().withMessage('請輸入舊密碼'),
+    body('newPassword').notEmpty().withMessage('請輸入新密碼').isLength({ min: 8 }).withMessage('新密碼至少 8 字')
   ],
   validateRequest,
   authController.changePassword

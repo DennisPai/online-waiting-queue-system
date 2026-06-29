@@ -40,12 +40,12 @@ exports.updateEventBanner = async (req, res) => {
     
     // 驗證對齊方式
     if (titleAlign && !['left', 'center', 'right'].includes(titleAlign)) {
-      return res.status(400).json({ success: false, message: '對齊方式必須是 left、center 或 right' });
+      return res.status(400).json({ success: false, message: '對齊方式必須是 靠左（left）、置中（center） 或 靠右（right）' });
     }
     
     // 驗證字體粗細
     if (fontWeight && !['normal', 'bold'].includes(fontWeight)) {
-      return res.status(400).json({ success: false, message: '字體粗細必須是 normal 或 bold' });
+      return res.status(400).json({ success: false, message: '字體粗細必須是 標準（normal） 或 粗體（bold）' });
     }
     
     const settings = await SystemSetting.getSettings();

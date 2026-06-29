@@ -469,6 +469,8 @@ Base URL: `/api/v1`
 ```
 > 完整 `code` 列舉與各專屬 code 的觸發時機見本文件開頭「`code` 列舉（固定集合）」表。
 
+> **欄位級驗證失敗（express-validator）**：經 `validateRequest` 中介層攔下的請求，除上述欄位外另帶 `errors`（陣列，每項含 `path`/`msg` 等欄位級細節），且 `message` 為彙整各欄位 `msg` 的可讀字串（不再是通用 `Request failed`）。整合者可讀 `message` 顯示原因、或讀 `errors` 做逐欄位處理。
+
 HTTP 狀態碼：
 - `200` 成功
 - `201` 新增成功

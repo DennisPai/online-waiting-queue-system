@@ -7,9 +7,14 @@ const User = require('../models/user.model');
 exports.validateRequest = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    const arr = errors.array();
+    // 2026-06-29：補上可讀 message（彙整各欄位 errors[].msg）。原本只回 { success, errors }、無 message，
+    // 經 v1-response 信封補成通用「Request failed」→ 前端拿不到真正原因。新增 message、保留 errors[]（向後相容）。
+    // v1-response（line 33）會尊重既有 message，不再覆蓋成「Request failed」。全站掛 validateRequest 的端點同時受惠。
     return res.status(400).json({
       success: false,
-      errors: errors.array()
+      message: arr.map((e) => e.msg).join('；'),
+      errors: arr
     });
   }
   next();

@@ -105,7 +105,7 @@ const CustomerCreatePage = () => {
               onChange={(e) => setField('phone', e.target.value)} />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField fullWidth size="small" label="Email" value={formData.email}
+            <TextField fullWidth size="small" label="電子郵件" value={formData.email}
               onChange={(e) => setField('email', e.target.value)} />
           </Grid>
           <Grid item xs={12} sm={6}>

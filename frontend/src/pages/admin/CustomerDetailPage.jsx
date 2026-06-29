@@ -317,7 +317,7 @@ const CustomerDetailPage = () => {
 
           {/* Email */}
           <Grid item xs={12} sm={6}>
-            <Typography variant="body2" color="text.secondary">Email</Typography>
+            <Typography variant="body2" color="text.secondary">電子郵件</Typography>
             {editing ? (
               <TextField size="small" fullWidth value={editData.email}
                 onChange={(e) => setEditData(prev => ({ ...prev, email: e.target.value }))} />

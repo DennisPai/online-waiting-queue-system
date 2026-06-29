@@ -33,9 +33,13 @@ const validateRegisterQueue = [
     .withMessage('性別必須是 male、female 或 other'),
     
   body('gregorianBirthYear')
+    // 國曆（西元）出生年；model 對 gregorianBirthYear 無 min/max。
+    // 前端完整模式由農曆推算後直送「西元年」（如 1991），故 sanity bound 須為西元年尺度：
+    // 正整數且不在未來（上界動態取「當前西元年 + 1」，永不擋掉前端送的真實西元年）。
+    // 2026-06-29 修正：原 max:150 是民國年尺度、與此欄西元語意錯置，會把 1991 擋成 400「Request failed」。
     .optional()
-    .isInt({ min: 1, max: 150 })
-    .withMessage('出生年必須是1-150之間的整數'),
+    .isInt({ min: 1, max: new Date().getFullYear() + 1 })
+    .withMessage('國曆出生年格式不正確（需為有效西元年）'),
     
   body('gregorianBirthMonth')
     .optional()
@@ -83,6 +87,24 @@ const validateRegisterQueue = [
     .optional()
     .isIn(['male', 'female', 'other'])
     .withMessage('家人性別必須是 male、female 或 other'),
+
+  // 2026-06-29：補家人國曆生日驗證，與主客戶對稱（原本主客戶有 gregorianBirth* 規則、家人完全沒有）。
+  // 前端完整模式家人也直送西元年 gregorianBirthYear + 國曆月/日；規則與主客戶一致、對齊 model
+  // familyMemberSchema（year 無 min/max、month 1-12、day 1-31），採永不擋真實西元值的寬鬆 sanity bound。
+  body('familyMembers.*.gregorianBirthYear')
+    .optional()
+    .isInt({ min: 1, max: new Date().getFullYear() + 1 })
+    .withMessage('家人國曆出生年格式不正確（需為有效西元年）'),
+
+  body('familyMembers.*.gregorianBirthMonth')
+    .optional()
+    .isInt({ min: 1, max: 12 })
+    .withMessage('家人出生月必須是1-12之間的整數'),
+
+  body('familyMembers.*.gregorianBirthDay')
+    .optional()
+    .isInt({ min: 1, max: 31 })
+    .withMessage('家人出生日必須是1-31之間的整數'),
 
   body('consultationTopics')
     .optional()
